@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:localhost)",
+      "Bash(curl -s -k -H \"Authorization: Bearer 575f290cb5c575462ebe8368ac7abb5691dcad285694cc48beb82148a17a6ea1\" https://localhost:27123/)",
+      "Bash(curl:*)",
+      "Bash(npx -y obsidian-mcp --help)",
+      "Bash(python -m json.tool)"
+    ]
+  }
+}
