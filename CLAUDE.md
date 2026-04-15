@@ -56,5 +56,5 @@ Create this todo list immediately on every task:
 - Never invent patterns not described in docs/
 - Never contradict a decision in docs/adr/
 - If a task requires overriding an ADR — stop and flag it
-- Tests are written before implementation, always
+- Tests are described in `docs\testing.md`
 - Never edit this file without permission
