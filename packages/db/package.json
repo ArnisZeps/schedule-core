@@ -7,7 +7,9 @@
   "scripts": {
     "build": "tsc --project tsconfig.json",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "migrate:up": "tsx src/migrate.ts up",
+    "migrate:status": "tsx src/migrate.ts status"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.9.4"
@@ -16,6 +18,7 @@
     "@types/node": "^20.14.0",
     "@types/ws": "^8.5.10",
     "dotenv": "^16.4.5",
+    "tsx": "^4.15.6",
     "typescript": "^5.4.5",
     "vitest": "^1.6.0",
     "ws": "^8.17.0"

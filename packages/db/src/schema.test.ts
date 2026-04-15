@@ -1,8 +1,7 @@
 import { beforeAll, afterAll, afterEach, describe, it, expect } from 'vitest';
 import { Pool, neonConfig } from '@neondatabase/serverless';
 import ws from 'ws';
-import { readFileSync } from 'fs';
-import { resolve } from 'path';
+import { migrate } from './migrator.js';
 
 neonConfig.webSocketConstructor = ws;
 
@@ -18,25 +17,15 @@ beforeAll(async () => {
   client = await pool.connect();
 
   await client.query(
-    'DROP TABLE IF EXISTS bookings, availability_rules, resources, tenants CASCADE',
+    'DROP TABLE IF EXISTS bookings, availability_rules, resources, tenants, schema_migrations CASCADE',
   );
 
-  const sql = readFileSync(resolve(__dirname, '../schema.sql'), 'utf-8');
-  // Split on semicolons followed by optional whitespace + newline;
-  // filter blank entries produced by comments and trailing whitespace.
-  const statements = sql
-    .split(/;\s*\n/)
-    .map((s: string) => s.trim())
-    .filter((s: string) => s.length > 0);
-
-  for (const stmt of statements) {
-    await client.query(stmt);
-  }
+  await migrate(url);
 });
 
 afterAll(async () => {
   await client.query(
-    'DROP TABLE IF EXISTS bookings, availability_rules, resources, tenants CASCADE',
+    'DROP TABLE IF EXISTS bookings, availability_rules, resources, tenants, schema_migrations CASCADE',
   );
   client.release();
   await pool.end();
