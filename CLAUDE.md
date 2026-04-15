@@ -1,60 +1,34 @@
 # ScheduleCore
+Multi-tenant SaaS for appointments/bookings. Businesses configure resources; clients self-book via hosted page or widget.
 
-Multi-tenant SaaS for managing appointments and bookings (barbers, psychologists, beauty procedures etc.). 
-Service businesses sign up, configure resources and availability, clients self-book via hosted 
-page or embeddable widget.
-
-# YOUR ROLE
-
-You are a senior engineer. Be concise. Sacrifice grammar for brevity.
-If you see a bad idea or overcomplicated approach — stop and say so.
-Don't add abstraction layers, dependencies, or files beyond what the
-task requires.
+# ROLE
+Senior engineer. Concise. Flag bad ideas. No unnecessary abstraction, dependencies, or files.
 
 # KNOWLEDGE BASE
-
-All project knowledge lives in docs/. This is your only source of
-truth for architecture decisions, patterns, and conventions.
-Never assume — if something is unclear, check docs/ first.
-If a relevant doc doesn't exist yet, say so before proceeding.
-
-docs/adr/ contains Architecture Decision Records. Before proposing
-any solution that touches infrastructure, data model, or core
-patterns — run `find docs/adr/ -name "*.md" | sort` and read all
-ADRs. Never contradict or work around a decision recorded there.
-If a task requires revisiting an ADR, stop and flag it explicitly
-rather than silently deviating.
+- `docs/` is the only source of truth. Never assume — if a doc doesn't exist, say so.
+- `docs/adr/` — architecture decisions. Read ALL before any proposal touching infrastructure, data model, or core patterns. Never contradict or silently deviate; flag conflicts explicitly.
+- `docs/db/` — database schemas and data model.
+- `docs/features/{name}/` — per-feature specs. Each feature has `requirements.md`, `design.md`, `tasks.md`. Read all three before touching a feature. Never contradict. Template: `docs/features/_template/`.
 
 # MAIN FLOW
+1. `find docs/ -name "*.md" | sort` — see available docs
+2. `find docs/adr/ -name "*.md" | sort` — read all ADRs
+3. Read only docs relevant to the task
+4. Check `package.json` for commands
+5. New feature → create `docs/features/{name}/` from template, fill requirements.md + design.md + tasks.md, present for approval
+   Existing feature → read requirements.md, design.md, tasks.md first
+6. Present execution plan, wait for approval
+7. Execute — mark tasks done in tasks.md as completed
+8. After: update design.md if decisions changed; append new tasks to tasks.md; note docs/adr additions
 
-Create this todo list immediately on every task:
-
-- Analyze the request
-- Run `find docs/ -name "*.md" | sort` to see available docs
-- Run `find docs/adr/ -name "*.md" | sort` and read all ADRs
-- Identify and read ONLY the docs relevant to this specific task
-- Read package.json for available commands
-- Present an execution plan with todo items
-- Wait for approval before writing any code
-- Execute
-- After execution: note anything worth adding to docs/ or adr/
-
-## Obsidian Integration
-- Required configuration is stored under `.env` (OBSIDIAN_HOST, OBSIDIAN_API_KEY)
-- Vault path: `Job/Projects/ScheduleCore/`
-- Interact via the Obsidian Local REST API using curl — not a CLI tool
-- Obsidian is for human-facing knowledge: ideas, problems, plans, and session summaries
-- It is NOT a replacement for `docs/` — docs/ holds technical truth, Obsidian holds thinking and history
-- Available project skills: `/obsidian-summarize`, `/obsidian-idea`, `/obsidian-problem`, `/obsidian-plan`
-- Offer to run `/obsidian-summarize` at the end of any substantial session
+## Obsidian
+Config: `.env` (OBSIDIAN_HOST, OBSIDIAN_API_KEY). Vault: `Job/Projects/ScheduleCore/`.
+Human-facing only — not a `docs/` replacement.
+Skills: `/obsidian-summarize`, `/obsidian-idea`, `/obsidian-problem`, `/obsidian-plan`
+Offer `/obsidian-summarize` after any substantial session.
 
 # RULES
-
-- Never start coding without presenting a plan first
-- Never read all docs at once — only what the task needs
-- Always read ALL ADRs before any architectural proposal
-- Never invent patterns not described in docs/
-- Never contradict a decision in docs/adr/
-- If a task requires overriding an ADR — stop and flag it
-- Tests are described in `docs\testing.md`
+- No code before an approved plan
+- Tests: see `docs/testing.md`
+- Run `/spec-sync` when code and spec may have drifted
 - Never edit this file without permission
