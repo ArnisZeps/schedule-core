@@ -6,7 +6,8 @@
       "Bash(curl:*)",
       "Bash(npx -y obsidian-mcp --help)",
       "Bash(python -m json.tool)",
-      "Bash(/c/Users/zepsa/AppData/Roaming/npm/pnpm:*)"
+      "Bash(/c/Users/zepsa/AppData/Roaming/npm/pnpm:*)",
+      "Bash(pnpm --filter @schedule-core/db migrate:up)"
     ]
   }
 }

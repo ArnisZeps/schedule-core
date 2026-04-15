@@ -10,16 +10,13 @@ Senior engineer. Concise. Flag bad ideas. No unnecessary abstraction, dependenci
 - `docs/db/` — database schemas and data model.
 - `docs/features/{name}/` — per-feature specs. Each feature has `requirements.md`, `design.md`, `tasks.md`. Read all three before touching a feature. Never contradict. Template: `docs/features/_template/`.
 
-# MAIN FLOW
-1. `find docs/ -name "*.md" | sort` — see available docs
-2. `find docs/adr/ -name "*.md" | sort` — read all ADRs
-3. Read only docs relevant to the task
-4. Check `package.json` for commands
-5. New feature → create `docs/features/{name}/` from template, fill requirements.md + design.md + tasks.md, present for approval
-   Existing feature → read requirements.md, design.md, tasks.md first
-6. Present execution plan, wait for approval
-7. Execute — mark tasks done in tasks.md as completed
-8. After: update design.md if decisions changed; append new tasks to tasks.md; note docs/adr additions
+# MODES
+
+Use these commands explicitly. Never advance to the next mode without user approval.
+
+- `/design-mode` — produce feature docs and ADRs only; no code
+- `/implementation-mode` — implement a feature whose docs have been approved
+- `/review-mode` — detect and resolve drift between code and feature docs (alias for `/spec-sync`)
 
 ## Obsidian
 Config: `.env` (OBSIDIAN_HOST, OBSIDIAN_API_KEY). Vault: `Job/Projects/ScheduleCore/`.
