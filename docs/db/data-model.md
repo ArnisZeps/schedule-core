@@ -19,6 +19,24 @@ Represents a business account (a barber shop, psychology practice, etc.). No RLS
 
 ---
 
+## users
+
+Platform-level auth table. No RLS — login looks up by email without a tenant context; keeping it owner-controlled avoids a chicken-and-egg problem at auth time. Access is controlled at the application layer for auth routes.
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| id | UUID | PK, DEFAULT gen_random_uuid() |
+| tenant_id | UUID | NOT NULL, FK → tenants(id) ON DELETE CASCADE |
+| email | TEXT | NOT NULL, UNIQUE — stored and compared in lowercase |
+| password_hash | TEXT | NOT NULL — bcrypt, work factor 12 |
+| created_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() |
+
+**Index:** `(email)` — login lookup.
+
+Multiple users per tenant are supported. Signup creates the first user. Adding further users is out of scope for M3.
+
+---
+
 ## resources
 
 A bookable entity within a tenant: a staff member, a chair, a room, etc. Tenants define their own resources via the admin dashboard.

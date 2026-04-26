@@ -14,7 +14,7 @@ Stack: pnpm monorepo, Express API (`apps/api`), Vite+React SPA (`apps/web`), Neo
 ## Steps
 
 - [x] **M1 - Data model + schema**: Design core tables (tenants, resources, availability_rules, bookings). Document in `docs/`. Write ADR if non-obvious multi-tenancy decisions arise.
-- [ ] **M2 - Migration tooling**: Pick and set up a migration runner. Write ADR (touches DB patterns).
+- [x] **M2 - Migration tooling**: Pick and set up a migration runner. Write ADR (touches DB patterns).
 - [ ] **M3 - Tenant auth**: Sign-up / login for business owners. JWT or session-based. Needs ADR (auth strategy not documented yet).
 - [ ] **M4 - Core API surface**: Tenant CRUD, resource management, availability config - all behind auth. No UI.
 - [ ] **M5 - Business owner dashboard**: Authenticated web UI for business owners. Service and staff configuration, working hours and availability setup, day/week appointment calendar view, appointment list with cancel/reschedule. Designed responsive — will be used on phones. Foundation for all subsequent owner-facing features.

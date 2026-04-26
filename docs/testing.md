@@ -5,11 +5,11 @@ TDD is mandatory. Tests are written before implementation.
 Red → Green → Refactor. No exceptions.
 
 ## Backend
-- Framework: Jest
+- Framework: Vitest (both `apps/api` and `packages/db`)
 - Every endpoint has integration tests
 - Every business logic function has unit tests
-- Run: `npm run test`
-- Run single: `npm run test -- --testPathPattern=filename`
+- Run: `pnpm test`
+- Run single: `pnpm test -- src/lib/jwt`
 
 ## Frontend
 - Framework: Puppeteer via CLI. No jest-dom, no React Testing Library.
