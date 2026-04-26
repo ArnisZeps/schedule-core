@@ -1,11 +1,12 @@
-import { neon, neonConfig } from '@neondatabase/serverless';
+import { Pool, neonConfig } from '@neondatabase/serverless';
+import ws from 'ws';
 
-neonConfig.fetchConnectionCache = true;
+neonConfig.webSocketConstructor = ws;
 
-export function createDb() {
+export function createDb(): Pool {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) throw new Error('DATABASE_URL is not set');
-  return neon(databaseUrl);
+  return new Pool({ connectionString: databaseUrl });
 }
 
-export type Db = ReturnType<typeof createDb>;
+export type Db = Pool;
