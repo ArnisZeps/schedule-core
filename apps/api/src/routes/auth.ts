@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import type { Pool } from '@neondatabase/serverless';
+import type { Pool } from '@schedule-core/db';
 import { hashPassword, verifyPassword } from '../lib/password.js';
 import { signToken } from '../lib/jwt.js';
 

@@ -10,14 +10,11 @@ let pool: Db;
 beforeAll(async () => {
   process.env.JWT_SECRET = 'a'.repeat(32);
   pool = createDb();
-  // Wipe auth-related rows before suite
-  await pool.query('DELETE FROM users');
-  await pool.query('DELETE FROM tenants');
+  await pool.query('TRUNCATE bookings, availability_rules, resources, users, tenants CASCADE');
 });
 
 afterAll(async () => {
-  await pool.query('DELETE FROM users');
-  await pool.query('DELETE FROM tenants');
+  await pool.query('TRUNCATE bookings, availability_rules, resources, users, tenants CASCADE');
   await pool.end();
   delete process.env.JWT_SECRET;
 });

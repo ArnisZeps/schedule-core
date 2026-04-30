@@ -15,8 +15,8 @@ Stack: pnpm monorepo, Express API (`apps/api`), Vite+React SPA (`apps/web`), Neo
 
 - [x] **M1 - Data model + schema**: Design core tables (tenants, resources, availability_rules, bookings). Document in `docs/`. Write ADR if non-obvious multi-tenancy decisions arise.
 - [x] **M2 - Migration tooling**: Pick and set up a migration runner. Write ADR (touches DB patterns).
-- [ ] **M3 - Tenant auth**: Sign-up / login for business owners. JWT or session-based. Needs ADR (auth strategy not documented yet).
-- [ ] **M4 - Core API surface**: Tenant CRUD, resource management, availability config - all behind auth. No UI.
+- [x] **M3 - Tenant auth**: Sign-up / login for business owners. JWT or session-based. Needs ADR (auth strategy not documented yet).
+- [x] **M4 - Core API surface**: Tenant CRUD, resource management, availability config - all behind auth. No UI.
 - [ ] **M5 - Business owner dashboard**: Authenticated web UI for business owners. Service and staff configuration, working hours and availability setup, day/week appointment calendar view, appointment list with cancel/reschedule. Designed responsive — will be used on phones. Foundation for all subsequent owner-facing features.
 - [ ] **M6 - Manual appointment entry**: "New Appointment" action inside the dashboard for logging phone bookings. Pick service, staff, date/time, client name + phone. Must show existing bookings to prevent double-booking. Target: completable in under 30 seconds. No client account creation required.
 - [ ] **M7 - Booking flow**: Public endpoint + simple web widget for client self-booking.
@@ -35,5 +35,5 @@ Stack: pnpm monorepo, Express API (`apps/api`), Vite+React SPA (`apps/web`), Neo
 
 - Row-level vs schema-level multi-tenancy? (affects M1 heavily): Row level
 - Auth strategy: JWT stateless vs session + Redis?: JWT stateless
-- Should the public booking page be SSR or SPA? (revisit ADR-003 for SEO needs: 
+- Should the public booking page be SSR or SPA? revisit ADR-003 for SEO needs: 
 - Notification system (email confirmations) - in scope for MVP?
