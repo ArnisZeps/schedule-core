@@ -21,7 +21,7 @@ describe('withTenantContext', () => {
     await withTenantContext(pool as any, 'tenant-abc', async () => {});
 
     expect(calls[0]).toBe('BEGIN');
-    expect(calls[1]).toMatch(/SET LOCAL app\.current_tenant_id/);
+    expect(calls[1]).toMatch(/set_config\('app\.current_tenant_id'/);
     expect(client.query.mock.calls[1][1]).toEqual(['tenant-abc']);
   });
 

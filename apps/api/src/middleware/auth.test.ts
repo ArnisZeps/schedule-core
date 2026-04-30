@@ -33,7 +33,7 @@ describe('authMiddleware', () => {
     });
     const req = makeReq(`Bearer ${token}`);
     const res = makeRes();
-    const next: NextFunction = vi.fn();
+    const next = vi.fn();
 
     await authMiddleware(req, res, next);
 
@@ -44,7 +44,7 @@ describe('authMiddleware', () => {
   it('returns 401 when Authorization header is missing', async () => {
     const req = makeReq();
     const res = makeRes();
-    const next: NextFunction = vi.fn();
+    const next = vi.fn();
 
     await authMiddleware(req, res, next);
 
@@ -60,7 +60,7 @@ describe('authMiddleware', () => {
     });
     const req = makeReq(`Bearer ${token}`);
     const res = makeRes();
-    const next: NextFunction = vi.fn();
+    const next = vi.fn();
 
     await authMiddleware(req, res, next);
 
@@ -72,7 +72,7 @@ describe('authMiddleware', () => {
   it('returns 401 for a malformed token', async () => {
     const req = makeReq('Bearer not.a.jwt');
     const res = makeRes();
-    const next: NextFunction = vi.fn();
+    const next = vi.fn();
 
     await authMiddleware(req, res, next);
 
@@ -87,7 +87,7 @@ describe('authMiddleware', () => {
     });
     const req = makeReq(token);
     const res = makeRes();
-    const next: NextFunction = vi.fn();
+    const next = vi.fn();
 
     await authMiddleware(req, res, next);
 
