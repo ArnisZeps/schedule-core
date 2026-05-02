@@ -5,6 +5,8 @@ import { authRouter } from './routes/auth.js';
 import { tenantsRouter } from './routes/tenants.js';
 import { resourcesRouter } from './routes/resources.js';
 import { availabilityRulesRouter } from './routes/availability-rules.js';
+import { bookingsRouter } from './routes/bookings.js';
+import { publicRouter } from './routes/public.js';
 
 export const app: Express = express();
 const db = createDb();
@@ -30,3 +32,5 @@ app.use('/auth', authRouter(db));
 app.use('/tenants', tenantsRouter(db));
 app.use('/tenants/:tenantId/resources', resourcesRouter(db));
 app.use('/tenants/:tenantId/resources/:resourceId/availability-rules', availabilityRulesRouter(db));
+app.use('/tenants/:tenantId/bookings', bookingsRouter(db));
+app.use('/public/:tenantSlug', publicRouter(db));
