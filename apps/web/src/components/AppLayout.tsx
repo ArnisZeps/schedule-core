@@ -1,16 +1,16 @@
 import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Menu } from 'lucide-react'
-import { useAuth } from '../hooks/useAuth'
-import { Sidebar } from './Sidebar'
+import { useAuth } from '@/hooks/useAuth'
+import { Sidebar } from '@/components/Sidebar'
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback } from './ui/avatar'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from './ui/dropdown-menu'
+} from '@/components/ui/dropdown-menu'
 
 export function AppLayout() {
   const { logout, user } = useAuth()

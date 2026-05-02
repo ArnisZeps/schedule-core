@@ -5,18 +5,18 @@ import {
   useAvailabilityRules,
   useCreateAvailabilityRule,
   useDeleteAvailabilityRule,
-} from '../../hooks/useAvailabilityRules'
-import { ApiError } from '../../lib/api'
+} from '@/hooks/useAvailabilityRules'
+import { ApiError } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '../../components/ui/label'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../../components/ui/select'
+} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -24,11 +24,11 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '../../components/ui/table'
-import { Separator } from '../../components/ui/separator'
-import { PageShell } from '../../components/layout/PageShell'
-import { PageHeader } from '../../components/layout/PageHeader'
-import { LoadingState } from '../../components/ui/LoadingState'
+} from '@/components/ui/table'
+import { Separator } from '@/components/ui/separator'
+import { PageShell } from '@/components/layout/PageShell'
+import { PageHeader } from '@/components/layout/PageHeader'
+import { LoadingState } from '@/components/ui/LoadingState'
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 

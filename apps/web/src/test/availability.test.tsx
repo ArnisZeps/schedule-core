@@ -5,7 +5,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from './handlers'
 import { http, HttpResponse } from 'msw'
-import { routes } from '../App'
+import { routes } from '@/App'
 import { TEST_TOKEN, TENANT_ID } from './handlers'
 
 function renderAt(path: string) {

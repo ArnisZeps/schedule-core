@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { PackageOpen, MoreHorizontal, Pencil, Calendar, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useResources, useDeleteResource } from '../../hooks/useResources'
+import { useResources, useDeleteResource } from '@/hooks/useResources'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -11,14 +11,14 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '../../components/ui/table'
+} from '@/components/ui/table'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '../../components/ui/dropdown-menu'
+} from '@/components/ui/dropdown-menu'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,11 +28,11 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '../../components/ui/alert-dialog'
-import { PageShell } from '../../components/layout/PageShell'
-import { PageHeader } from '../../components/layout/PageHeader'
-import { LoadingState } from '../../components/ui/LoadingState'
-import { EmptyState } from '../../components/ui/EmptyState'
+} from '@/components/ui/alert-dialog'
+import { PageShell } from '@/components/layout/PageShell'
+import { PageHeader } from '@/components/layout/PageHeader'
+import { LoadingState } from '@/components/ui/LoadingState'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 export function ResourceListPage() {
   const { data: resources, isLoading } = useResources()

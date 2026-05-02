@@ -4,12 +4,12 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod/v3'
 import { toast } from 'sonner'
-import { useResource } from '../../hooks/useResource'
-import { useCreateResource, useUpdateResource } from '../../hooks/useResources'
+import { useResource } from '@/hooks/useResource'
+import { useCreateResource, useUpdateResource } from '@/hooks/useResources'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Card, CardContent } from '../../components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Form,
   FormControl,
@@ -17,9 +17,9 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '../../components/ui/form'
-import { PageShell } from '../../components/layout/PageShell'
-import { PageHeader } from '../../components/layout/PageHeader'
+} from '@/components/ui/form'
+import { PageShell } from '@/components/layout/PageShell'
+import { PageHeader } from '@/components/layout/PageHeader'
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),

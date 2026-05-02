@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { routes } from '../App'
+import { routes } from '@/App'
 import { TEST_TOKEN } from './handlers'
 
 function renderAt(path: string) {

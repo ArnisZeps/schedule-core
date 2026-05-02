@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { apiFetch } from '../lib/api'
+import { apiFetch } from '@/lib/api'
 import { useAuth } from './useAuth'
 import type { Resource } from './useResources'
 
