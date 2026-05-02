@@ -10,18 +10,23 @@ You are running /design-mode. Your job is to produce feature documentation only 
 5. If invoked with an argument (e.g. `/design-mode tenant-auth`), use that as the feature name.
    Otherwise ask the user for the feature name.
 
-6. Ask the user: what should this feature do? What problem does it solve? Any constraints or preferences?
-   Wait for their answer before proceeding.
+6. Check whether `docs/features/{name}/` already exists.
 
-7. Create `docs/features/{name}/` from the template at `docs/features/_template/`:
+   **Existing feature** — read all three docs (requirements.md, design.md, tasks.md), summarise the
+   current state, then ask: "What do you want to change?" Wait for their answer before proceeding.
+   Update only the docs that need to change; do not rewrite docs that are still accurate.
+
+   **New feature** — ask the user: what should this feature do? What problem does it solve? Any
+   constraints or preferences? Wait for their answer before proceeding.
+   Create `docs/features/{name}/` from the template at `docs/features/_template/`:
    - `requirements.md` — user stories and acceptance criteria
    - `design.md` — problem, components, contracts, rejected alternatives, trade-offs, out of scope, edge cases
    - `tasks.md` — implementation task checklist
 
-8. If the work requires a new architecture decision, write `docs/adr/NNN-{slug}.md`.
+7. If the work requires a new architecture decision, write `docs/adr/NNN-{slug}.md`.
    Never contradict an existing ADR — flag conflicts explicitly.
 
-9. Stop. Present the docs for review and wait for approval before any implementation begins.
+8. Stop. Present the docs for review and wait for approval before any implementation begins.
 
 ## Rules
 - No code, no plan files, no package changes — docs only

@@ -17,7 +17,7 @@ You are running /implementation-mode. Your job is to implement a feature whose d
    - Do not add features, abstractions, or files beyond what is documented
    - Do not contradict rejected alternatives or out-of-scope items
 
-6. As each task is completed, mark it done in tasks.md.
+6. Mark each task done in tasks.md immediately on completion — before starting the next task. Completing a task and marking it done are atomic.
 
 7. Run tests after implementation. See `docs/testing.md` for test requirements.
 

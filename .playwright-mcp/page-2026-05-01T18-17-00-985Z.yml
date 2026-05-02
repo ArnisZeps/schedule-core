@@ -1,0 +1,15 @@
+- generic [ref=e2]:
+  - generic [ref=e4]:
+    - generic [ref=e6]: Sign in to ScheduleCore
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - generic [ref=e10]: Email
+        - textbox "Email" [ref=e11]:
+          - /placeholder: you@example.com
+          - text: owner@dev.local
+      - generic [ref=e12]:
+        - generic [ref=e13]: Password
+        - textbox "Password" [ref=e14]: password123
+      - paragraph [ref=e16]: Not Found
+      - button "Log in" [ref=e15]
+  - region "Notifications alt+T"

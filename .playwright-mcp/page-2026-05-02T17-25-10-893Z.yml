@@ -1,0 +1,20 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e7]: ScheduleCore
+        - navigation [ref=e8]:
+          - link "Resources" [ref=e9] [cursor=pointer]:
+            - /url: /resources
+            - img [ref=e10]
+            - text: Resources
+    - generic [ref=e15]:
+      - banner [ref=e16]:
+        - button "O" [ref=e18]:
+          - generic [ref=e20]: O
+      - main [ref=e21]:
+        - generic [ref=e23]:
+          - heading "Resources" [level=1] [ref=e25]
+          - link "Add resource" [ref=e27] [cursor=pointer]:
+            - /url: /resources/new
+  - region "Notifications alt+T"

@@ -10,7 +10,15 @@
       "Bash(pnpm --filter @schedule-core/db migrate:up)",
       "Bash(ls /c/Users/zepsa/Documents/Projects/schedule-core/.env*)",
       "Bash(pnpm remove *)",
-      "Bash(pnpm *)"
+      "Bash(pnpm *)",
+      "Bash(jobs -l)",
+      "Bash(npx shadcn@latest *)",
+      "Bash(yes)",
+      "Bash(node *)",
+      "Bash(git *)",
+      "Read(//c/Users/zepsa/.claude//**)",
+      "Read(//c/Users/zepsa/.claude/**)",
+      "mcp__playwright__*"
     ]
   }
 }
