@@ -3,7 +3,8 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "dev": "pnpm --filter './apps/*' run dev",
+    "dev": "pnpm --filter \"@schedule-core/api\" --filter \"@schedule-core/web\" run dev",
+    "stop": "for /f \"tokens=5\" %a in ('netstat -ano ^| findstr \":3000 :3001\"') do taskkill /PID %a /F",
     "build": "pnpm -r run build",
     "typecheck": "pnpm -r run typecheck",
     "lint": "pnpm -r run lint"

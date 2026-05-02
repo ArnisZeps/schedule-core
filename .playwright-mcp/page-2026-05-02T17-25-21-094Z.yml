@@ -1,0 +1,46 @@
+- generic:
+  - generic:
+    - generic:
+      - complementary:
+        - generic:
+          - generic:
+            - generic: ScheduleCore
+          - navigation:
+            - link:
+              - /url: /resources
+              - img
+              - text: Resources
+      - generic:
+        - banner:
+          - generic:
+            - button [expanded]:
+              - generic:
+                - generic: O
+        - main:
+          - generic:
+            - generic:
+              - generic:
+                - heading [level=1]: Resources
+              - generic:
+                - link:
+                  - /url: /resources/new
+                  - text: Add resource
+            - generic:
+              - generic:
+                - table:
+                  - rowgroup:
+                    - row:
+                      - columnheader: Name
+                      - columnheader: Description
+                      - columnheader
+                  - rowgroup:
+                    - row:
+                      - cell: Test resource name
+                      - cell: Test resource description
+                      - cell:
+                        - button:
+                          - img
+                          - generic: Actions
+    - region "Notifications alt+T"
+  - menu "O" [active] [ref=e47]:
+    - menuitem "Sign out" [ref=e48]
