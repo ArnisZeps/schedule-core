@@ -18,7 +18,9 @@
       "Bash(git *)",
       "Read(//c/Users/zepsa/.claude//**)",
       "Read(//c/Users/zepsa/.claude/**)",
-      "mcp__playwright__*"
+      "mcp__playwright__*",
+      "Bash(grep -E \"\\\\.ts$\")",
+      "Bash(xargs grep *)"
     ]
   }
 }

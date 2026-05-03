@@ -15,6 +15,42 @@ export const TEST_TOKEN =
 
 export const TENANT_ID = 'tenant-1'
 
+export const BOOKINGS = [
+  {
+    id: 'bk-1',
+    tenantId: TENANT_ID,
+    resourceId: 'res-1',
+    clientName: 'Alice Smith',
+    clientEmail: 'alice@test.com',
+    startAt: '2026-05-04T09:00:00.000Z',
+    endAt: '2026-05-04T10:00:00.000Z',
+    status: 'pending',
+    createdAt: '2026-05-01T00:00:00.000Z',
+  },
+  {
+    id: 'bk-2',
+    tenantId: TENANT_ID,
+    resourceId: 'res-2',
+    clientName: 'Bob Jones',
+    clientEmail: 'bob@test.com',
+    startAt: '2026-05-04T14:00:00.000Z',
+    endAt: '2026-05-04T14:20:00.000Z',
+    status: 'confirmed',
+    createdAt: '2026-05-01T00:00:00.000Z',
+  },
+  {
+    id: 'bk-3',
+    tenantId: TENANT_ID,
+    resourceId: 'res-1',
+    clientName: 'Carol White',
+    clientEmail: 'carol@test.com',
+    startAt: '2026-05-05T11:00:00.000Z',
+    endAt: '2026-05-05T12:00:00.000Z',
+    status: 'cancelled',
+    createdAt: '2026-05-01T00:00:00.000Z',
+  },
+]
+
 export const handlers = [
   // Auth
   http.post(`${BASE}/auth/login`, async ({ request }) => {
@@ -89,6 +125,24 @@ export const handlers = [
     `${BASE}/tenants/:tenantId/resources/:resourceId/availability-rules/:ruleId`,
     () => new HttpResponse(null, { status: 204 }),
   ),
+
+  // Bookings list (ranged or open-ended; optionally filtered by resourceId)
+  http.get(`${BASE}/tenants/:tenantId/bookings`, ({ request }) => {
+    const url = new URL(request.url)
+    const resourceId = url.searchParams.get('resourceId')
+    const bookings = resourceId
+      ? BOOKINGS.filter(b => b.resourceId === resourceId)
+      : BOOKINGS
+    return HttpResponse.json(bookings)
+  }),
+
+  // Booking cancel or reschedule
+  http.patch(`${BASE}/tenants/:tenantId/bookings/:bookingId`, async ({ params, request }) => {
+    const body = await request.json() as Record<string, unknown>
+    const booking = BOOKINGS.find(b => b.id === params.bookingId)
+    if (!booking) return HttpResponse.json({ message: 'Not found' }, { status: 404 })
+    return HttpResponse.json({ ...booking, ...body })
+  }),
 ]
 
 export const server = setupServer(...handlers)
