@@ -31,3 +31,4 @@ You are running /implementation-mode. Your job is to implement a feature whose d
 - Tests are required — never mark a feature complete without them
 - tasks.md is append-only — never delete tasks, only mark done or add new ones
 - Flag any contradiction between the docs and ADRs before proceeding
+- Mark tasks as completed.
