@@ -22,9 +22,9 @@ Stack: pnpm monorepo, Express API (`apps/api`), Vite+React SPA (`apps/web`), Neo
 - [x] **M4b - Bookings API**: Complete bookings API layer — owner-side endpoints (list with date/service filtering, manual create, cancel, reschedule) and the public client-facing endpoint (no-auth POST that validates against availability rules). Foundation for M5b (calendar view), M6 (manual entry UI), and M7 (booking web widget).
 - [x] **M5b - Appointment calendar + list**: Day/week calendar view of appointments. Appointment list with cancel/reschedule actions. Builds on the shell and patterns established in M5a.
 - [ ] **M6 - Manual appointment entry**: "New Appointment" button + click-drag on the calendar opens a slide-over form for logging phone bookings. Pick service, date/time slot, client name + phone (mandatory) + email (optional). Shows taken slots and conflict warning to prevent accidental double-booking; override checkbox allows intentional double-booking. Internal notes field. Target: completable in under 30 seconds. No client account creation required.
-- [ ] **M7 - Booking web widget**: Simple client-facing booking UI — service selection, date/time picker showing available slots, confirmation screen. Calls the public endpoint from M4b. No client account creation required.
-- [ ] **M8 - Hosted booking page**: Per-tenant public page for clients.
-- [ ] **M9 - Embeddable widget**: iframe-based booking widget that businesses embed on their own sites. Generates a per-tenant `<iframe>` tag pointing to a hosted booking URL. No JS injection, no shadow DOM. Businesses copy-paste the tag into their site HTML.
+- [ ] **M7 - Booking web widget**: Build the client-facing booking UI as a self-contained React component/flow — service selection, date/time picker showing available slots, client details form, confirmation screen. Calls the public endpoint from M4b. No client account creation required. Routed at `/book/:tenantSlug` inside the existing `apps/web` — no special domain or hosting decisions yet. M8 and M9 handle distribution.
+- [ ] **M8 - Hosted booking page**: Give M7's UI a proper public URL on a dedicated per-tenant subdomain (e.g. `acme.schedulecore.com`). This is where the domain/routing strategy gets decided and implemented.
+- [ ] **M9 - Embeddable widget**: Wrap M8's hosted URL in an `<iframe>` and generate a copy-paste tag for businesses to embed on their own sites. No JS injection, no shadow DOM. Businesses copy-paste the tag into their site HTML.
 
 ## Post-MVP
 
