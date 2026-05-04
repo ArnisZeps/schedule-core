@@ -47,6 +47,7 @@ A bookable service within a tenant: a haircut, consultation, massage, etc. Tenan
 | tenant_id | UUID | NOT NULL, FK → tenants(id) ON DELETE CASCADE |
 | name | TEXT | NOT NULL |
 | description | TEXT | nullable |
+| duration_minutes | INTEGER | NOT NULL, DEFAULT 30 — used for slot generation and end-time calculation |
 | created_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() |
 
 **Index:** `(tenant_id)`
@@ -85,10 +86,12 @@ An appointment made by a client for a specific service. Duration is encoded as `
 | tenant_id | UUID | NOT NULL, FK → tenants(id) ON DELETE RESTRICT |
 | service_id | UUID | NOT NULL, FK → services(id) ON DELETE RESTRICT |
 | client_name | TEXT | NOT NULL |
-| client_email | TEXT | NOT NULL |
+| client_phone | TEXT | NOT NULL — mandatory contact; free text, min 7 chars enforced at API layer |
+| client_email | TEXT | nullable — optional; required by the public booking endpoint, optional for owner manual entry |
 | start_at | TIMESTAMPTZ | NOT NULL |
 | end_at | TIMESTAMPTZ | NOT NULL |
 | status | TEXT | NOT NULL, DEFAULT 'pending', CHECK IN ('pending', 'confirmed', 'cancelled') |
+| notes | TEXT | nullable — internal staff notes, not exposed to clients |
 | created_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() |
 
 **Constraints:** `start_at < end_at`

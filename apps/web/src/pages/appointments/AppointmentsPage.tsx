@@ -8,20 +8,24 @@ import { WeekView } from '@/components/calendar/WeekView'
 import { DayView } from '@/components/calendar/DayView'
 import { ListView } from '@/components/calendar/ListView'
 import { AppointmentDetailDialog } from '@/components/calendar/AppointmentDetailDialog'
+import { NewAppointmentPanel } from '@/components/calendar/NewAppointmentPanel'
 import { LoadingState } from '@/components/ui/LoadingState'
 import { ErrorState } from '@/components/ui/ErrorState'
 
 export function AppointmentsPage() {
   const [params] = useSearchParams()
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [prefillStart, setPrefillStart] = useState<Date | undefined>()
+  const [prefillEnd, setPrefillEnd] = useState<Date | undefined>()
 
-  const view = (params.get('view') || 'week') as 'week' | 'day' | 'list'
+  const isMobile = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches
+  const view = (params.get('view') || (isMobile ? 'day' : 'week')) as 'week' | 'day' | 'list'
   const dateStr = params.get('date') || format(new Date(), 'yyyy-MM-dd')
   const serviceId = params.get('serviceId') || undefined
 
   const { data: services = [] } = useServices()
 
-  // Compute date range for ranged views
   const date = parseISO(dateStr)
   const from =
     view === 'week'
@@ -39,12 +43,30 @@ export function AppointmentsPage() {
     refetch,
   } = useBookings({ from, to, serviceId })
 
+  function handleTimeSelect(startAt: Date, endAt: Date) {
+    setPrefillStart(startAt)
+    setPrefillEnd(endAt)
+    setPanelOpen(true)
+  }
+
+  function handleNewAppointment() {
+    setPrefillStart(undefined)
+    setPrefillEnd(undefined)
+    setPanelOpen(true)
+  }
+
+  function handleClosePanel() {
+    setPanelOpen(false)
+    setPrefillStart(undefined)
+    setPrefillEnd(undefined)
+  }
+
   return (
     <div
-      className="-m-6 flex flex-col overflow-hidden"
+      className="-m-6 flex flex-col overflow-hidden relative"
       style={{ height: 'calc(100vh - 3.5rem)' }}
     >
-      <CalendarToolbar services={services} />
+      <CalendarToolbar services={services} onNewAppointment={handleNewAppointment} />
 
       {view === 'list' ? (
         <ListView
@@ -65,12 +87,14 @@ export function AppointmentsPage() {
           dateStr={dateStr}
           bookings={bookings}
           onBookingClick={setSelectedBooking}
+          onTimeSelect={handleTimeSelect}
         />
       ) : (
         <DayView
           dateStr={dateStr}
           bookings={bookings}
           onBookingClick={setSelectedBooking}
+          onTimeSelect={handleTimeSelect}
         />
       )}
 
@@ -81,6 +105,22 @@ export function AppointmentsPage() {
           open={true}
           onClose={() => setSelectedBooking(null)}
         />
+      )}
+
+      {panelOpen && (
+        <>
+          <div
+            className="absolute inset-0 z-20"
+            onClick={handleClosePanel}
+            aria-hidden="true"
+          />
+          <NewAppointmentPanel
+            services={services}
+            prefillStart={prefillStart}
+            prefillEnd={prefillEnd}
+            onClose={handleClosePanel}
+          />
+        </>
       )}
     </div>
   )

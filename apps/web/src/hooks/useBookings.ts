@@ -7,10 +7,12 @@ export interface Booking {
   tenantId: string
   serviceId: string
   clientName: string
-  clientEmail: string
+  clientPhone: string
+  clientEmail: string | null
   startAt: string
   endAt: string
   status: 'pending' | 'confirmed' | 'cancelled'
+  notes: string | null
   createdAt: string
 }
 

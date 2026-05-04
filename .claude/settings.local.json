@@ -20,7 +20,11 @@
       "Read(//c/Users/zepsa/.claude/**)",
       "mcp__playwright__*",
       "Bash(grep -E \"\\\\.ts$\")",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "mcp__Neon__list_projects",
+      "mcp__Neon__list_branch_computes",
+      "mcp__Neon__run_sql",
+      "Bash(npx tsc *)"
     ]
   }
 }

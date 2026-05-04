@@ -51,8 +51,8 @@ async function createBooking(
   let id!: string;
   await withTenantContext(pool, tid, async (client) => {
     const { rows } = await client.query<{ id: string }>(
-      `INSERT INTO bookings (tenant_id, service_id, client_name, client_email, start_at, end_at, status)
-       VALUES ($1, $2, 'Seed Client', 'seed@example.com', $3, $4, $5) RETURNING id`,
+      `INSERT INTO bookings (tenant_id, service_id, client_name, client_phone, client_email, start_at, end_at, status)
+       VALUES ($1, $2, 'Seed Client', '0000000', 'seed@example.com', $3, $4, $5) RETURNING id`,
       [tid, sid, startAt, endAt, status],
     );
     id = rows[0].id;
@@ -206,6 +206,7 @@ describe('POST /tenants/:id/bookings', () => {
       .send({
         serviceId,
         clientName: 'Alice',
+        clientPhone: '5550001234',
         clientEmail: 'alice@example.com',
         startAt: `${MON1}T09:00:00Z`,
         endAt: `${MON1}T10:00:00Z`,
@@ -216,7 +217,9 @@ describe('POST /tenants/:id/bookings', () => {
       tenantId,
       serviceId,
       clientName: 'Alice',
+      clientPhone: '5550001234',
       clientEmail: 'alice@example.com',
+      notes: null,
       status: 'pending',
     });
     expect(typeof res.body.id).toBe('string');
@@ -231,6 +234,7 @@ describe('POST /tenants/:id/bookings', () => {
       .send({
         serviceId,
         clientName: 'Bob',
+        clientPhone: '5550002345',
         clientEmail: 'bob@example.com',
         startAt: `${MON1}T09:30:00Z`,
         endAt: `${MON1}T10:30:00Z`,
@@ -247,6 +251,7 @@ describe('POST /tenants/:id/bookings', () => {
       .send({
         serviceId,
         clientName: 'Charlie',
+        clientPhone: '5550003456',
         clientEmail: 'charlie@example.com',
         startAt: `${MON1}T18:00:00Z`,
         endAt: `${MON1}T19:00:00Z`,
@@ -256,15 +261,17 @@ describe('POST /tenants/:id/bookings', () => {
     expect(res.body).toEqual({ error: 'outside_availability' });
   }, 15_000);
 
-  it('422 — missing required field (clientEmail)', async () => {
+  it('422 — missing clientPhone', async () => {
     const res = await request(app)
       .post(`/tenants/${tenantId}/bookings`)
       .set('Authorization', `Bearer ${token}`)
       .send({
         serviceId,
         clientName: 'Dave',
+        clientEmail: 'dave@example.com',
         startAt: `${MON1}T14:00:00Z`,
         endAt: `${MON1}T15:00:00Z`,
+        // no clientPhone
       });
 
     expect(res.status).toBe(422);
@@ -278,6 +285,7 @@ describe('POST /tenants/:id/bookings', () => {
       .send({
         serviceId,
         clientName: 'Eve',
+        clientPhone: '5550007890',
         clientEmail: 'eve@example.com',
         startAt: `${MON1}T15:00:00Z`,
         endAt: `${MON1}T14:00:00Z`,
@@ -294,6 +302,7 @@ describe('POST /tenants/:id/bookings', () => {
       .send({
         serviceId,
         clientName: 'Frank',
+        clientPhone: '5550008901',
         clientEmail: 'frank@example.com',
         startAt: `${MON1}T13:00:00Z`,
         endAt: `${MON1}T14:00:00Z`,
@@ -428,5 +437,155 @@ describe('PATCH /tenants/:id/bookings/:id — reschedule', () => {
       .send({ startAt: `${MON2}T15:00:00Z`, endAt: `${MON2}T16:00:00Z` });
 
     expect(res.status).toBe(404);
+  }, 15_000);
+});
+
+// ---------------------------------------------------------------------------
+// POST /tenants/:id/bookings — M6 phone / notes / override
+// ---------------------------------------------------------------------------
+
+describe('POST /tenants/:id/bookings — M6 phone/notes/override', () => {
+  let serviceId: string;
+  // 2026-07-06 is a Monday (Mon May 4 + 9 weeks = Mon Jul 6)
+  const M6_MON = '2026-07-06';
+
+  beforeAll(async () => {
+    serviceId = await createService(tenantId, 'M6 Override Service');
+    await createRule(tenantId, serviceId, 1, '09:00', '17:00');
+  });
+
+  it('201 — phone only, no email; response includes clientPhone and notes: null', async () => {
+    const res = await request(app)
+      .post(`/tenants/${tenantId}/bookings`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        serviceId,
+        clientName: 'Alice',
+        clientPhone: '5550001111',
+        startAt: `${M6_MON}T09:00:00Z`,
+        endAt: `${M6_MON}T09:30:00Z`,
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.clientPhone).toBe('5550001111');
+    expect(res.body.clientEmail).toBeNull();
+    expect(res.body.notes).toBeNull();
+  }, 15_000);
+
+  it('201 — phone + email; both fields in response', async () => {
+    const res = await request(app)
+      .post(`/tenants/${tenantId}/bookings`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        serviceId,
+        clientName: 'Bob',
+        clientPhone: '5550002222',
+        clientEmail: 'bob@example.com',
+        startAt: `${M6_MON}T10:00:00Z`,
+        endAt: `${M6_MON}T10:30:00Z`,
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.clientPhone).toBe('5550002222');
+    expect(res.body.clientEmail).toBe('bob@example.com');
+  }, 15_000);
+
+  it('201 — notes saved and returned', async () => {
+    const res = await request(app)
+      .post(`/tenants/${tenantId}/bookings`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        serviceId,
+        clientName: 'Carol',
+        clientPhone: '5550003333',
+        notes: 'Prefers morning slot',
+        startAt: `${M6_MON}T11:00:00Z`,
+        endAt: `${M6_MON}T11:30:00Z`,
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.notes).toBe('Prefers morning slot');
+  }, 15_000);
+
+  it('422 — missing clientPhone', async () => {
+    const res = await request(app)
+      .post(`/tenants/${tenantId}/bookings`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        serviceId,
+        clientName: 'Dave',
+        startAt: `${M6_MON}T12:00:00Z`,
+        endAt: `${M6_MON}T12:30:00Z`,
+      });
+
+    expect(res.status).toBe(422);
+    expect(res.body.error).toBe('validation_error');
+  }, 15_000);
+
+  it('422 — clientPhone too short (< 7 chars)', async () => {
+    const res = await request(app)
+      .post(`/tenants/${tenantId}/bookings`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        serviceId,
+        clientName: 'Eve',
+        clientPhone: '123',
+        startAt: `${M6_MON}T12:00:00Z`,
+        endAt: `${M6_MON}T12:30:00Z`,
+      });
+
+    expect(res.status).toBe(422);
+    expect(res.body.error).toBe('validation_error');
+  }, 15_000);
+
+  it('409 — overlap without override', async () => {
+    await createBooking(tenantId, serviceId, `${M6_MON}T13:00:00Z`, `${M6_MON}T13:30:00Z`);
+
+    const res = await request(app)
+      .post(`/tenants/${tenantId}/bookings`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        serviceId,
+        clientName: 'Frank',
+        clientPhone: '5550004444',
+        startAt: `${M6_MON}T13:00:00Z`,
+        endAt: `${M6_MON}T13:30:00Z`,
+      });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('overlap');
+  }, 15_000);
+
+  it('201 — override: true bypasses overlap check', async () => {
+    // Blocking booking exists at M6_MON 13:00-13:30 from previous test
+    const res = await request(app)
+      .post(`/tenants/${tenantId}/bookings`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        serviceId,
+        clientName: 'Grace',
+        clientPhone: '5550005555',
+        startAt: `${M6_MON}T13:00:00Z`,
+        endAt: `${M6_MON}T13:30:00Z`,
+        override: true,
+      });
+
+    expect(res.status).toBe(201);
+  }, 15_000);
+
+  it('201 — override: true bypasses availability check (outside hours)', async () => {
+    const res = await request(app)
+      .post(`/tenants/${tenantId}/bookings`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        serviceId,
+        clientName: 'Henry',
+        clientPhone: '5550006666',
+        startAt: `${M6_MON}T20:00:00Z`,
+        endAt: `${M6_MON}T20:30:00Z`,
+        override: true,
+      });
+
+    expect(res.status).toBe(201);
   }, 15_000);
 });

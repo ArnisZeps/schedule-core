@@ -10,10 +10,12 @@ type BookingRow = {
   tenant_id: string;
   service_id: string;
   client_name: string;
-  client_email: string;
+  client_phone: string;
+  client_email: string | null;
   start_at: Date;
   end_at: Date;
   status: string;
+  notes: string | null;
   created_at: Date;
 };
 
@@ -23,10 +25,12 @@ function format(r: BookingRow) {
     tenantId: r.tenant_id,
     serviceId: r.service_id,
     clientName: r.client_name,
+    clientPhone: r.client_phone,
     clientEmail: r.client_email,
     startAt: r.start_at,
     endAt: r.end_at,
     status: r.status,
+    notes: r.notes,
     createdAt: r.created_at,
   };
 }
@@ -37,9 +41,12 @@ const createSchema = z
   .object({
     serviceId: z.string().uuid(),
     clientName: z.string().min(1),
-    clientEmail: z.string().email(),
+    clientPhone: z.string().min(7),
+    clientEmail: z.string().email().optional(),
     startAt: z.string().regex(ISO8601),
     endAt: z.string().regex(ISO8601),
+    notes: z.string().optional(),
+    override: z.boolean().optional(),
   })
   .refine((d) => new Date(d.startAt) < new Date(d.endAt), {
     message: 'startAt must be before endAt',
@@ -50,10 +57,16 @@ const patchSchema = z
     status: z.enum(['confirmed', 'cancelled']).optional(),
     startAt: z.string().regex(ISO8601).optional(),
     endAt: z.string().regex(ISO8601).optional(),
+    notes: z.string().nullable().optional(),
   })
-  .refine((d) => d.status !== undefined || d.startAt !== undefined || d.endAt !== undefined, {
-    message: 'at_least_one_field_required',
-  })
+  .refine(
+    (d) =>
+      d.status !== undefined ||
+      d.startAt !== undefined ||
+      d.endAt !== undefined ||
+      d.notes !== undefined,
+    { message: 'at_least_one_field_required' },
+  )
   .refine(
     (d) => {
       if (d.startAt && d.endAt) return new Date(d.startAt) < new Date(d.endAt);
@@ -63,7 +76,7 @@ const patchSchema = z
   );
 
 const SELECT_COLS =
-  'id, tenant_id, service_id, client_name, client_email, start_at, end_at, status, created_at';
+  'id, tenant_id, service_id, client_name, client_phone, client_email, start_at, end_at, status, notes, created_at';
 
 export function bookingsRouter(pool: Pool): Router {
   const router = Router({ mergeParams: true });
@@ -92,9 +105,9 @@ export function bookingsRouter(pool: Pool): Router {
     const values: unknown[] = [];
     let i = 1;
 
-    if (from) { conditions.push(`start_at >= $${i++}`); values.push(from); }
-    if (to)   { conditions.push(`start_at <= $${i++}`); values.push(to); }
-    if (serviceId) { conditions.push(`service_id = $${i++}`); values.push(serviceId); }
+    if (from)     { conditions.push(`start_at >= $${i++}`); values.push(from); }
+    if (to)       { conditions.push(`start_at <= $${i++}`); values.push(to); }
+    if (serviceId){ conditions.push(`service_id = $${i++}`); values.push(serviceId); }
     if (status === 'active') { conditions.push(`status != 'cancelled'`); }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -124,7 +137,8 @@ export function bookingsRouter(pool: Pool): Router {
       return;
     }
 
-    const { serviceId, clientName, clientEmail, startAt, endAt } = parsed.data;
+    const { serviceId, clientName, clientPhone, clientEmail, startAt, endAt, notes, override } =
+      parsed.data;
     const start = new Date(startAt);
     const end = new Date(endAt);
 
@@ -135,24 +149,26 @@ export function bookingsRouter(pool: Pool): Router {
       );
       if (serviceRows.length === 0) return 'not_found' as const;
 
-      if (!(await checkWithinAvailability(client, serviceId, start, end))) {
-        return 'outside_availability' as const;
-      }
-      if (await checkOverlap(client, serviceId, start, end)) {
-        return 'overlap' as const;
+      if (!override) {
+        if (!(await checkWithinAvailability(client, serviceId, start, end))) {
+          return 'outside_availability' as const;
+        }
+        if (await checkOverlap(client, serviceId, start, end)) {
+          return 'overlap' as const;
+        }
       }
 
       const { rows } = await client.query<BookingRow>(
-        `INSERT INTO bookings (tenant_id, service_id, client_name, client_email, start_at, end_at, status)
-         VALUES ($1, $2, $3, $4, $5, $6, 'pending') RETURNING ${SELECT_COLS}`,
-        [tenantId, serviceId, clientName, clientEmail, start, end],
+        `INSERT INTO bookings (tenant_id, service_id, client_name, client_phone, client_email, start_at, end_at, status, notes)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8) RETURNING ${SELECT_COLS}`,
+        [tenantId, serviceId, clientName, clientPhone, clientEmail ?? null, start, end, notes ?? null],
       );
       return rows[0];
     });
 
-    if (result === 'not_found') { res.status(404).json({ error: 'not_found' }); return; }
-    if (result === 'outside_availability') { res.status(409).json({ error: 'outside_availability' }); return; }
-    if (result === 'overlap') { res.status(409).json({ error: 'overlap' }); return; }
+    if (result === 'not_found')           { res.status(404).json({ error: 'not_found' }); return; }
+    if (result === 'outside_availability'){ res.status(409).json({ error: 'outside_availability' }); return; }
+    if (result === 'overlap')             { res.status(409).json({ error: 'overlap' }); return; }
     res.status(201).json(format(result));
   });
 
@@ -192,7 +208,7 @@ export function bookingsRouter(pool: Pool): Router {
         return rows[0];
       }
 
-      // Reschedule path (and/or status=confirmed)
+      // Reschedule path (and/or status=confirmed, notes update)
       const newStart = patch.startAt ? new Date(patch.startAt) : new Date(cur.start_at);
       const newEnd   = patch.endAt   ? new Date(patch.endAt)   : new Date(cur.end_at);
 
@@ -212,9 +228,10 @@ export function bookingsRouter(pool: Pool): Router {
       const sets: string[] = [];
       const values: unknown[] = [];
       let idx = 1;
-      if (patch.status)  { sets.push(`status = $${idx++}`);   values.push(patch.status); }
-      if (patch.startAt) { sets.push(`start_at = $${idx++}`); values.push(newStart); }
-      if (patch.endAt)   { sets.push(`end_at = $${idx++}`);   values.push(newEnd); }
+      if (patch.status !== undefined)  { sets.push(`status = $${idx++}`);   values.push(patch.status); }
+      if (patch.startAt)               { sets.push(`start_at = $${idx++}`); values.push(newStart); }
+      if (patch.endAt)                 { sets.push(`end_at = $${idx++}`);   values.push(newEnd); }
+      if (patch.notes !== undefined)   { sets.push(`notes = $${idx++}`);    values.push(patch.notes); }
       values.push(id);
 
       const { rows } = await client.query<BookingRow>(
@@ -224,11 +241,11 @@ export function bookingsRouter(pool: Pool): Router {
       return rows[0];
     });
 
-    if (result === 'not_found')          { res.status(404).json({ error: 'not_found' }); return; }
-    if (result === 'already_cancelled')  { res.status(409).json({ error: 'already_cancelled' }); return; }
-    if (result === 'invalid_times')      { res.status(422).json({ error: 'validation_error', details: ['startAt must be before endAt'] }); return; }
+    if (result === 'not_found')            { res.status(404).json({ error: 'not_found' }); return; }
+    if (result === 'already_cancelled')    { res.status(409).json({ error: 'already_cancelled' }); return; }
+    if (result === 'invalid_times')        { res.status(422).json({ error: 'validation_error', details: ['startAt must be before endAt'] }); return; }
     if (result === 'outside_availability') { res.status(409).json({ error: 'outside_availability' }); return; }
-    if (result === 'overlap')            { res.status(409).json({ error: 'overlap' }); return; }
+    if (result === 'overlap')              { res.status(409).json({ error: 'overlap' }); return; }
     res.json(format(result));
   });
 

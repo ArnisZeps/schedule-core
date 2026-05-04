@@ -24,6 +24,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
   description: z.string(),
+  durationMinutes: z.number().int().min(1, 'Duration must be at least 1 minute'),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -39,12 +40,12 @@ export function ServiceFormPage() {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', description: '' },
+    defaultValues: { name: '', description: '', durationMinutes: 30 },
   })
 
   useEffect(() => {
     if (service) {
-      form.reset({ name: service.name, description: service.description ?? '' })
+      form.reset({ name: service.name, description: service.description ?? '', durationMinutes: service.durationMinutes })
     }
   }, [service, form])
 
@@ -92,6 +93,24 @@ export function ServiceFormPage() {
                     <FormLabel>Description</FormLabel>
                     <FormControl>
                       <Textarea placeholder="Optional description" rows={3} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="durationMinutes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Duration (minutes)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={1}
+                        {...field}
+                        onChange={e => field.onChange(e.target.valueAsNumber)}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
