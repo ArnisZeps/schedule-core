@@ -52,10 +52,12 @@ All require `Authorization: Bearer <token>`. The JWT's `tenantId` must match `:t
   "tenantId": "uuid",
   "serviceId": "uuid",
   "clientName": "string",
-  "clientEmail": "string",
+  "clientPhone": "string",
+  "clientEmail": "string | null",
   "startAt": "iso8601",
   "endAt": "iso8601",
   "status": "pending | confirmed | cancelled",
+  "notes": "string | null",
   "createdAt": "iso8601"
 }]
 ```
@@ -71,15 +73,20 @@ All require `Authorization: Bearer <token>`. The JWT's `tenantId` must match `:t
 {
   "serviceId": "uuid",
   "clientName": "string",
-  "clientEmail": "string",
+  "clientPhone": "string (min 7 chars, required)",
+  "clientEmail": "string (email, optional)",
   "startAt": "iso8601",
-  "endAt": "iso8601"
+  "endAt": "iso8601",
+  "notes": "string (optional)",
+  "override": false
 }
 ```
 
-**Response 201** — booking object (same shape as list item).
+When `override: true`: skips both `checkWithinAvailability` and `checkOverlap`.
 
-**Errors** — `403`, `404` service not found, `409` overlap or outside-availability, `422` validation
+**Response 201** — booking object (see response shape below).
+
+**Errors** — `403`, `404` service not found, `409` overlap or outside-availability (only when override is absent/false), `422` validation
 
 ---
 

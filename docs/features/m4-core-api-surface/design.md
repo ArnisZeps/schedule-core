@@ -83,12 +83,12 @@ All service routes enforce: `req.auth.tenantId === :tenantId` → 403. Service n
 
 **Request**
 ```json
-{ "name": "string", "description": "string?" }
+{ "name": "string", "description": "string?", "durationMinutes": "integer (optional, default 30)" }
 ```
 
 **Response 201**
 ```json
-{ "id": "uuid", "tenantId": "uuid", "name": "string", "description": "string|null", "createdAt": "iso8601" }
+{ "id": "uuid", "tenantId": "uuid", "name": "string", "description": "string|null", "durationMinutes": "integer", "createdAt": "iso8601" }
 ```
 
 **Errors**
@@ -101,7 +101,7 @@ All service routes enforce: `req.auth.tenantId === :tenantId` → 403. Service n
 
 **Response 200**
 ```json
-[{ "id": "uuid", "tenantId": "uuid", "name": "string", "description": "string|null", "createdAt": "iso8601" }]
+[{ "id": "uuid", "tenantId": "uuid", "name": "string", "description": "string|null", "durationMinutes": "integer", "createdAt": "iso8601" }]
 ```
 
 **Errors** — `403`
@@ -121,10 +121,10 @@ All fields optional; at least one must be present. Pass `null` for `description`
 
 **Request**
 ```json
-{ "name": "string?", "description": "string|null?" }
+{ "name": "string?", "description": "string|null?", "durationMinutes": "integer?" }
 ```
 
-**Response 200** — updated service object.
+**Response 200** — updated service object (same shape as POST 201).
 
 **Errors** — `403`, `404`, `422`
 

@@ -7,6 +7,7 @@ export interface Service {
   tenantId: string
   name: string
   description?: string
+  durationMinutes: number
 }
 
 export function useServices() {
@@ -23,7 +24,7 @@ export function useCreateService() {
   const qc = useQueryClient()
   const tenantId = user!.tenantId
   return useMutation({
-    mutationFn: (data: { name: string; description?: string }) =>
+    mutationFn: (data: { name: string; description?: string; durationMinutes?: number }) =>
       apiFetch<Service>(`/tenants/${tenantId}/services`, {
         method: 'POST',
         body: JSON.stringify(data),
@@ -37,7 +38,7 @@ export function useUpdateService(serviceId: string) {
   const qc = useQueryClient()
   const tenantId = user!.tenantId
   return useMutation({
-    mutationFn: (data: { name: string; description?: string }) =>
+    mutationFn: (data: { name: string; description?: string; durationMinutes?: number }) =>
       apiFetch<Service>(`/tenants/${tenantId}/services/${serviceId}`, {
         method: 'PATCH',
         body: JSON.stringify(data),

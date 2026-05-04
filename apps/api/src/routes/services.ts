@@ -3,12 +3,16 @@ import { z } from 'zod';
 import type { Pool } from '@schedule-core/db';
 import { authMiddleware } from '../middleware/auth.js';
 import { withTenantContext } from '../middleware/tenant-context.js';
+import { generateAllSlots } from '../lib/availability.js';
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 type ServiceRow = {
   id: string;
   tenant_id: string;
   name: string;
   description: string | null;
+  duration_minutes: number;
   created_at: Date;
 };
 
@@ -18,6 +22,7 @@ function format(r: ServiceRow) {
     tenantId: r.tenant_id,
     name: r.name,
     description: r.description,
+    durationMinutes: r.duration_minutes,
     createdAt: r.created_at,
   };
 }
@@ -25,16 +30,21 @@ function format(r: ServiceRow) {
 const createSchema = z.object({
   name: z.string().min(1),
   description: z.string().nullable().optional(),
+  durationMinutes: z.number().int().positive().optional(),
 });
 
 const patchSchema = z
   .object({
     name: z.string().min(1).optional(),
     description: z.string().nullable().optional(),
+    durationMinutes: z.number().int().positive().optional(),
   })
-  .refine((d) => d.name !== undefined || d.description !== undefined, {
-    message: 'at_least_one_field_required',
-  });
+  .refine(
+    (d) => d.name !== undefined || d.description !== undefined || d.durationMinutes !== undefined,
+    { message: 'at_least_one_field_required' },
+  );
+
+const SELECT_COLS = 'id, tenant_id, name, description, duration_minutes, created_at';
 
 export function servicesRouter(pool: Pool): Router {
   const router = Router({ mergeParams: true });
@@ -54,11 +64,19 @@ export function servicesRouter(pool: Pool): Router {
       return;
     }
 
-    const { name, description } = parsed.data;
+    const { name, description, durationMinutes } = parsed.data;
+    const cols = ['tenant_id', 'name', 'description'];
+    const vals: unknown[] = [tenantId, name, description ?? null];
+    if (durationMinutes !== undefined) {
+      cols.push('duration_minutes');
+      vals.push(durationMinutes);
+    }
+    const placeholders = vals.map((_, i) => `$${i + 1}`).join(', ');
+
     const row = await withTenantContext(pool, tenantId, async (client) => {
       const { rows } = await client.query<ServiceRow>(
-        'INSERT INTO services (tenant_id, name, description) VALUES ($1, $2, $3) RETURNING id, tenant_id, name, description, created_at',
-        [tenantId, name, description ?? null],
+        `INSERT INTO services (${cols.join(', ')}) VALUES (${placeholders}) RETURNING ${SELECT_COLS}`,
+        vals,
       );
       return rows[0];
     });
@@ -75,12 +93,41 @@ export function servicesRouter(pool: Pool): Router {
 
     const rows = await withTenantContext(pool, tenantId, async (client) => {
       const { rows } = await client.query<ServiceRow>(
-        'SELECT id, tenant_id, name, description, created_at FROM services ORDER BY created_at',
+        `SELECT ${SELECT_COLS} FROM services ORDER BY created_at`,
       );
       return rows;
     });
 
     res.json(rows.map(format));
+  });
+
+  router.get('/:id/slots', async (req, res) => {
+    const { tenantId, id } = req.params as { tenantId: string; id: string };
+    if (req.auth!.tenantId !== tenantId) {
+      res.status(403).json({ error: 'forbidden' });
+      return;
+    }
+
+    const { date } = req.query as Record<string, string | undefined>;
+    if (!date || !DATE_RE.test(date) || isNaN(Date.parse(date))) {
+      res.status(400).json({ error: 'invalid_param', param: 'date' });
+      return;
+    }
+
+    const result = await withTenantContext(pool, tenantId, async (client) => {
+      const { rows } = await client.query<{ duration_minutes: number }>(
+        `SELECT duration_minutes FROM services WHERE id = $1 AND tenant_id = $2`,
+        [id, tenantId],
+      );
+      if (rows.length === 0) return null;
+      return generateAllSlots(client, id, date, rows[0].duration_minutes);
+    });
+
+    if (result === null) {
+      res.status(404).json({ error: 'not_found' });
+      return;
+    }
+    res.json(result);
   });
 
   router.get('/:id', async (req, res) => {
@@ -92,7 +139,7 @@ export function servicesRouter(pool: Pool): Router {
 
     const row = await withTenantContext(pool, tenantId, async (client) => {
       const { rows } = await client.query<ServiceRow>(
-        'SELECT id, tenant_id, name, description, created_at FROM services WHERE id = $1 AND tenant_id = $2',
+        `SELECT ${SELECT_COLS} FROM services WHERE id = $1 AND tenant_id = $2`,
         [id, tenantId],
       );
       return rows[0] ?? null;
@@ -119,17 +166,18 @@ export function servicesRouter(pool: Pool): Router {
       return;
     }
 
-    const { name, description } = parsed.data;
+    const { name, description, durationMinutes } = parsed.data;
     const sets: string[] = [];
     const values: unknown[] = [];
     let i = 1;
-    if (name !== undefined) { sets.push(`name = $${i++}`); values.push(name); }
-    if (description !== undefined) { sets.push(`description = $${i++}`); values.push(description); }
+    if (name !== undefined)            { sets.push(`name = $${i++}`);             values.push(name); }
+    if (description !== undefined)     { sets.push(`description = $${i++}`);      values.push(description); }
+    if (durationMinutes !== undefined) { sets.push(`duration_minutes = $${i++}`); values.push(durationMinutes); }
     values.push(id);
 
     const row = await withTenantContext(pool, tenantId, async (client) => {
       const { rows } = await client.query<ServiceRow>(
-        `UPDATE services SET ${sets.join(', ')} WHERE id = $${i} RETURNING id, tenant_id, name, description, created_at`,
+        `UPDATE services SET ${sets.join(', ')} WHERE id = $${i} RETURNING ${SELECT_COLS}`,
         values,
       );
       return rows[0] ?? null;

@@ -33,6 +33,7 @@ export function AppointmentBlock({ booking, colIndex, colCount, onClick }: Appoi
       data-booking-id={booking.id}
       className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-xs font-medium cursor-pointer hover:opacity-90 transition-opacity ${STATUS_CLASSES[booking.status]}`}
       style={{ top, height, left, width }}
+      onMouseDown={e => e.stopPropagation()}
       onClick={() => onClick(booking)}
       aria-label={`${booking.clientName} appointment`}
     >

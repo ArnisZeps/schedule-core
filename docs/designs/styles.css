@@ -181,9 +181,11 @@
   display: flex; flex-direction: column; min-height: 0;
 }
 .sc-sidebar-brand {
-  padding: 14px 16px;
+  height: 56px; flex-shrink: 0;
+  padding: 0 16px;
   display: flex; align-items: center; gap: 10px;
   border-bottom: 1px solid var(--sc-border);
+  box-sizing: border-box;
 }
 .sc-brandmark {
   width: 28px; height: 28px; border-radius: 6px;

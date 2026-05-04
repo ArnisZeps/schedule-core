@@ -10,9 +10,10 @@ interface DayViewProps {
   dateStr: string
   bookings: Booking[]
   onBookingClick: (booking: Booking) => void
+  onTimeSelect?: (startAt: Date, endAt: Date) => void
 }
 
-export function DayView({ dateStr, bookings, onBookingClick }: DayViewProps) {
+export function DayView({ dateStr, bookings, onBookingClick, onTimeSelect }: DayViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const day = parseISO(dateStr)
 
@@ -38,7 +39,7 @@ export function DayView({ dateStr, bookings, onBookingClick }: DayViewProps) {
       {/* Time grid */}
       <div className="flex">
         <TimeGutter />
-        <DayColumn date={day} bookings={dayBookings} onBookingClick={onBookingClick} />
+        <DayColumn date={day} bookings={dayBookings} onBookingClick={onBookingClick} onTimeSelect={onTimeSelect} />
       </div>
     </div>
   )

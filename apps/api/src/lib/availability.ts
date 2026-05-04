@@ -91,3 +91,54 @@ export async function generateSlots(
 
   return slots;
 }
+
+export async function generateAllSlots(
+  client: PoolClient,
+  serviceId: string,
+  date: string,
+  durationMinutes: number,
+): Promise<Array<{ startAt: string; endAt: string; available: boolean }>> {
+  const dayOfWeek = new Date(`${date}T00:00:00Z`).getUTCDay();
+
+  const { rows: rules } = await client.query<{ start_time: string; end_time: string }>(
+    'SELECT start_time, end_time FROM availability_rules WHERE service_id = $1 AND day_of_week = $2 ORDER BY start_time',
+    [serviceId, dayOfWeek],
+  );
+
+  if (rules.length === 0) return [];
+
+  const { rows: bookedRows } = await client.query<{ start_at: Date; end_at: Date }>(
+    `SELECT start_at, end_at FROM bookings
+     WHERE service_id = $1
+       AND status != 'cancelled'
+       AND start_at >= $2::timestamptz
+       AND start_at < ($2::date + INTERVAL '1 day')::timestamptz`,
+    [serviceId, date],
+  );
+
+  const slots: Array<{ startAt: string; endAt: string; available: boolean }> = [];
+
+  for (const rule of rules) {
+    const [ruleStartH, ruleStartM] = rule.start_time.split(':').map(Number);
+    const [ruleEndH, ruleEndM] = rule.end_time.split(':').map(Number);
+    const windowStartMin = ruleStartH * 60 + ruleStartM;
+    const windowEndMin = ruleEndH * 60 + ruleEndM;
+
+    let cursor = windowStartMin;
+    while (cursor + durationMinutes <= windowEndMin) {
+      const slotStart = new Date(`${date}T00:00:00Z`);
+      slotStart.setUTCMinutes(slotStart.getUTCMinutes() + cursor);
+      const slotEnd = new Date(slotStart.getTime() + durationMinutes * 60_000);
+
+      const overlaps = bookedRows.some(
+        (b) => new Date(b.start_at) < slotEnd && new Date(b.end_at) > slotStart,
+      );
+
+      slots.push({ startAt: slotStart.toISOString(), endAt: slotEnd.toISOString(), available: !overlaps });
+
+      cursor += durationMinutes;
+    }
+  }
+
+  return slots;
+}

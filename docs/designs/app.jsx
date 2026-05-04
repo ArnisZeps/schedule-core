@@ -105,6 +105,19 @@ function App() {
           </DCArtboard>
         </DCSection>
 
+        <DCSection id="manual-entry" title="Manual appointment entry (M6)"
+                   subtitle="Owner takes a phone call. Optimized for speed: existing-client lookup, conflict warnings, override toggle.">
+          <DCArtboard id="me-cal" label="A · Slide-over on calendar (recommended)" width={1280} height={820}>
+            <div className="sc-surface" data-theme="light"><SCCalendarWithEntry /></div>
+          </DCArtboard>
+          <DCArtboard id="me-panel" label="B · Form panel (focused)" width={480} height={820}>
+            <div className="sc-surface" data-theme="light"><SCManualEntry /></div>
+          </DCArtboard>
+          <DCArtboard id="me-phone" label="C · Phone — full screen" width={400} height={820}>
+            <PhoneFrame><SCPhoneManualEntry /></PhoneFrame>
+          </DCArtboard>
+        </DCSection>
+
         <DCSection id="dashboard-config" title="Owner dashboard — Configuration (M5a context)"
                    subtitle="Services, staff, and availability — the foundation business owners set up first.">
           <DCArtboard id="cfg-services" label="Services catalog" width={1100} height={720}>

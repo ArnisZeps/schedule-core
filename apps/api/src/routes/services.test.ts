@@ -26,6 +26,36 @@ async function createService(tid: string, name: string, description?: string): P
   return id;
 }
 
+async function createRule(
+  tid: string,
+  sid: string,
+  dayOfWeek: number,
+  startTime: string,
+  endTime: string,
+): Promise<void> {
+  await withTenantContext(pool, tid, async (client) => {
+    await client.query(
+      'INSERT INTO availability_rules (tenant_id, service_id, day_of_week, start_time, end_time) VALUES ($1, $2, $3, $4, $5)',
+      [tid, sid, dayOfWeek, startTime, endTime],
+    );
+  });
+}
+
+async function insertBooking(
+  tid: string,
+  sid: string,
+  startAt: string,
+  endAt: string,
+): Promise<void> {
+  await withTenantContext(pool, tid, async (client) => {
+    await client.query(
+      `INSERT INTO bookings (tenant_id, service_id, client_name, client_phone, start_at, end_at)
+       VALUES ($1, $2, 'Test Client', '0000000', $3, $4)`,
+      [tid, sid, startAt, endAt],
+    );
+  });
+}
+
 function base(tid: string) {
   return `/tenants/${tid}/services`;
 }
@@ -271,8 +301,8 @@ describe('DELETE /tenants/:tenantId/services/:id', () => {
       );
       blockedServiceId = rows[0].id;
       await client.query(
-        `INSERT INTO bookings (tenant_id, service_id, client_name, client_email, start_at, end_at)
-         VALUES ($1, $2, 'Client', 'c@c.com', NOW() + INTERVAL '1 hour', NOW() + INTERVAL '2 hours')`,
+        `INSERT INTO bookings (tenant_id, service_id, client_name, client_phone, client_email, start_at, end_at)
+         VALUES ($1, $2, 'Client', '0000000', 'c@c.com', NOW() + INTERVAL '1 hour', NOW() + INTERVAL '2 hours')`,
         [tenantId, blockedServiceId],
       );
     });
@@ -298,6 +328,97 @@ describe('DELETE /tenants/:tenantId/services/:id', () => {
   it('404 — service does not exist', async () => {
     const res = await request(app)
       .delete(`${base(tenantId)}/00000000-0000-0000-0000-000000000000`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(404);
+  }, 15_000);
+});
+
+// ---------------------------------------------------------------------------
+// GET /tenants/:tenantId/services/:id/slots
+// ---------------------------------------------------------------------------
+
+describe('GET /tenants/:tenantId/services/:id/slots', () => {
+  let serviceId: string;
+  // 2026-08-03 is a Monday (Mon May 4 + 13 weeks = Mon Aug 3)
+  const SLOTS_MON = '2026-08-03';
+  // 2026-08-04 is a Tuesday — no availability rules, so returns []
+  const SLOTS_TUE = '2026-08-04';
+
+  beforeAll(async () => {
+    serviceId = await createService(tenantId, 'Slots Test Service');
+    // Monday 09:00-10:00 window; default duration_minutes=30 → 2 slots
+    await createRule(tenantId, serviceId, 1, '09:00', '10:00');
+  });
+
+  it('200 — returns all slots with available: true when no bookings', async () => {
+    const res = await request(app)
+      .get(`${base(tenantId)}/${serviceId}/slots?date=${SLOTS_MON}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBe(2);
+    expect(res.body[0]).toMatchObject({ available: true });
+    expect(res.body[1]).toMatchObject({ available: true });
+    expect(typeof res.body[0].startAt).toBe('string');
+    expect(typeof res.body[0].endAt).toBe('string');
+  }, 15_000);
+
+  it('200 — booked slot has available: false', async () => {
+    // Book the first slot: 09:00-09:30
+    await insertBooking(tenantId, serviceId, `${SLOTS_MON}T09:00:00Z`, `${SLOTS_MON}T09:30:00Z`);
+
+    const res = await request(app)
+      .get(`${base(tenantId)}/${serviceId}/slots?date=${SLOTS_MON}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.length).toBe(2);
+    const first = res.body.find((s: { startAt: string }) => s.startAt.includes('09:00'));
+    const second = res.body.find((s: { startAt: string }) => s.startAt.includes('09:30'));
+    expect(first).toMatchObject({ available: false });
+    expect(second).toMatchObject({ available: true });
+  }, 15_000);
+
+  it('200 — empty array when no availability rules for that day of week', async () => {
+    const res = await request(app)
+      .get(`${base(tenantId)}/${serviceId}/slots?date=${SLOTS_TUE}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
+  }, 15_000);
+
+  it('400 — missing date param', async () => {
+    const res = await request(app)
+      .get(`${base(tenantId)}/${serviceId}/slots`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({ error: 'invalid_param', param: 'date' });
+  }, 15_000);
+
+  it('400 — invalid date format', async () => {
+    const res = await request(app)
+      .get(`${base(tenantId)}/${serviceId}/slots?date=not-a-date`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({ error: 'invalid_param', param: 'date' });
+  }, 15_000);
+
+  it('403 — tenantId in URL does not match caller', async () => {
+    const res = await request(app)
+      .get(`${base(otherTenantId)}/${serviceId}/slots?date=${SLOTS_MON}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(403);
+  }, 15_000);
+
+  it('404 — service not found', async () => {
+    const res = await request(app)
+      .get(`${base(tenantId)}/00000000-0000-0000-0000-000000000000/slots?date=${SLOTS_MON}`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(404);

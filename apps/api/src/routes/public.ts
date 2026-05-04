@@ -7,10 +7,12 @@ type BookingRow = {
   id: string;
   service_id: string;
   client_name: string;
+  client_phone: string;
   client_email: string;
   start_at: Date;
   end_at: Date;
   status: string;
+  notes: string | null;
   created_at: Date;
 };
 
@@ -19,10 +21,12 @@ function format(r: BookingRow) {
     id: r.id,
     serviceId: r.service_id,
     clientName: r.client_name,
+    clientPhone: r.client_phone,
     clientEmail: r.client_email,
     startAt: r.start_at,
     endAt: r.end_at,
     status: r.status,
+    notes: r.notes,
     createdAt: r.created_at,
   };
 }
@@ -62,7 +66,7 @@ const bookingSchema = z
   });
 
 const SELECT_COLS =
-  'id, service_id, client_name, client_email, start_at, end_at, status, created_at';
+  'id, service_id, client_name, client_phone, client_email, start_at, end_at, status, notes, created_at';
 
 export function publicRouter(pool: Pool): Router {
   const router = Router({ mergeParams: true });
@@ -142,8 +146,8 @@ export function publicRouter(pool: Pool): Router {
       }
 
       const { rows } = await client.query<BookingRow>(
-        `INSERT INTO bookings (tenant_id, service_id, client_name, client_email, start_at, end_at, status)
-         VALUES ($1, $2, $3, $4, $5, $6, 'pending') RETURNING ${SELECT_COLS}`,
+        `INSERT INTO bookings (tenant_id, service_id, client_name, client_phone, client_email, start_at, end_at, status)
+         VALUES ($1, $2, $3, '', $4, $5, $6, 'pending') RETURNING ${SELECT_COLS}`,
         [tenantId, serviceId, clientName, clientEmail, start, end],
       );
       res.status(201).json(format(rows[0]));

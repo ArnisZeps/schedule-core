@@ -125,7 +125,13 @@ export function AppointmentDetailDialog({
           <div className="space-y-3 text-sm">
             <div>
               <p className="font-semibold">{booking.clientName}</p>
-              <p className="text-muted-foreground">{booking.clientEmail}</p>
+              <p className="text-muted-foreground">{booking.clientPhone}</p>
+              {booking.clientEmail && (
+                <p className="text-muted-foreground">{booking.clientEmail}</p>
+              )}
+              {booking.notes && (
+                <p className="text-muted-foreground italic">{booking.notes}</p>
+              )}
             </div>
 
             <div className="flex items-center gap-2 text-muted-foreground">
