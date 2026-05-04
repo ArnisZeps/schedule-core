@@ -17,7 +17,7 @@ beforeAll(async () => {
   client = await pool.connect();
 
   await client.query(
-    'DROP TABLE IF EXISTS bookings, availability_rules, resources, tenants, schema_migrations CASCADE',
+    'DROP TABLE IF EXISTS bookings, availability_rules, services, tenants, schema_migrations CASCADE',
   );
 
   await migrate(url);
@@ -25,7 +25,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await client.query(
-    'DROP TABLE IF EXISTS bookings, availability_rules, resources, tenants, schema_migrations CASCADE',
+    'DROP TABLE IF EXISTS bookings, availability_rules, services, tenants, schema_migrations CASCADE',
   );
   client.release();
   await pool.end();
@@ -43,9 +43,9 @@ async function insertTenant(slug: string, name = 'Test Business') {
   return result.rows[0].id as string;
 }
 
-async function insertResource(tenantId: string, name = 'Test Resource') {
+async function insertService(tenantId: string, name = 'Test Service') {
   const result = await client.query(
-    'INSERT INTO resources (tenant_id, name) VALUES ($1, $2) RETURNING id',
+    'INSERT INTO services (tenant_id, name) VALUES ($1, $2) RETURNING id',
     [tenantId, name],
   );
   return result.rows[0].id as string;
@@ -95,14 +95,14 @@ describe('tenants', () => {
 });
 
 // ---------------------------------------------------------------------------
-// resources
+// services
 // ---------------------------------------------------------------------------
 
-describe('resources', () => {
+describe('services', () => {
   let tenantId: string;
 
   beforeAll(async () => {
-    tenantId = await insertTenant('test-resources-tenant');
+    tenantId = await insertTenant('test-services-tenant');
   });
 
   afterAll(async () => {
@@ -111,7 +111,7 @@ describe('resources', () => {
 
   it('inserts successfully', async () => {
     const { rows } = await client.query(
-      'INSERT INTO resources (tenant_id, name) VALUES ($1, $2) RETURNING id',
+      'INSERT INTO services (tenant_id, name) VALUES ($1, $2) RETURNING id',
       [tenantId, 'Chair 1'],
     );
     expect(rows[0].id).toBeDefined();
@@ -120,21 +120,21 @@ describe('resources', () => {
   it('rejects unknown tenant_id (FK violation)', async () => {
     await expect(
       client.query(
-        'INSERT INTO resources (tenant_id, name) VALUES ($1, $2)',
-        ['00000000-0000-0000-0000-000000000000', 'Ghost Resource'],
+        'INSERT INTO services (tenant_id, name) VALUES ($1, $2)',
+        ['00000000-0000-0000-0000-000000000000', 'Ghost Service'],
       ),
     ).rejects.toMatchObject({ code: '23503' }); // foreign_key_violation
   });
 
-  it('cascades delete to resources when tenant is deleted', async () => {
+  it('cascades delete to services when tenant is deleted', async () => {
     const tmpTenantId = await insertTenant('test-cascade-tenant');
-    const resourceId = await insertResource(tmpTenantId);
+    const serviceId = await insertService(tmpTenantId);
 
     await client.query('DELETE FROM tenants WHERE id = $1', [tmpTenantId]);
 
     const { rows } = await client.query(
-      'SELECT id FROM resources WHERE id = $1',
-      [resourceId],
+      'SELECT id FROM services WHERE id = $1',
+      [serviceId],
     );
     expect(rows).toHaveLength(0);
   });
@@ -146,11 +146,11 @@ describe('resources', () => {
 
 describe('availability_rules', () => {
   let tenantId: string;
-  let resourceId: string;
+  let serviceId: string;
 
   beforeAll(async () => {
     tenantId = await insertTenant('test-avail-tenant');
-    resourceId = await insertResource(tenantId);
+    serviceId = await insertService(tenantId);
   });
 
   afterAll(async () => {
@@ -159,9 +159,9 @@ describe('availability_rules', () => {
 
   it('inserts a valid rule', async () => {
     const { rows } = await client.query(
-      `INSERT INTO availability_rules (tenant_id, resource_id, day_of_week, start_time, end_time)
+      `INSERT INTO availability_rules (tenant_id, service_id, day_of_week, start_time, end_time)
        VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-      [tenantId, resourceId, 1, '09:00', '17:00'],
+      [tenantId, serviceId, 1, '09:00', '17:00'],
     );
     expect(rows[0].id).toBeDefined();
   });
@@ -169,9 +169,9 @@ describe('availability_rules', () => {
   it('rejects start_time >= end_time', async () => {
     await expect(
       client.query(
-        `INSERT INTO availability_rules (tenant_id, resource_id, day_of_week, start_time, end_time)
+        `INSERT INTO availability_rules (tenant_id, service_id, day_of_week, start_time, end_time)
          VALUES ($1, $2, $3, $4, $5)`,
-        [tenantId, resourceId, 1, '17:00', '09:00'],
+        [tenantId, serviceId, 1, '17:00', '09:00'],
       ),
     ).rejects.toMatchObject({ code: '23514' }); // check_violation
   });
@@ -179,24 +179,24 @@ describe('availability_rules', () => {
   it('rejects day_of_week = 7', async () => {
     await expect(
       client.query(
-        `INSERT INTO availability_rules (tenant_id, resource_id, day_of_week, start_time, end_time)
+        `INSERT INTO availability_rules (tenant_id, service_id, day_of_week, start_time, end_time)
          VALUES ($1, $2, $3, $4, $5)`,
-        [tenantId, resourceId, 7, '09:00', '17:00'],
+        [tenantId, serviceId, 7, '09:00', '17:00'],
       ),
     ).rejects.toMatchObject({ code: '23514' }); // check_violation
   });
 
-  it('cascades delete when resource is deleted', async () => {
+  it('cascades delete when service is deleted', async () => {
     const tmpTenantId = await insertTenant('test-rule-cascade-tenant');
-    const tmpResourceId = await insertResource(tmpTenantId);
+    const tmpServiceId = await insertService(tmpTenantId);
     const { rows } = await client.query(
-      `INSERT INTO availability_rules (tenant_id, resource_id, day_of_week, start_time, end_time)
+      `INSERT INTO availability_rules (tenant_id, service_id, day_of_week, start_time, end_time)
        VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-      [tmpTenantId, tmpResourceId, 2, '10:00', '18:00'],
+      [tmpTenantId, tmpServiceId, 2, '10:00', '18:00'],
     );
     const ruleId = rows[0].id;
 
-    await client.query('DELETE FROM resources WHERE id = $1', [tmpResourceId]);
+    await client.query('DELETE FROM services WHERE id = $1', [tmpServiceId]);
 
     const check = await client.query(
       'SELECT id FROM availability_rules WHERE id = $1',
@@ -214,11 +214,11 @@ describe('availability_rules', () => {
 
 describe('bookings', () => {
   let tenantId: string;
-  let resourceId: string;
+  let serviceId: string;
 
   beforeAll(async () => {
     tenantId = await insertTenant('test-bookings-tenant');
-    resourceId = await insertResource(tenantId);
+    serviceId = await insertService(tenantId);
   });
 
   afterAll(async () => {
@@ -229,11 +229,11 @@ describe('bookings', () => {
 
   it('inserts successfully with default status', async () => {
     const { rows } = await client.query(
-      `INSERT INTO bookings (tenant_id, resource_id, client_name, client_email, start_at, end_at)
+      `INSERT INTO bookings (tenant_id, service_id, client_name, client_email, start_at, end_at)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, status`,
       [
         tenantId,
-        resourceId,
+        serviceId,
         'Alice',
         'alice@example.com',
         '2026-05-01 09:00:00+00',
@@ -247,11 +247,11 @@ describe('bookings', () => {
   it('rejects start_at >= end_at', async () => {
     await expect(
       client.query(
-        `INSERT INTO bookings (tenant_id, resource_id, client_name, client_email, start_at, end_at)
+        `INSERT INTO bookings (tenant_id, service_id, client_name, client_email, start_at, end_at)
          VALUES ($1, $2, $3, $4, $5, $6)`,
         [
           tenantId,
-          resourceId,
+          serviceId,
           'Bob',
           'bob@example.com',
           '2026-05-01 10:00:00+00',
@@ -264,11 +264,11 @@ describe('bookings', () => {
   it('rejects invalid status value', async () => {
     await expect(
       client.query(
-        `INSERT INTO bookings (tenant_id, resource_id, client_name, client_email, start_at, end_at, status)
+        `INSERT INTO bookings (tenant_id, service_id, client_name, client_email, start_at, end_at, status)
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [
           tenantId,
-          resourceId,
+          serviceId,
           'Carol',
           'carol@example.com',
           '2026-05-01 11:00:00+00',
@@ -281,13 +281,13 @@ describe('bookings', () => {
 
   it('blocks tenant deletion when bookings exist (RESTRICT)', async () => {
     const tmpTenantId = await insertTenant('test-restrict-tenant');
-    const tmpResourceId = await insertResource(tmpTenantId);
+    const tmpServiceId = await insertService(tmpTenantId);
     await client.query(
-      `INSERT INTO bookings (tenant_id, resource_id, client_name, client_email, start_at, end_at)
+      `INSERT INTO bookings (tenant_id, service_id, client_name, client_email, start_at, end_at)
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [
         tmpTenantId,
-        tmpResourceId,
+        tmpServiceId,
         'Dave',
         'dave@example.com',
         '2026-05-02 09:00:00+00',
@@ -304,15 +304,15 @@ describe('bookings', () => {
     await client.query('DELETE FROM tenants WHERE id = $1', [tmpTenantId]);
   });
 
-  it('blocks resource deletion when bookings exist (RESTRICT)', async () => {
-    const tmpTenantId = await insertTenant('test-resource-restrict-tenant');
-    const tmpResourceId = await insertResource(tmpTenantId);
+  it('blocks service deletion when bookings exist (RESTRICT)', async () => {
+    const tmpTenantId = await insertTenant('test-service-restrict-tenant');
+    const tmpServiceId = await insertService(tmpTenantId);
     await client.query(
-      `INSERT INTO bookings (tenant_id, resource_id, client_name, client_email, start_at, end_at)
+      `INSERT INTO bookings (tenant_id, service_id, client_name, client_email, start_at, end_at)
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [
         tmpTenantId,
-        tmpResourceId,
+        tmpServiceId,
         'Eve',
         'eve@example.com',
         '2026-05-03 09:00:00+00',
@@ -321,7 +321,7 @@ describe('bookings', () => {
     );
 
     await expect(
-      client.query('DELETE FROM resources WHERE id = $1', [tmpResourceId]),
+      client.query('DELETE FROM services WHERE id = $1', [tmpServiceId]),
     ).rejects.toMatchObject({ code: '23503' }); // foreign_key_violation
 
     // cleanup
@@ -346,16 +346,16 @@ describe.skip('RLS (deferred to M3 — requires non-owner app role)', () => {
    * The tests below define the expected behaviour and will be unskipped in M3.
    */
 
-  it('resource is invisible to a different tenant context', async () => {
+  it('service is invisible to a different tenant context', async () => {
     // SET LOCAL only works inside a transaction
     const tenantAId = await insertTenant('test-rls-a');
     const tenantBId = await insertTenant('test-rls-b');
-    await insertResource(tenantAId, 'Resource A');
+    await insertService(tenantAId, 'Service A');
 
     const result = await client.query(`
       BEGIN;
       SET LOCAL app.current_tenant_id = '${tenantBId}';
-      SELECT id FROM resources WHERE tenant_id = '${tenantAId}';
+      SELECT id FROM services WHERE tenant_id = '${tenantAId}';
       COMMIT;
     `);
 
@@ -364,14 +364,14 @@ describe.skip('RLS (deferred to M3 — requires non-owner app role)', () => {
     await client.query('DELETE FROM tenants WHERE id IN ($1, $2)', [tenantAId, tenantBId]);
   });
 
-  it('resource is visible when tenant context matches', async () => {
+  it('service is visible when tenant context matches', async () => {
     const tenantId = await insertTenant('test-rls-match');
-    await insertResource(tenantId, 'Visible Resource');
+    await insertService(tenantId, 'Visible Service');
 
     const result = await client.query(`
       BEGIN;
       SET LOCAL app.current_tenant_id = '${tenantId}';
-      SELECT id FROM resources WHERE tenant_id = '${tenantId}';
+      SELECT id FROM services WHERE tenant_id = '${tenantId}';
       COMMIT;
     `);
 

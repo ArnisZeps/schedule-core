@@ -5,7 +5,7 @@ import { checkOverlap, checkWithinAvailability, generateSlots } from '../lib/ava
 
 type BookingRow = {
   id: string;
-  resource_id: string;
+  service_id: string;
   client_name: string;
   client_email: string;
   start_at: Date;
@@ -17,7 +17,7 @@ type BookingRow = {
 function format(r: BookingRow) {
   return {
     id: r.id,
-    resourceId: r.resource_id,
+    serviceId: r.service_id,
     clientName: r.client_name,
     clientEmail: r.client_email,
     startAt: r.start_at,
@@ -51,7 +51,7 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const bookingSchema = z
   .object({
-    resourceId: z.string().uuid(),
+    serviceId: z.string().uuid(),
     clientName: z.string().min(1),
     clientEmail: z.string().email(),
     startAt: z.string().regex(ISO8601),
@@ -62,14 +62,14 @@ const bookingSchema = z
   });
 
 const SELECT_COLS =
-  'id, resource_id, client_name, client_email, start_at, end_at, status, created_at';
+  'id, service_id, client_name, client_email, start_at, end_at, status, created_at';
 
 export function publicRouter(pool: Pool): Router {
   const router = Router({ mergeParams: true });
 
-  // GET /public/:tenantSlug/resources/:resourceId/slots
-  router.get('/resources/:resourceId/slots', async (req, res) => {
-    const { tenantSlug, resourceId } = req.params as { tenantSlug: string; resourceId: string };
+  // GET /public/:tenantSlug/services/:serviceId/slots
+  router.get('/services/:serviceId/slots', async (req, res) => {
+    const { tenantSlug, serviceId } = req.params as { tenantSlug: string; serviceId: string };
     const { date, duration } = req.query as Record<string, string | undefined>;
 
     if (!date || !DATE_RE.test(date) || isNaN(Date.parse(date))) {
@@ -92,7 +92,7 @@ export function publicRouter(pool: Pool): Router {
         return;
       }
 
-      const slots = await generateSlots(client, resourceId, date, Number(duration));
+      const slots = await generateSlots(client, serviceId, date, Number(duration));
       res.json(slots);
     } finally {
       client.release();
@@ -116,7 +116,7 @@ export function publicRouter(pool: Pool): Router {
       return;
     }
 
-    const { resourceId, clientName, clientEmail, startAt, endAt } = parsed.data;
+    const { serviceId, clientName, clientEmail, startAt, endAt } = parsed.data;
     const start = new Date(startAt);
     const end = new Date(endAt);
 
@@ -132,19 +132,19 @@ export function publicRouter(pool: Pool): Router {
       }
       const tenantId = tenantRows[0].id;
 
-      if (!(await checkWithinAvailability(client, resourceId, start, end))) {
+      if (!(await checkWithinAvailability(client, serviceId, start, end))) {
         res.status(409).json({ error: 'outside_availability' });
         return;
       }
-      if (await checkOverlap(client, resourceId, start, end)) {
+      if (await checkOverlap(client, serviceId, start, end)) {
         res.status(409).json({ error: 'overlap' });
         return;
       }
 
       const { rows } = await client.query<BookingRow>(
-        `INSERT INTO bookings (tenant_id, resource_id, client_name, client_email, start_at, end_at, status)
+        `INSERT INTO bookings (tenant_id, service_id, client_name, client_email, start_at, end_at, status)
          VALUES ($1, $2, $3, $4, $5, $6, 'pending') RETURNING ${SELECT_COLS}`,
-        [tenantId, resourceId, clientName, clientEmail, start, end],
+        [tenantId, serviceId, clientName, clientEmail, start, end],
       );
       res.status(201).json(format(rows[0]));
     } finally {

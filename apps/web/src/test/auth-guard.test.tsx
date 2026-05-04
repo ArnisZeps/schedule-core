@@ -19,17 +19,17 @@ function renderAt(path: string) {
 describe('Auth guard', () => {
   beforeEach(() => localStorage.clear())
 
-  it('redirects unauthenticated user from /resources to /login', async () => {
-    const router = renderAt('/resources')
+  it('redirects unauthenticated user from /services to /login', async () => {
+    const router = renderAt('/services')
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/login')
     })
   })
 
-  it('allows authenticated user to access /resources', async () => {
+  it('allows authenticated user to access /services', async () => {
     localStorage.setItem('sc_token', TEST_TOKEN)
-    renderAt('/resources')
+    renderAt('/services')
 
     await waitFor(() => {
       expect(screen.getByText(/meeting room a/i)).toBeInTheDocument()

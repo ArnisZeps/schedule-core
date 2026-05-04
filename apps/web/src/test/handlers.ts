@@ -19,7 +19,7 @@ export const BOOKINGS = [
   {
     id: 'bk-1',
     tenantId: TENANT_ID,
-    resourceId: 'res-1',
+    serviceId: 'res-1',
     clientName: 'Alice Smith',
     clientEmail: 'alice@test.com',
     startAt: '2026-05-04T09:00:00.000Z',
@@ -30,7 +30,7 @@ export const BOOKINGS = [
   {
     id: 'bk-2',
     tenantId: TENANT_ID,
-    resourceId: 'res-2',
+    serviceId: 'res-2',
     clientName: 'Bob Jones',
     clientEmail: 'bob@test.com',
     startAt: '2026-05-04T14:00:00.000Z',
@@ -41,7 +41,7 @@ export const BOOKINGS = [
   {
     id: 'bk-3',
     tenantId: TENANT_ID,
-    resourceId: 'res-1',
+    serviceId: 'res-1',
     clientName: 'Carol White',
     clientEmail: 'carol@test.com',
     startAt: '2026-05-05T11:00:00.000Z',
@@ -61,16 +61,16 @@ export const handlers = [
     return HttpResponse.json({ message: 'Invalid credentials' }, { status: 401 })
   }),
 
-  // Resources list
-  http.get(`${BASE}/tenants/:tenantId/resources`, () => {
+  // Services list
+  http.get(`${BASE}/tenants/:tenantId/services`, () => {
     return HttpResponse.json([
       { id: 'res-1', tenantId: TENANT_ID, name: 'Meeting Room A', description: 'Ground floor' },
       { id: 'res-2', tenantId: TENANT_ID, name: 'Staff: Alice', description: 'Senior stylist' },
     ])
   }),
 
-  // Resource create
-  http.post(`${BASE}/tenants/:tenantId/resources`, async ({ request }) => {
+  // Service create
+  http.post(`${BASE}/tenants/:tenantId/services`, async ({ request }) => {
     const body = await request.json() as { name: string; description?: string }
     return HttpResponse.json(
       { id: 'res-new', tenantId: TENANT_ID, name: body.name, description: body.description ?? '' },
@@ -78,60 +78,60 @@ export const handlers = [
     )
   }),
 
-  // Resource single
-  http.get(`${BASE}/tenants/:tenantId/resources/:resourceId`, ({ params }) => {
+  // Service single
+  http.get(`${BASE}/tenants/:tenantId/services/:serviceId`, ({ params }) => {
     return HttpResponse.json({
-      id: params.resourceId,
+      id: params.serviceId,
       tenantId: TENANT_ID,
       name: 'Meeting Room A',
       description: 'Ground floor',
     })
   }),
 
-  // Resource update
-  http.patch(`${BASE}/tenants/:tenantId/resources/:resourceId`, async ({ params, request }) => {
+  // Service update
+  http.patch(`${BASE}/tenants/:tenantId/services/:serviceId`, async ({ params, request }) => {
     const body = await request.json() as { name?: string; description?: string }
     return HttpResponse.json({
-      id: params.resourceId,
+      id: params.serviceId,
       tenantId: TENANT_ID,
       name: body.name ?? 'Meeting Room A',
       description: body.description ?? 'Ground floor',
     })
   }),
 
-  // Resource delete
-  http.delete(`${BASE}/tenants/:tenantId/resources/:resourceId`, () => {
+  // Service delete
+  http.delete(`${BASE}/tenants/:tenantId/services/:serviceId`, () => {
     return new HttpResponse(null, { status: 204 })
   }),
 
   // Availability rules list
-  http.get(`${BASE}/tenants/:tenantId/resources/:resourceId/availability-rules`, () => {
+  http.get(`${BASE}/tenants/:tenantId/services/:serviceId/availability-rules`, () => {
     return HttpResponse.json([
-      { id: 'rule-1', resourceId: 'res-1', dayOfWeek: 0, startTime: '09:00', endTime: '17:00' },
+      { id: 'rule-1', serviceId: 'res-1', dayOfWeek: 0, startTime: '09:00', endTime: '17:00' },
     ])
   }),
 
   // Availability rule create
-  http.post(`${BASE}/tenants/:tenantId/resources/:resourceId/availability-rules`, async ({ request }) => {
+  http.post(`${BASE}/tenants/:tenantId/services/:serviceId/availability-rules`, async ({ request }) => {
     const body = await request.json() as { dayOfWeek: number; startTime: string; endTime: string }
     return HttpResponse.json(
-      { id: 'rule-new', resourceId: 'res-1', ...body },
+      { id: 'rule-new', serviceId: 'res-1', ...body },
       { status: 201 },
     )
   }),
 
   // Availability rule delete
   http.delete(
-    `${BASE}/tenants/:tenantId/resources/:resourceId/availability-rules/:ruleId`,
+    `${BASE}/tenants/:tenantId/services/:serviceId/availability-rules/:ruleId`,
     () => new HttpResponse(null, { status: 204 }),
   ),
 
-  // Bookings list (ranged or open-ended; optionally filtered by resourceId)
+  // Bookings list (ranged or open-ended; optionally filtered by serviceId)
   http.get(`${BASE}/tenants/:tenantId/bookings`, ({ request }) => {
     const url = new URL(request.url)
-    const resourceId = url.searchParams.get('resourceId')
-    const bookings = resourceId
-      ? BOOKINGS.filter(b => b.resourceId === resourceId)
+    const serviceId = url.searchParams.get('serviceId')
+    const bookings = serviceId
+      ? BOOKINGS.filter(b => b.serviceId === serviceId)
       : BOOKINGS
     return HttpResponse.json(bookings)
   }),

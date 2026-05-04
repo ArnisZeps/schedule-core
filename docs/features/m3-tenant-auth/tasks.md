@@ -9,7 +9,7 @@
 - [x] Write `packages/db/migrations/0002_tenant_auth.sql`:
   - Create `users` table (id, tenant_id FK, email UNIQUE, password_hash, created_at)
   - Create `schedulecore_app` role with minimal grants (SELECT/INSERT/UPDATE/DELETE on all tables; USAGE on sequences)
-  - Apply `FORCE ROW LEVEL SECURITY` to `resources`, `availability_rules`, `bookings`
+  - Apply `FORCE ROW LEVEL SECURITY` to `services`, `availability_rules`, `bookings`
 - [x] Run migration against dev Neon branch and verify schema
 
 ### API dependencies

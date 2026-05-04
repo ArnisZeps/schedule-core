@@ -4,7 +4,7 @@ import type { Pool } from '@schedule-core/db';
 import { authMiddleware } from '../middleware/auth.js';
 import { withTenantContext } from '../middleware/tenant-context.js';
 
-type ResourceRow = {
+type ServiceRow = {
   id: string;
   tenant_id: string;
   name: string;
@@ -12,7 +12,7 @@ type ResourceRow = {
   created_at: Date;
 };
 
-function format(r: ResourceRow) {
+function format(r: ServiceRow) {
   return {
     id: r.id,
     tenantId: r.tenant_id,
@@ -36,7 +36,7 @@ const patchSchema = z
     message: 'at_least_one_field_required',
   });
 
-export function resourcesRouter(pool: Pool): Router {
+export function servicesRouter(pool: Pool): Router {
   const router = Router({ mergeParams: true });
   router.use(authMiddleware);
 
@@ -56,8 +56,8 @@ export function resourcesRouter(pool: Pool): Router {
 
     const { name, description } = parsed.data;
     const row = await withTenantContext(pool, tenantId, async (client) => {
-      const { rows } = await client.query<ResourceRow>(
-        'INSERT INTO resources (tenant_id, name, description) VALUES ($1, $2, $3) RETURNING id, tenant_id, name, description, created_at',
+      const { rows } = await client.query<ServiceRow>(
+        'INSERT INTO services (tenant_id, name, description) VALUES ($1, $2, $3) RETURNING id, tenant_id, name, description, created_at',
         [tenantId, name, description ?? null],
       );
       return rows[0];
@@ -74,8 +74,8 @@ export function resourcesRouter(pool: Pool): Router {
     }
 
     const rows = await withTenantContext(pool, tenantId, async (client) => {
-      const { rows } = await client.query<ResourceRow>(
-        'SELECT id, tenant_id, name, description, created_at FROM resources ORDER BY created_at',
+      const { rows } = await client.query<ServiceRow>(
+        'SELECT id, tenant_id, name, description, created_at FROM services ORDER BY created_at',
       );
       return rows;
     });
@@ -91,8 +91,8 @@ export function resourcesRouter(pool: Pool): Router {
     }
 
     const row = await withTenantContext(pool, tenantId, async (client) => {
-      const { rows } = await client.query<ResourceRow>(
-        'SELECT id, tenant_id, name, description, created_at FROM resources WHERE id = $1 AND tenant_id = $2',
+      const { rows } = await client.query<ServiceRow>(
+        'SELECT id, tenant_id, name, description, created_at FROM services WHERE id = $1 AND tenant_id = $2',
         [id, tenantId],
       );
       return rows[0] ?? null;
@@ -128,8 +128,8 @@ export function resourcesRouter(pool: Pool): Router {
     values.push(id);
 
     const row = await withTenantContext(pool, tenantId, async (client) => {
-      const { rows } = await client.query<ResourceRow>(
-        `UPDATE resources SET ${sets.join(', ')} WHERE id = $${i} RETURNING id, tenant_id, name, description, created_at`,
+      const { rows } = await client.query<ServiceRow>(
+        `UPDATE services SET ${sets.join(', ')} WHERE id = $${i} RETURNING id, tenant_id, name, description, created_at`,
         values,
       );
       return rows[0] ?? null;
@@ -152,7 +152,7 @@ export function resourcesRouter(pool: Pool): Router {
     try {
       let rowCount = 0;
       await withTenantContext(pool, tenantId, async (client) => {
-        const result = await client.query('DELETE FROM resources WHERE id = $1', [id]);
+        const result = await client.query('DELETE FROM services WHERE id = $1', [id]);
         rowCount = result.rowCount ?? 0;
       });
       if (rowCount === 0) {

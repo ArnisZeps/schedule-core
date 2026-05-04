@@ -9,17 +9,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { Resource } from '@/hooks/useResources'
+import type { Service } from '@/hooks/useServices'
 
 interface CalendarToolbarProps {
-  resources: Resource[]
+  services: Service[]
 }
 
-export function CalendarToolbar({ resources }: CalendarToolbarProps) {
+export function CalendarToolbar({ services }: CalendarToolbarProps) {
   const [params, setParams] = useSearchParams()
   const view = (params.get('view') || 'week') as 'week' | 'day' | 'list'
   const dateStr = params.get('date') || format(new Date(), 'yyyy-MM-dd')
-  const resourceId = params.get('resourceId') || undefined
+  const serviceId = params.get('serviceId') || undefined
 
   function setParam(key: string, value: string | null) {
     setParams(prev => {
@@ -80,19 +80,19 @@ export function CalendarToolbar({ resources }: CalendarToolbarProps) {
         ))}
       </div>
 
-      {/* Resource filter */}
+      {/* Service filter */}
       <Select
-        value={resourceId ?? 'all'}
-        onValueChange={val => setParam('resourceId', val === 'all' ? null : val)}
+        value={serviceId ?? 'all'}
+        onValueChange={val => setParam('serviceId', val === 'all' ? null : val)}
       >
-        <SelectTrigger className="w-44" aria-label="Resource">
-          <SelectValue placeholder="All resources" />
+        <SelectTrigger className="w-44" aria-label="Service">
+          <SelectValue placeholder="All services" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All resources</SelectItem>
-          {resources.map(r => (
-            <SelectItem key={r.id} value={r.id}>
-              {r.name}
+          <SelectItem value="all">All services</SelectItem>
+          {services.map(s => (
+            <SelectItem key={s.id} value={s.id}>
+              {s.name}
             </SelectItem>
           ))}
         </SelectContent>

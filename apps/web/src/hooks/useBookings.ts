@@ -5,7 +5,7 @@ import { useAuth } from './useAuth'
 export interface Booking {
   id: string
   tenantId: string
-  resourceId: string
+  serviceId: string
   clientName: string
   clientEmail: string
   startAt: string
@@ -14,27 +14,27 @@ export interface Booking {
   createdAt: string
 }
 
-export function useBookings(params: { from: string; to: string; resourceId?: string }) {
+export function useBookings(params: { from: string; to: string; serviceId?: string }) {
   const { user } = useAuth()
   const tenantId = user!.tenantId
-  const { from, to, resourceId } = params
+  const { from, to, serviceId } = params
   const search = new URLSearchParams({ from, to })
-  if (resourceId) search.set('resourceId', resourceId)
+  if (serviceId) search.set('serviceId', serviceId)
   return useQuery<Booking[]>({
-    queryKey: ['bookings', tenantId, { from, to, resourceId }],
+    queryKey: ['bookings', tenantId, { from, to, serviceId }],
     queryFn: () => apiFetch(`/tenants/${tenantId}/bookings?${search}`),
   })
 }
 
-export function useUpcomingBookings(params: { resourceId?: string } = {}) {
+export function useUpcomingBookings(params: { serviceId?: string } = {}) {
   const { user } = useAuth()
   const tenantId = user!.tenantId
-  const { resourceId } = params
+  const { serviceId } = params
   const from = new Date().toISOString()
   const search = new URLSearchParams({ from })
-  if (resourceId) search.set('resourceId', resourceId)
+  if (serviceId) search.set('serviceId', serviceId)
   return useQuery<Booking[]>({
-    queryKey: ['bookings', tenantId, 'upcoming', { resourceId }],
+    queryKey: ['bookings', tenantId, 'upcoming', { serviceId }],
     queryFn: () => apiFetch(`/tenants/${tenantId}/bookings?${search}`),
   })
 }

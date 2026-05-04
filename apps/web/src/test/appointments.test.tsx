@@ -116,7 +116,7 @@ describe('Appointments Calendar', () => {
         expect(screen.getByRole('columnheader', { name: /date/i })).toBeInTheDocument()
         expect(screen.getByRole('columnheader', { name: /time/i })).toBeInTheDocument()
         expect(screen.getByRole('columnheader', { name: /client/i })).toBeInTheDocument()
-        expect(screen.getByRole('columnheader', { name: /resource/i })).toBeInTheDocument()
+        expect(screen.getByRole('columnheader', { name: /service/i })).toBeInTheDocument()
         expect(screen.getByRole('columnheader', { name: /status/i })).toBeInTheDocument()
       })
     })
@@ -162,7 +162,7 @@ describe('Appointments Calendar', () => {
       return waitFor(() => screen.getByRole('dialog'))
     }
 
-    it('shows client name, email, resource, and status badge', async () => {
+    it('shows client name, email, service, and status badge', async () => {
       const user = userEvent.setup()
       const dialog = await openDialog(user)
       expect(within(dialog).getByText('Alice Smith')).toBeInTheDocument()

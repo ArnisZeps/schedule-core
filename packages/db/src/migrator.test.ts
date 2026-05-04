@@ -25,7 +25,7 @@ let client: any;
 
 async function resetDb() {
   await client.query(
-    'DROP TABLE IF EXISTS bookings, availability_rules, resources, tenants, schema_migrations CASCADE',
+    'DROP TABLE IF EXISTS bookings, availability_rules, services, tenants, schema_migrations CASCADE',
   );
 }
 

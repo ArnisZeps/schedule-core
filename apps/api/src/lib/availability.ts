@@ -2,14 +2,14 @@ import type { PoolClient } from '@schedule-core/db';
 
 export async function checkOverlap(
   client: PoolClient,
-  resourceId: string,
+  serviceId: string,
   start: Date,
   end: Date,
   excludeId?: string,
 ): Promise<boolean> {
-  const values: unknown[] = [resourceId, start, end];
+  const values: unknown[] = [serviceId, start, end];
   let sql =
-    "SELECT 1 FROM bookings WHERE resource_id = $1 AND status != 'cancelled' AND start_at < $3 AND end_at > $2";
+    "SELECT 1 FROM bookings WHERE service_id = $1 AND status != 'cancelled' AND start_at < $3 AND end_at > $2";
   if (excludeId) {
     values.push(excludeId);
     sql += ` AND id != $${values.length}`;
@@ -20,7 +20,7 @@ export async function checkOverlap(
 
 export async function checkWithinAvailability(
   client: PoolClient,
-  resourceId: string,
+  serviceId: string,
   start: Date,
   end: Date,
 ): Promise<boolean> {
@@ -30,37 +30,37 @@ export async function checkWithinAvailability(
 
   const { rows } = await client.query(
     `SELECT 1 FROM availability_rules
-     WHERE resource_id = $1
+     WHERE service_id = $1
        AND day_of_week = $2
        AND start_time <= $3::time
        AND end_time   >= $4::time`,
-    [resourceId, dayOfWeek, startTime, endTime],
+    [serviceId, dayOfWeek, startTime, endTime],
   );
   return rows.length > 0;
 }
 
 export async function generateSlots(
   client: PoolClient,
-  resourceId: string,
+  serviceId: string,
   date: string,
   durationMinutes: number,
 ): Promise<Array<{ startAt: string; endAt: string }>> {
   const dayOfWeek = new Date(`${date}T00:00:00Z`).getUTCDay();
 
   const { rows: rules } = await client.query<{ start_time: string; end_time: string }>(
-    'SELECT start_time, end_time FROM availability_rules WHERE resource_id = $1 AND day_of_week = $2 ORDER BY start_time',
-    [resourceId, dayOfWeek],
+    'SELECT start_time, end_time FROM availability_rules WHERE service_id = $1 AND day_of_week = $2 ORDER BY start_time',
+    [serviceId, dayOfWeek],
   );
 
   if (rules.length === 0) return [];
 
   const { rows: bookedRows } = await client.query<{ start_at: Date; end_at: Date }>(
     `SELECT start_at, end_at FROM bookings
-     WHERE resource_id = $1
+     WHERE service_id = $1
        AND status != 'cancelled'
        AND start_at >= $2::timestamptz
        AND start_at < ($2::date + INTERVAL '1 day')::timestamptz`,
-    [resourceId, date],
+    [serviceId, date],
   );
 
   const slots: Array<{ startAt: string; endAt: string }> = [];

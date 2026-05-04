@@ -23,13 +23,13 @@ addition; it is tree-shakeable and already the ecosystem standard for this use c
 
 | File | Responsibility |
 |------|----------------|
-| `src/pages/appointments/AppointmentsPage.tsx` | Reads URL search params (`view`, `date`, `resourceId`); fetches bookings + resources; composes toolbar and active view |
+| `src/pages/appointments/AppointmentsPage.tsx` | Reads URL search params (`view`, `date`, `serviceId`); fetches bookings + services; composes toolbar and active view |
 
 ### Calendar components
 
 | File | Responsibility |
 |------|----------------|
-| `src/components/calendar/CalendarToolbar.tsx` | Prev/next/today navigation; week/day/list toggle; resource Select |
+| `src/components/calendar/CalendarToolbar.tsx` | Prev/next/today navigation; week/day/list toggle; service Select |
 | `src/components/calendar/WeekView.tsx` | 7-column grid; renders TimeGutter + seven DayColumns |
 | `src/components/calendar/DayView.tsx` | Single-column grid; renders TimeGutter + one DayColumn |
 | `src/components/calendar/TimeGutter.tsx` | Left column: 24 hour labels, each 64 px tall |
@@ -106,7 +106,7 @@ Pure function `computeColumnLayout(appointments)` → `Array<{ appointment, colI
 4. CSS applied to the block: `left = (colIndex / colCount) × 100%`,
    `width = (1 / colCount × 100%) − 2px` (2 px gap between adjacent blocks).
 
-O(n²) worst case; n (appointments per day per resource) is small in practice.
+O(n²) worst case; n (appointments per day per service) is small in practice.
 
 ## Contracts
 
@@ -116,7 +116,7 @@ O(n²) worst case; n (appointments per day per resource) is small in practice.
 |-------|--------|---------|
 | `view` | `week` \| `day` \| `list` | `week` |
 | `date` | `YYYY-MM-DD` | today |
-| `resourceId` | UUID | absent = all resources |
+| `serviceId` | UUID | absent = all services |
 
 Managed via `useSearchParams` from react-router-dom.
 
@@ -126,7 +126,7 @@ Managed via `useSearchParams` from react-router-dom.
 interface Booking {
   id: string;
   tenantId: string;
-  resourceId: string;
+  serviceId: string;
   clientName: string;
   clientEmail: string;
   startAt: string;   // ISO 8601 UTC
@@ -139,12 +139,12 @@ interface Booking {
 function useBookings(params: {
   from: string;       // ISO 8601
   to: string;         // ISO 8601
-  resourceId?: string;
+  serviceId?: string;
 }): UseQueryResult<Booking[]>
 
 // open-ended fetch from today — used by list view
 function useUpcomingBookings(params: {
-  resourceId?: string;
+  serviceId?: string;
 }): UseQueryResult<Booking[]>
 
 function useCancelBooking(): UseMutationResult<Booking, ApiError, string>
@@ -163,11 +163,11 @@ Both mutations call `PATCH /tenants/:tenantId/bookings/:id` and on success call
 ### API calls (no new endpoints)
 
 ```
-GET   /tenants/:tenantId/bookings?from=<ISO>&to=<ISO>[&resourceId=<uuid>]
-GET   /tenants/:tenantId/bookings?from=<today-ISO>[&resourceId=<uuid>]
+GET   /tenants/:tenantId/bookings?from=<ISO>&to=<ISO>[&serviceId=<uuid>]
+GET   /tenants/:tenantId/bookings?from=<today-ISO>[&serviceId=<uuid>]
 PATCH /tenants/:tenantId/bookings/:id   body: { status: 'cancelled' }
 PATCH /tenants/:tenantId/bookings/:id   body: { startAt: <ISO>, endAt: <ISO> }
-GET   /tenants/:tenantId/resources      (reuse existing useResources hook)
+GET   /tenants/:tenantId/services       (reuse existing useServices hook)
 ```
 
 ### Route
@@ -222,7 +222,7 @@ adding route segments. Back-button and share links restore the exact view, date,
 
 - Drag-and-drop rescheduling.
 - Per-tenant timezone setting.
-- Color-coding by resource (status-based color is sufficient for MVP).
+- Color-coding by service (status-based color is sufficient for MVP).
 - Recurring appointment visualization.
 - Appointment creation from the calendar (M6).
 - Pagination on the list view.
@@ -238,7 +238,7 @@ adding route segments. Back-button and share links restore the exact view, date,
 | Cancel already-cancelled booking | API returns 409; inline error shown in dialog |
 | Reschedule with end ≤ start | Client-side validation blocks submit; inline error in dialog |
 | Reschedule conflict (409 from API) | Inline error in dialog; dialog stays open |
-| Resource filter with no matching bookings | Empty columns in calendar; empty state in list |
+| Service filter with no matching bookings | Empty columns in calendar; empty state in list |
 | No bookings at all in the viewed range | Empty columns — no per-column empty state needed |
 | Network error loading bookings | `ErrorState` component with retry action |
 | Token expires during session | `apiFetch` throws `ApiError(401)` → existing global `onError` → logout |

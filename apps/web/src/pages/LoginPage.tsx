@@ -40,7 +40,7 @@ export function LoginPage() {
         body: JSON.stringify(values),
       })
       login(token, values.email)
-      const next = (location.state as { next?: string } | null)?.next ?? '/resources'
+      const next = (location.state as { next?: string } | null)?.next ?? '/services'
       navigate(next, { replace: true })
     } catch (err) {
       form.setError('root', {

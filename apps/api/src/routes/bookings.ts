@@ -8,7 +8,7 @@ import { checkOverlap, checkWithinAvailability } from '../lib/availability.js';
 type BookingRow = {
   id: string;
   tenant_id: string;
-  resource_id: string;
+  service_id: string;
   client_name: string;
   client_email: string;
   start_at: Date;
@@ -21,7 +21,7 @@ function format(r: BookingRow) {
   return {
     id: r.id,
     tenantId: r.tenant_id,
-    resourceId: r.resource_id,
+    serviceId: r.service_id,
     clientName: r.client_name,
     clientEmail: r.client_email,
     startAt: r.start_at,
@@ -35,7 +35,7 @@ const ISO8601 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
 
 const createSchema = z
   .object({
-    resourceId: z.string().uuid(),
+    serviceId: z.string().uuid(),
     clientName: z.string().min(1),
     clientEmail: z.string().email(),
     startAt: z.string().regex(ISO8601),
@@ -63,7 +63,7 @@ const patchSchema = z
   );
 
 const SELECT_COLS =
-  'id, tenant_id, resource_id, client_name, client_email, start_at, end_at, status, created_at';
+  'id, tenant_id, service_id, client_name, client_email, start_at, end_at, status, created_at';
 
 export function bookingsRouter(pool: Pool): Router {
   const router = Router({ mergeParams: true });
@@ -77,7 +77,7 @@ export function bookingsRouter(pool: Pool): Router {
       return;
     }
 
-    const { from, to, resourceId, status } = req.query as Record<string, string | undefined>;
+    const { from, to, serviceId, status } = req.query as Record<string, string | undefined>;
 
     if (from && isNaN(Date.parse(from))) {
       res.status(400).json({ error: 'invalid_param', param: 'from' });
@@ -94,7 +94,7 @@ export function bookingsRouter(pool: Pool): Router {
 
     if (from) { conditions.push(`start_at >= $${i++}`); values.push(from); }
     if (to)   { conditions.push(`start_at <= $${i++}`); values.push(to); }
-    if (resourceId) { conditions.push(`resource_id = $${i++}`); values.push(resourceId); }
+    if (serviceId) { conditions.push(`service_id = $${i++}`); values.push(serviceId); }
     if (status === 'active') { conditions.push(`status != 'cancelled'`); }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -124,28 +124,28 @@ export function bookingsRouter(pool: Pool): Router {
       return;
     }
 
-    const { resourceId, clientName, clientEmail, startAt, endAt } = parsed.data;
+    const { serviceId, clientName, clientEmail, startAt, endAt } = parsed.data;
     const start = new Date(startAt);
     const end = new Date(endAt);
 
     const result = await withTenantContext(pool, tenantId, async (client) => {
-      const { rows: resourceRows } = await client.query(
-        'SELECT 1 FROM resources WHERE id = $1',
-        [resourceId],
+      const { rows: serviceRows } = await client.query(
+        'SELECT 1 FROM services WHERE id = $1',
+        [serviceId],
       );
-      if (resourceRows.length === 0) return 'not_found' as const;
+      if (serviceRows.length === 0) return 'not_found' as const;
 
-      if (!(await checkWithinAvailability(client, resourceId, start, end))) {
+      if (!(await checkWithinAvailability(client, serviceId, start, end))) {
         return 'outside_availability' as const;
       }
-      if (await checkOverlap(client, resourceId, start, end)) {
+      if (await checkOverlap(client, serviceId, start, end)) {
         return 'overlap' as const;
       }
 
       const { rows } = await client.query<BookingRow>(
-        `INSERT INTO bookings (tenant_id, resource_id, client_name, client_email, start_at, end_at, status)
+        `INSERT INTO bookings (tenant_id, service_id, client_name, client_email, start_at, end_at, status)
          VALUES ($1, $2, $3, $4, $5, $6, 'pending') RETURNING ${SELECT_COLS}`,
-        [tenantId, resourceId, clientName, clientEmail, start, end],
+        [tenantId, serviceId, clientName, clientEmail, start, end],
       );
       return rows[0];
     });
@@ -198,13 +198,13 @@ export function bookingsRouter(pool: Pool): Router {
 
       if (newStart >= newEnd) return 'invalid_times' as const;
 
-      const resourceId = cur.resource_id;
+      const serviceId = cur.service_id;
 
       if (patch.startAt || patch.endAt) {
-        if (!(await checkWithinAvailability(client, resourceId, newStart, newEnd))) {
+        if (!(await checkWithinAvailability(client, serviceId, newStart, newEnd))) {
           return 'outside_availability' as const;
         }
-        if (await checkOverlap(client, resourceId, newStart, newEnd, id)) {
+        if (await checkOverlap(client, serviceId, newStart, newEnd, id)) {
           return 'overlap' as const;
         }
       }

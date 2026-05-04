@@ -8,16 +8,16 @@
 - [x] Verify `bookings` table and RLS policy are in place (M1 migration)
 
 ### Phase 1 — Tests first (present to user before implementing)
-- [x] Integration test: GET /tenants/:id/bookings — list, date filter, resourceId filter, status filter
+- [x] Integration test: GET /tenants/:id/bookings — list, date filter, serviceId filter, status filter
 - [x] Integration test: POST /tenants/:id/bookings — happy path, overlap 409, outside-availability 409, 422
 - [x] Integration test: PATCH /tenants/:id/bookings/:id — cancel, reschedule, already-cancelled 409
-- [x] Integration test: GET /public/:slug/resources/:id/slots — returns correct free slots
+- [x] Integration test: GET /public/:slug/services/:id/slots — returns correct free slots
 - [x] Integration test: POST /public/:slug/bookings — happy path, overlap 409, outside-availability 409, rate-limit 429
 
 ### Phase 2 — Shared helpers
-- [x] `apps/api/src/lib/availability.ts` — `checkOverlap(client, resourceId, start, end, excludeId?)`
-- [x] `apps/api/src/lib/availability.ts` — `checkWithinAvailability(client, resourceId, start, end)`
-- [x] `apps/api/src/lib/availability.ts` — `generateSlots(client, resourceId, date, durationMinutes)`
+- [x] `apps/api/src/lib/availability.ts` — `checkOverlap(client, serviceId, start, end, excludeId?)`
+- [x] `apps/api/src/lib/availability.ts` — `checkWithinAvailability(client, serviceId, start, end)`
+- [x] `apps/api/src/lib/availability.ts` — `generateSlots(client, serviceId, date, durationMinutes)`
 
 ### Phase 3 — Owner routes
 - [x] `apps/api/src/routes/bookings.ts` — GET list with filters

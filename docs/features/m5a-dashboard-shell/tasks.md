@@ -16,7 +16,7 @@
 ### Phase 1 — Tests first (present to user before implementing)
 - [x] src/test/login.test.tsx — login happy path; invalid credentials error
 - [x] src/test/auth-guard.test.tsx — redirect to /login without token; redirect back after login
-- [x] src/test/resources.test.tsx — create, edit, delete resource; delete-with-bookings error
+- [x] src/test/services.test.tsx — create, edit, delete service; delete-with-bookings error
 - [x] src/test/availability.test.tsx — add window; overlap error; delete window
 
 ### Phase 2 — Core infrastructure
@@ -35,14 +35,14 @@
 ### Phase 4 — Login
 - [x] pages/LoginPage.tsx
 
-### Phase 5 — Resources
-- [x] hooks/useResources.ts, hooks/useResource.ts
-- [x] pages/resources/ResourceListPage.tsx (table, empty state, delete, nav)
-- [x] pages/resources/ResourceFormPage.tsx (create + edit)
+### Phase 5 — Services
+- [x] hooks/useServices.ts, hooks/useService.ts
+- [x] pages/services/ServiceListPage.tsx (table, empty state, delete, nav)
+- [x] pages/services/ServiceFormPage.tsx (create + edit)
 
 ### Phase 6 — Availability
 - [x] hooks/useAvailabilityRules.ts
-- [x] pages/resources/AvailabilityPage.tsx (weekly grid, inline add form, delete)
+- [x] pages/services/AvailabilityPage.tsx (weekly grid, inline add form, delete)
 
 ### Phase 7 — Verification
 - [x] All RTL tests green (`pnpm --filter web test`)
@@ -54,4 +54,4 @@
 - [x] availability.test.tsx delete test: move server.use() override to after initial render (test bug — override was before render so 09:00 never appeared)
 - [x] tsconfig.json: add types ["vite/client", "vitest/globals"] for import.meta.env and vi global
 - [x] Export AuthContextValue from AuthContext.tsx (TypeScript TS4058)
-- [x] ResourceListPage: replace Button+as=Link with styled Link element (invalid prop)
+- [x] ServiceListPage: replace Button+as=Link with styled Link element (invalid prop)

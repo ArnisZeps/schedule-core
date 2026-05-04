@@ -2,7 +2,7 @@
 
 ## Problem
 
-M3 delivered authentication (signup/login, JWT issuance, RLS enforcement via the `schedulecore_app` role and `withTenantContext` helper). M4 adds the tenant-scoped CRUD API that authenticated business owners use to manage their account: the tenant record itself, bookable resources, and weekly availability windows. This is the first milestone where `withTenantContext` is exercised outside of auth routes.
+M3 delivered authentication (signup/login, JWT issuance, RLS enforcement via the `schedulecore_app` role and `withTenantContext` helper). M4 adds the tenant-scoped CRUD API that authenticated business owners use to manage their account: the tenant record itself, bookable services, and weekly availability windows. This is the first milestone where `withTenantContext` is exercised outside of auth routes.
 
 Constraints:
 - Raw SQL, no ORM (ADR-004).
@@ -16,18 +16,18 @@ Constraints:
 | File | Responsibility |
 |------|----------------|
 | `apps/api/src/routes/tenants.ts` | Tenant CRUD handlers and router |
-| `apps/api/src/routes/resources.ts` | Resource CRUD handlers and router |
+| `apps/api/src/routes/services.ts` | Service CRUD handlers and router |
 | `apps/api/src/routes/availability-rules.ts` | Availability rule CRUD + overlap validation |
 | `apps/api/src/middleware/auth.ts` | JWT verification — reused from M3, no changes |
 | `apps/api/src/middleware/tenant-context.ts` | `withTenantContext` helper — reused from M3, no changes |
 
-No new migration. All tables (`tenants`, `resources`, `availability_rules`, `bookings`) and the `schedulecore_app` role are already in place from M1–M3.
+No new migration. All tables (`tenants`, `services`, `availability_rules`, `bookings`) and the `schedulecore_app` role are already in place from M1–M3.
 
 ## Contracts
 
 All routes require `Authorization: Bearer <token>`. The auth middleware sets `req.auth = { userId, tenantId }`.
 
-**Authorization rule for tenant-scoped routes:** `req.auth.tenantId` must equal the `:tenantId` path parameter. Return 403 on mismatch. Return 404 if the resource does not exist (do not leak existence across tenant boundaries).
+**Authorization rule for tenant-scoped routes:** `req.auth.tenantId` must equal the `:tenantId` path parameter. Return 403 on mismatch. Return 404 if the entity does not exist (do not leak existence across tenant boundaries).
 
 ---
 
@@ -75,11 +75,11 @@ All fields optional; at least one must be present.
 
 ---
 
-### Resources
+### Services
 
-All resource routes enforce: `req.auth.tenantId === :tenantId` → 403. Resource not found or belonging to another tenant → 404.
+All service routes enforce: `req.auth.tenantId === :tenantId` → 403. Service not found or belonging to another tenant → 404.
 
-#### `POST /tenants/:tenantId/resources`
+#### `POST /tenants/:tenantId/services`
 
 **Request**
 ```json
@@ -97,7 +97,7 @@ All resource routes enforce: `req.auth.tenantId === :tenantId` → 403. Resource
 
 ---
 
-#### `GET /tenants/:tenantId/resources`
+#### `GET /tenants/:tenantId/services`
 
 **Response 200**
 ```json
@@ -108,15 +108,15 @@ All resource routes enforce: `req.auth.tenantId === :tenantId` → 403. Resource
 
 ---
 
-#### `GET /tenants/:tenantId/resources/:id`
+#### `GET /tenants/:tenantId/services/:id`
 
-**Response 200** — single resource object.
+**Response 200** — single service object.
 
 **Errors** — `403`, `404`
 
 ---
 
-#### `PATCH /tenants/:tenantId/resources/:id`
+#### `PATCH /tenants/:tenantId/services/:id`
 All fields optional; at least one must be present. Pass `null` for `description` to clear it.
 
 **Request**
@@ -124,27 +124,27 @@ All fields optional; at least one must be present. Pass `null` for `description`
 { "name": "string?", "description": "string|null?" }
 ```
 
-**Response 200** — updated resource object.
+**Response 200** — updated service object.
 
 **Errors** — `403`, `404`, `422`
 
 ---
 
-#### `DELETE /tenants/:tenantId/resources/:id`
+#### `DELETE /tenants/:tenantId/services/:id`
 
 **Response 204** — no body. `availability_rules` cascade-delete automatically.
 
 **Errors**
 - `403`, `404`
-- `409` `{ "error": "has_bookings" }` — bookings reference this resource (`ON DELETE RESTRICT`)
+- `409` `{ "error": "has_bookings" }` — bookings reference this service (`ON DELETE RESTRICT`)
 
 ---
 
 ### Availability rules
 
-All availability rule routes enforce the same tenant authorization as resource routes. A rule whose parent resource belongs to another tenant returns 404.
+All availability rule routes enforce the same tenant authorization as service routes. A rule whose parent service belongs to another tenant returns 404.
 
-#### `POST /tenants/:tenantId/resources/:resourceId/availability-rules`
+#### `POST /tenants/:tenantId/services/:serviceId/availability-rules`
 
 **Request**
 ```json
@@ -157,7 +157,7 @@ All availability rule routes enforce the same tenant authorization as resource r
 {
   "id": "uuid",
   "tenantId": "uuid",
-  "resourceId": "uuid",
+  "serviceId": "uuid",
   "dayOfWeek": 0-6,
   "startTime": "HH:MM",
   "endTime": "HH:MM",
@@ -167,20 +167,20 @@ All availability rule routes enforce the same tenant authorization as resource r
 
 **Errors**
 - `403`, `404`
-- `409` `{ "error": "overlap" }` — overlaps an existing rule for the same resource + day
+- `409` `{ "error": "overlap" }` — overlaps an existing rule for the same service + day
 - `422` `{ "error": "validation_error", "details": ["string"] }` — e.g. `startTime >= endTime`
 
 ---
 
-#### `GET /tenants/:tenantId/resources/:resourceId/availability-rules`
+#### `GET /tenants/:tenantId/services/:serviceId/availability-rules`
 
 **Response 200** — array of rule objects.
 
-**Errors** — `403`, `404` (resource not found)
+**Errors** — `403`, `404` (service not found)
 
 ---
 
-#### `GET /tenants/:tenantId/resources/:resourceId/availability-rules/:id`
+#### `GET /tenants/:tenantId/services/:serviceId/availability-rules/:id`
 
 **Response 200** — single rule object.
 
@@ -188,7 +188,7 @@ All availability rule routes enforce the same tenant authorization as resource r
 
 ---
 
-#### `PATCH /tenants/:tenantId/resources/:resourceId/availability-rules/:id`
+#### `PATCH /tenants/:tenantId/services/:serviceId/availability-rules/:id`
 All fields optional; at least one must be present. Overlap check runs against the merged result, excluding the rule being updated.
 
 **Request**
@@ -202,7 +202,7 @@ All fields optional; at least one must be present. Overlap check runs against th
 
 ---
 
-#### `DELETE /tenants/:tenantId/resources/:resourceId/availability-rules/:id`
+#### `DELETE /tenants/:tenantId/services/:serviceId/availability-rules/:id`
 
 **Response 204** — no body.
 
@@ -217,7 +217,7 @@ Two intervals `[A, B)` and `[C, D)` overlap when `A < D AND C < B`.
 On create, check:
 ```sql
 SELECT 1 FROM availability_rules
-WHERE resource_id = $1
+WHERE service_id = $1
   AND day_of_week = $2
   AND start_time < $4
   AND end_time   > $3
@@ -229,13 +229,13 @@ If any row is returned, reject with 409 `overlap`.
 
 ## FK violation handling
 
-Both `tenants` and `resources` deletes can hit Postgres error code `23503` (foreign_key_violation) due to `ON DELETE RESTRICT` on `bookings`. Catch this error code and return 409 `has_bookings`.
+Both `tenants` and `services` deletes can hit Postgres error code `23503` (foreign_key_violation) due to `ON DELETE RESTRICT` on `bookings`. Catch this error code and return 409 `has_bookings`.
 
 Slug uniqueness violations produce Postgres error code `23505` (unique_violation) on the `tenants_slug_key` constraint. Catch and return 409 `slug_taken`.
 
 ## Rejected alternatives
 
-**Flat resource paths (`/resources/:id`):** Nesting under `/tenants/:tenantId/resources` makes the authorization boundary explicit in the URL and avoids a join to verify ownership before setting RLS context.
+**Flat service paths (`/services/:id`):** Nesting under `/tenants/:tenantId/services` makes the authorization boundary explicit in the URL and avoids a join to verify ownership before setting RLS context.
 
 **Pagination on list endpoints:** No requirement at MVP scale; bare arrays are sufficient. Add when needed.
 
@@ -247,7 +247,7 @@ Slug uniqueness violations produce Postgres error code `23505` (unique_violation
 
 - No pagination — lists return all rows for the tenant.
 - No filtering or sorting on list endpoints.
-- No bulk operations — each resource/rule is managed individually.
+- No bulk operations — each service/rule is managed individually.
 
 ## Out of scope
 
@@ -259,8 +259,8 @@ Slug uniqueness violations produce Postgres error code `23505` (unique_violation
 
 ## Edge cases
 
-- Deleting a tenant that has resources but no bookings: `resources` cascade-delete; tenant deletes successfully.
+- Deleting a tenant that has services but no bookings: `services` cascade-delete; tenant deletes successfully.
 - Updating a slug to its current value: Postgres does not raise a unique violation for a self-update (same row); no special handling needed.
 - Availability rule update changing only `dayOfWeek` (not times): overlap check still runs on the merged result to catch conflicts on the new day.
-- Resource belonging to another tenant queried via the correct tenant path: return 404, not 403, to avoid leaking existence.
+- Service belonging to another tenant queried via the correct tenant path: return 404, not 403, to avoid leaking existence.
 - `PATCH` with an empty body: return 422 with `details: ["at_least_one_field_required"]`.

@@ -30,11 +30,11 @@
 
 ### Phase 3 — Forms & Inputs
 - [x] LoginPage.tsx — Card wrapper, RHF + zod, per-field validation
-- [x] ResourceFormPage.tsx — Card wrapper, RHF + zod, toast on save
+- [x] ServiceFormPage.tsx — Card wrapper, RHF + zod, toast on save
 - [x] AvailabilityPage.tsx — shadcn Select + Input, toast on add/delete
 
 ### Phase 4 — Tables & Lists
-- [x] ResourceListPage.tsx — shadcn Table, AlertDialog delete, EmptyState, LoadingState, DropdownMenu row actions, toast on delete
+- [x] ServiceListPage.tsx — shadcn Table, AlertDialog delete, EmptyState, LoadingState, DropdownMenu row actions, toast on delete
 
 ### Phase 5 — Feedback & Toasts
 - [x] main.tsx — add <Toaster /> (sonner)
@@ -43,4 +43,4 @@
 ### Phase 6 — Verification
 - [x] All RTL tests green (pnpm --filter web test) — fix any broken by component text/role changes
 - [x] pnpm typecheck passes
-- [x] Manual: login, create/edit/delete resource, availability, mobile sidebar, toasts visible
+- [x] Manual: login, create/edit/delete service, availability, mobile sidebar, toasts visible

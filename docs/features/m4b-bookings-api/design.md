@@ -2,7 +2,7 @@
 
 ## Problem
 
-M4 delivered resource and availability management but deferred all booking operations. M5b
+M4 delivered service and availability management but deferred all booking operations. M5b
 (calendar view), M6 (manual appointment entry), and M7 (booking web widget) all depend on a
 booking data layer that doesn't exist yet. This milestone delivers the full bookings API in one
 place: owner-side authenticated endpoints and the public client-facing endpoint, so all subsequent
@@ -42,7 +42,7 @@ All require `Authorization: Bearer <token>`. The JWT's `tenantId` must match `:t
 |-------|------|----------|-------------|
 | from | ISO 8601 | no | Lower bound on `start_at` (inclusive) |
 | to | ISO 8601 | no | Upper bound on `start_at` (inclusive) |
-| resourceId | UUID | no | Filter to one resource |
+| serviceId | UUID | no | Filter to one service |
 | status | `active` \| `cancelled` | no | Omit = all statuses |
 
 **Response 200**
@@ -50,7 +50,7 @@ All require `Authorization: Bearer <token>`. The JWT's `tenantId` must match `:t
 [{
   "id": "uuid",
   "tenantId": "uuid",
-  "resourceId": "uuid",
+  "serviceId": "uuid",
   "clientName": "string",
   "clientEmail": "string",
   "startAt": "iso8601",
@@ -69,7 +69,7 @@ All require `Authorization: Bearer <token>`. The JWT's `tenantId` must match `:t
 **Request**
 ```json
 {
-  "resourceId": "uuid",
+  "serviceId": "uuid",
   "clientName": "string",
   "clientEmail": "string",
   "startAt": "iso8601",
@@ -79,7 +79,7 @@ All require `Authorization: Bearer <token>`. The JWT's `tenantId` must match `:t
 
 **Response 201** — booking object (same shape as list item).
 
-**Errors** — `403`, `404` resource not found, `409` overlap or outside-availability, `422` validation
+**Errors** — `403`, `404` service not found, `409` overlap or outside-availability, `422` validation
 
 ---
 
@@ -108,9 +108,9 @@ No auth required. Tenant is resolved by slug.
 
 ---
 
-#### `GET /public/:tenantSlug/resources/:resourceId/slots`
+#### `GET /public/:tenantSlug/services/:serviceId/slots`
 
-Returns available booking slots for a resource on a given date.
+Returns available booking slots for a service on a given date.
 
 **Query params**: `date=YYYY-MM-DD` (required), `duration=minutes` (required).
 
@@ -128,7 +128,7 @@ Returns available booking slots for a resource on a given date.
 **Request**
 ```json
 {
-  "resourceId": "uuid",
+  "serviceId": "uuid",
   "clientName": "string",
   "clientEmail": "string",
   "startAt": "iso8601",
@@ -147,13 +147,13 @@ explicitly into queries.
 
 ## Shared helpers — `apps/api/src/lib/availability.ts`
 
-### `checkOverlap(client, resourceId, start, end, excludeId?)`
+### `checkOverlap(client, serviceId, start, end, excludeId?)`
 
 Two bookings overlap when `A.start_at < B.end_at AND B.start_at < A.end_at`.
 
 ```sql
 SELECT 1 FROM bookings
-WHERE resource_id = $1
+WHERE service_id = $1
   AND status != 'cancelled'
   AND start_at < $3
   AND end_at   > $2
@@ -162,13 +162,13 @@ WHERE resource_id = $1
 
 Returns 409 `{ "error": "overlap" }` if any row found.
 
-### `checkWithinAvailability(client, resourceId, start, end)`
+### `checkWithinAvailability(client, serviceId, start, end)`
 
 Validates the slot falls entirely within an availability window on the same day of the week.
 
 ```sql
 SELECT 1 FROM availability_rules
-WHERE resource_id = $1
+WHERE service_id = $1
   AND day_of_week = $2
   AND start_time <= $3::time
   AND end_time   >= $4::time
@@ -177,9 +177,9 @@ WHERE resource_id = $1
 `day_of_week` is extracted from `start_at` in UTC (0 = Sunday). Returns 409
 `{ "error": "outside_availability" }` if no row found.
 
-### `generateSlots(client, resourceId, date, durationMinutes)`
+### `generateSlots(client, serviceId, date, durationMinutes)`
 
-Walks the availability windows for the resource on `date`'s day of week, subdivides into
+Walks the availability windows for the service on `date`'s day of week, subdivides into
 `durationMinutes` chunks, subtracts existing non-cancelled bookings, returns free slots.
 
 ---
@@ -221,6 +221,6 @@ URLs). Exposing UUIDs in public routes leaks internal IDs unnecessarily.
 | Reschedule to same slot | Overlap check excludes self (`excludeId`); passes if no other conflict |
 | Cancel already-cancelled booking | 409 `{ "error": "already_cancelled" }` |
 | `from` without `to` (or vice versa) | Accepted — open-ended range query |
-| Resource belongs to a different tenant | 404 (not 403) — avoids leaking existence across tenants |
+| Service belongs to a different tenant | 404 (not 403) — avoids leaking existence across tenants |
 | Booking spans midnight | `day_of_week` uses day of `start_at`; availability rule must cover full span |
-| Public booking: slug not found | 404 — do not distinguish slug-not-found from resource-not-found |
+| Public booking: slug not found | 404 — do not distinguish slug-not-found from service-not-found |

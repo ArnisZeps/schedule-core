@@ -4,8 +4,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod/v3'
 import { toast } from 'sonner'
-import { useResource } from '@/hooks/useResource'
-import { useCreateResource, useUpdateResource } from '@/hooks/useResources'
+import { useService } from '@/hooks/useService'
+import { useCreateService, useUpdateService } from '@/hooks/useServices'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -28,14 +28,14 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
-export function ResourceFormPage() {
-  const { resourceId } = useParams()
-  const isEdit = !!resourceId
+export function ServiceFormPage() {
+  const { serviceId } = useParams()
+  const isEdit = !!serviceId
   const navigate = useNavigate()
 
-  const { data: resource } = useResource(resourceId ?? '')
-  const createMutation = useCreateResource()
-  const updateMutation = useUpdateResource(resourceId ?? '')
+  const { data: service } = useService(serviceId ?? '')
+  const createMutation = useCreateService()
+  const updateMutation = useUpdateService(serviceId ?? '')
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -43,10 +43,10 @@ export function ResourceFormPage() {
   })
 
   useEffect(() => {
-    if (resource) {
-      form.reset({ name: resource.name, description: resource.description ?? '' })
+    if (service) {
+      form.reset({ name: service.name, description: service.description ?? '' })
     }
-  }, [resource, form])
+  }, [service, form])
 
   const isPending = createMutation.isPending || updateMutation.isPending
 
@@ -57,16 +57,16 @@ export function ResourceFormPage() {
       } else {
         await createMutation.mutateAsync(values)
       }
-      toast.success(isEdit ? 'Resource updated' : 'Resource created')
-      navigate('/resources')
+      toast.success(isEdit ? 'Service updated' : 'Service created')
+      navigate('/services')
     } catch {
-      toast.error('Failed to save resource')
+      toast.error('Failed to save service')
     }
   }
 
   return (
     <PageShell className="max-w-lg">
-      <PageHeader title={isEdit ? 'Edit Resource' : 'New Resource'} />
+      <PageHeader title={isEdit ? 'Edit Service' : 'New Service'} />
       <Card>
         <CardContent className="pt-6">
           <Form {...form}>
@@ -78,7 +78,7 @@ export function ResourceFormPage() {
                   <FormItem>
                     <FormLabel>Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. Chair 1" {...field} />
+                      <Input placeholder="e.g. Haircut" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -104,7 +104,7 @@ export function ResourceFormPage() {
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => navigate('/resources')}
+                  onClick={() => navigate('/services')}
                 >
                   Cancel
                 </Button>
@@ -116,7 +116,7 @@ export function ResourceFormPage() {
       {isEdit && (
         <div className="mt-4">
           <Link
-            to={`/resources/${resourceId}/availability`}
+            to={`/services/${serviceId}/availability`}
             className="text-sm text-primary hover:underline"
           >
             Manage availability
