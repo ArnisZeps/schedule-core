@@ -18,7 +18,7 @@ interface CalendarToolbarProps {
 
 export function CalendarToolbar({ services, onNewAppointment }: CalendarToolbarProps) {
   const [params, setParams] = useSearchParams()
-  const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
+  const isMobile = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches
   const view = (params.get('view') || (isMobile ? 'day' : 'week')) as 'week' | 'day' | 'list'
   const dateStr = params.get('date') || format(new Date(), 'yyyy-MM-dd')
   const serviceId = params.get('serviceId') || undefined
