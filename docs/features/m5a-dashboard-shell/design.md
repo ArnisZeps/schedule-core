@@ -2,7 +2,7 @@
 
 ## Problem
 
-M4 delivered a fully working REST API (auth, resources, availability rules) with no UI. M5a adds the
+M4 delivered a fully working REST API (auth, services, availability rules) with no UI. M5a adds the
 authenticated web shell that business owners use to manage their account — the foundation all subsequent
 owner-facing features build on. The UI must be responsive (phones are primary for small businesses) and
 establish component and data-fetching patterns that the rest of the dashboard can follow without rework.
@@ -28,27 +28,27 @@ establish component and data-fetching patterns that the rest of the dashboard ca
 | `apps/web/src/context/AuthContext.tsx` | Reads/writes JWT in `localStorage`; decodes payload (no sig verify — API enforces); exposes `{ user, token, login, logout }` |
 | `apps/web/src/components/RequireAuth.tsx` | Reads `AuthContext.user`; if null or token expired, `<Navigate to="/login" state={{ next: location }} />` |
 | `apps/web/src/components/AppLayout.tsx` | Responsive shell: sidebar + `<Outlet>`; header with hamburger on mobile |
-| `apps/web/src/components/Sidebar.tsx` | Nav links (Resources); collapses to slide-over on mobile |
+| `apps/web/src/components/Sidebar.tsx` | Nav links (Services); collapses to slide-over on mobile |
 | `apps/web/src/components/ui/Button.tsx` | Tailwind button with `variant` prop (primary / secondary / danger) |
 | `apps/web/src/components/ui/Input.tsx` | Labelled input with inline error display |
 | `apps/web/src/hooks/useAuth.ts` | `useContext(AuthContext)` with null-guard throw |
-| `apps/web/src/hooks/useResources.ts` | `useQuery` for list; `useMutation` for create / update / delete |
-| `apps/web/src/hooks/useResource.ts` | `useQuery` for single resource by id |
+| `apps/web/src/hooks/useServices.ts` | `useQuery` for list; `useMutation` for create / update / delete |
+| `apps/web/src/hooks/useService.ts` | `useQuery` for single service by id |
 | `apps/web/src/hooks/useAvailabilityRules.ts` | `useQuery` for list; `useMutation` for create / delete |
 | `apps/web/src/pages/LoginPage.tsx` | Email + password form → `POST /auth/login` → `login(token)` → redirect |
-| `apps/web/src/pages/resources/ResourceListPage.tsx` | Table: name, description, edit link, delete action, availability link |
-| `apps/web/src/pages/resources/ResourceFormPage.tsx` | Create (no `:resourceId`) and edit (`:resourceId` present) in one component |
-| `apps/web/src/pages/resources/AvailabilityPage.tsx` | Weekly grid; inline add-window form; delete per row |
+| `apps/web/src/pages/services/ServiceListPage.tsx` | Table: name, description, edit link, delete action, availability link |
+| `apps/web/src/pages/services/ServiceFormPage.tsx` | Create (no `:serviceId`) and edit (`:serviceId` present) in one component |
+| `apps/web/src/pages/services/AvailabilityPage.tsx` | Weekly grid; inline add-window form; delete per row |
 
 ## Routes
 
 ```
 /login                                → LoginPage (public)
-/                                     → <Navigate to="/resources" />
-/resources                            → RequireAuth → AppLayout → ResourceListPage
-/resources/new                        → RequireAuth → AppLayout → ResourceFormPage (create)
-/resources/:resourceId                → RequireAuth → AppLayout → ResourceFormPage (edit)
-/resources/:resourceId/availability   → RequireAuth → AppLayout → AvailabilityPage
+/                                     → <Navigate to="/services" />
+/services                             → RequireAuth → AppLayout → ServiceListPage
+/services/new                         → RequireAuth → AppLayout → ServiceFormPage (create)
+/services/:serviceId                  → RequireAuth → AppLayout → ServiceFormPage (edit)
+/services/:serviceId/availability     → RequireAuth → AppLayout → AvailabilityPage
 *                                     → 404 page
 ```
 
@@ -68,14 +68,14 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T>
 
 // API calls used
 // POST   /auth/login                                              → { token }
-// GET    /tenants/:id/resources                                   → Resource[]
-// POST   /tenants/:id/resources                                   → Resource
-// GET    /tenants/:id/resources/:resourceId                       → Resource
-// PATCH  /tenants/:id/resources/:resourceId                       → Resource
-// DELETE /tenants/:id/resources/:resourceId                       → 204
-// GET    /tenants/:id/resources/:resourceId/availability-rules    → Rule[]
-// POST   /tenants/:id/resources/:resourceId/availability-rules    → Rule
-// DELETE /tenants/:id/resources/:resourceId/availability-rules/:ruleId → 204
+// GET    /tenants/:id/services                                    → Service[]
+// POST   /tenants/:id/services                                    → Service
+// GET    /tenants/:id/services/:serviceId                         → Service
+// PATCH  /tenants/:id/services/:serviceId                         → Service
+// DELETE /tenants/:id/services/:serviceId                         → 204
+// GET    /tenants/:id/services/:serviceId/availability-rules      → Rule[]
+// POST   /tenants/:id/services/:serviceId/availability-rules      → Rule
+// DELETE /tenants/:id/services/:serviceId/availability-rules/:ruleId → 204
 ```
 
 ## Tailwind setup
@@ -117,8 +117,8 @@ Three config files added to `apps/web/`:
 |----------|----------|
 | Token expires mid-session | `apiFetch` throws `ApiError(401)` → global `onError` calls `logout()` + redirects to `/login` |
 | Availability rule overlap | API returns 409; `AvailabilityPage` shows server message inline |
-| Delete resource with bookings | API returns 409; `ResourceListPage` shows server message inline |
+| Delete service with bookings | API returns 409; `ServiceListPage` shows server message inline |
 | Submit while mutation pending | Submit button disabled while `isPending` is true |
-| Empty resource list | "No resources yet — add one" empty state with CTA |
+| Empty service list | "No services yet — add one" empty state with CTA |
 | Mobile navigation | Sidebar hidden; hamburger in header toggles slide-over overlay |
 | Back navigation after delete | TanStack Query invalidates the list query; list re-fetches on focus |

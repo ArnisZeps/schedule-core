@@ -26,7 +26,7 @@ describe('Availability rules', () => {
   })
 
   it('shows existing time windows in the weekly grid', async () => {
-    renderAt('/resources/res-1/availability')
+    renderAt('/services/res-1/availability')
 
     await waitFor(() => {
       expect(screen.getByText('09:00')).toBeInTheDocument()
@@ -39,16 +39,16 @@ describe('Availability rules', () => {
 
     server.use(
       http.get(
-        `http://localhost:3001/tenants/${TENANT_ID}/resources/res-1/availability-rules`,
+        `http://localhost:3001/tenants/${TENANT_ID}/services/res-1/availability-rules`,
         () =>
           HttpResponse.json([
-            { id: 'rule-1', resourceId: 'res-1', dayOfWeek: 0, startTime: '09:00', endTime: '17:00' },
-            { id: 'rule-new', resourceId: 'res-1', dayOfWeek: 2, startTime: '10:00', endTime: '18:00' },
+            { id: 'rule-1', serviceId: 'res-1', dayOfWeek: 0, startTime: '09:00', endTime: '17:00' },
+            { id: 'rule-new', serviceId: 'res-1', dayOfWeek: 2, startTime: '10:00', endTime: '18:00' },
           ]),
       ),
     )
 
-    renderAt('/resources/res-1/availability')
+    renderAt('/services/res-1/availability')
     await waitFor(() => screen.getByText('09:00'))
 
     // Open the day Select, pick Tuesday (index 2)
@@ -69,12 +69,12 @@ describe('Availability rules', () => {
     const user = userEvent.setup()
     server.use(
       http.post(
-        `http://localhost:3001/tenants/${TENANT_ID}/resources/res-1/availability-rules`,
+        `http://localhost:3001/tenants/${TENANT_ID}/services/res-1/availability-rules`,
         () => HttpResponse.json({ message: 'Overlapping availability window' }, { status: 409 }),
       ),
     )
 
-    renderAt('/resources/res-1/availability')
+    renderAt('/services/res-1/availability')
     await waitFor(() => screen.getByText('09:00'))
 
     await user.click(screen.getByRole('combobox', { name: /day/i }))
@@ -92,12 +92,12 @@ describe('Availability rules', () => {
   it('delete removes rule from grid', async () => {
     const user = userEvent.setup()
 
-    renderAt('/resources/res-1/availability')
+    renderAt('/services/res-1/availability')
     await waitFor(() => screen.getByText('09:00'))
 
     server.use(
       http.get(
-        `http://localhost:3001/tenants/${TENANT_ID}/resources/res-1/availability-rules`,
+        `http://localhost:3001/tenants/${TENANT_ID}/services/res-1/availability-rules`,
         () => HttpResponse.json([]),
       ),
     )

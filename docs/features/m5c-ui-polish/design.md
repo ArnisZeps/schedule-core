@@ -52,13 +52,13 @@ Avatar, DropdownMenu, Sonner (Toaster), Form (wraps react-hook-form)
 | `src/components/AppLayout.tsx` | Use shadcn layout; breadcrumb wired to route |
 | `src/components/Sidebar.tsx` | Lucide icons; user email + avatar at bottom |
 | `src/pages/LoginPage.tsx` | Card wrapper; RHF + zod; per-field validation |
-| `src/pages/resources/ResourceListPage.tsx` | shadcn Table; AlertDialog delete; EmptyState; LoadingState; DropdownMenu row actions; toast on delete |
-| `src/pages/resources/ResourceFormPage.tsx` | Card wrapper; RHF + zod; toast on save |
-| `src/pages/resources/AvailabilityPage.tsx` | shadcn Select + Input; toast on add/delete |
+| `src/pages/services/ServiceListPage.tsx` | shadcn Table; AlertDialog delete; EmptyState; LoadingState; DropdownMenu row actions; toast on delete |
+| `src/pages/services/ServiceFormPage.tsx` | Card wrapper; RHF + zod; toast on save |
+| `src/pages/services/AvailabilityPage.tsx` | shadcn Select + Input; toast on add/delete |
 
 ## Contracts
 
-No API or data model changes. Pure UI layer refactor. Existing hooks (useResources,
+No API or data model changes. Pure UI layer refactor. Existing hooks (useServices,
 useAvailabilityRules, etc.) are unchanged. toast() calls are fire-and-forget side effects.
 
 ## Rejected alternatives
@@ -90,5 +90,5 @@ useAvailabilityRules, etc.) are unchanged. toast() calls are fire-and-forget sid
 - EmptyState CTA link must be a router `<Link>`, not a button, to preserve navigation semantics.
 - AlertDialog must manage its own open state locally to avoid lifting state into the page.
 - sonner Toaster must be rendered outside the router to survive route transitions.
-- Breadcrumb on `/resources/new` should show "Resources / New"; on `/resources/:id` should show
-  "Resources / Edit" (not the resource name, which requires an extra fetch).
+- Breadcrumb on `/services/new` should show "Services / New"; on `/services/:id` should show
+  "Services / Edit" (not the service name, which requires an extra fetch).

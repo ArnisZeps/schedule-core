@@ -14,8 +14,8 @@ ScheduleCore serves multiple independent businesses (tenants). Every tenant's da
 
 Use **row-level multi-tenancy**:
 
-- `tenant_id UUID NOT NULL` on every tenant-scoped table (`resources`, `availability_rules`, `bookings`).
-- Postgres **Row Level Security (RLS)** enabled on all three tables as a defence-in-depth layer.
+- `tenant_id UUID NOT NULL` on every tenant-scoped table (`services`, `availability_rules`, `bookings`).
+- Postgres **Row Level Security (RLS)** enabled on all three tables (`services`, `availability_rules`, `bookings`) as a defence-in-depth layer.
 - RLS policy reads `current_setting('app.current_tenant_id', true)::uuid`. The `true` flag returns NULL (not an error) when the setting is absent — meaning zero rows are visible until the application explicitly sets the context.
 - The `tenants` table itself has no RLS — it is platform-level; access is controlled by the auth layer.
 
@@ -30,4 +30,4 @@ Schema-level was rejected because:
 - Full RLS enforcement requires a **non-owner application role** (table owners bypass RLS by default). Creating this role and granting minimal privileges is deferred to M3 (tenant auth).
 - Until M3, the database owner role is used in development. RLS policies are in place but not enforced against the owner. Tests document this gap.
 - `FORCE ROW LEVEL SECURITY` on tables will be evaluated in M3 to enforce policies even for the owner role in staging/production.
-- `availability_rules` carries a denormalised `tenant_id` (in addition to `resource_id`) to allow RLS filtering without a join.
+- `availability_rules` carries a denormalised `tenant_id` (in addition to `service_id`) to allow RLS filtering without a join.

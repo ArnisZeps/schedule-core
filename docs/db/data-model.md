@@ -37,9 +37,9 @@ Multiple users per tenant are supported. Signup creates the first user. Adding f
 
 ---
 
-## resources
+## services
 
-A bookable entity within a tenant: a staff member, a chair, a room, etc. Tenants define their own resources via the admin dashboard.
+A bookable service within a tenant: a haircut, consultation, massage, etc. Tenants define their own services via the admin dashboard.
 
 | Column | Type | Constraints |
 |--------|------|-------------|
@@ -55,13 +55,13 @@ A bookable entity within a tenant: a staff member, a chair, a room, etc. Tenants
 
 ## availability_rules
 
-Weekly repeating schedule for a resource. Each row defines one time window on one day of the week. Tenants configure these via the admin dashboard. Exceptions (blocked days, holidays) are out of scope for M1.
+Weekly repeating schedule for a service. Each row defines one time window on one day of the week. Tenants configure these via the admin dashboard. Exceptions (blocked days, holidays) are out of scope for M1.
 
 | Column | Type | Constraints |
 |--------|------|-------------|
 | id | UUID | PK |
 | tenant_id | UUID | NOT NULL, FK → tenants(id) ON DELETE CASCADE — denormalised for RLS |
-| resource_id | UUID | NOT NULL, FK → resources(id) ON DELETE CASCADE |
+| service_id | UUID | NOT NULL, FK → services(id) ON DELETE CASCADE |
 | day_of_week | SMALLINT | NOT NULL, CHECK (0–6), 0 = Sunday |
 | start_time | TIME | NOT NULL |
 | end_time | TIME | NOT NULL |
@@ -69,7 +69,7 @@ Weekly repeating schedule for a resource. Each row defines one time window on on
 
 **Constraints:** `start_time < end_time`
 
-**Indexes:** `(resource_id)`, `(tenant_id)`
+**Indexes:** `(service_id)`, `(tenant_id)`
 
 **Note:** No overlap constraint between rules on the same day (two rules for the same slot are not prevented). Business logic enforcement deferred to M4.
 
@@ -77,13 +77,13 @@ Weekly repeating schedule for a resource. Each row defines one time window on on
 
 ## bookings
 
-An appointment made by a client for a specific resource. Duration is encoded as `start_at`/`end_at`; service types are not modelled at platform level — tenants define their own service catalogue via the admin dashboard.
+An appointment made by a client for a specific service. Duration is encoded as `start_at`/`end_at`.
 
 | Column | Type | Constraints |
 |--------|------|-------------|
 | id | UUID | PK |
 | tenant_id | UUID | NOT NULL, FK → tenants(id) ON DELETE RESTRICT |
-| resource_id | UUID | NOT NULL, FK → resources(id) ON DELETE RESTRICT |
+| service_id | UUID | NOT NULL, FK → services(id) ON DELETE RESTRICT |
 | client_name | TEXT | NOT NULL |
 | client_email | TEXT | NOT NULL |
 | start_at | TIMESTAMPTZ | NOT NULL |
@@ -93,15 +93,15 @@ An appointment made by a client for a specific resource. Duration is encoded as 
 
 **Constraints:** `start_at < end_at`
 
-`ON DELETE RESTRICT` on both FKs — tenants and resources cannot be deleted while bookings exist (preserve booking history).
+`ON DELETE RESTRICT` on both FKs — tenants and services cannot be deleted while bookings exist (preserve booking history).
 
-**Indexes:** `(tenant_id)`, `(resource_id)`, `(tenant_id, start_at, end_at)` — the composite index supports overlap queries during booking.
+**Indexes:** `(tenant_id)`, `(service_id)`, `(tenant_id, start_at, end_at)` — the composite index supports overlap queries during booking.
 
 ---
 
 ## RLS Policies
 
-RLS is enabled on `resources`, `availability_rules`, and `bookings`. All three use the same policy shape:
+RLS is enabled on `services`, `availability_rules`, and `bookings`. All three use the same policy shape:
 
 ```sql
 USING     (tenant_id = current_setting('app.current_tenant_id', true)::uuid)

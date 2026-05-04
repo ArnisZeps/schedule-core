@@ -27,7 +27,7 @@ async function makeTenant(name: string, slug: string): Promise<{ tenantId: strin
 beforeAll(async () => {
   process.env.JWT_SECRET = 'a'.repeat(32);
   pool = createDb();
-  await pool.query('TRUNCATE bookings, availability_rules, resources, users, tenants CASCADE');
+  await pool.query('TRUNCATE bookings, availability_rules, services, users, tenants CASCADE');
 
   const res1 = await request(app).post('/auth/signup').send({
     email: 'tenant-owner@example.com',
@@ -48,7 +48,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pool.query('TRUNCATE bookings, availability_rules, resources, users, tenants CASCADE');
+  await pool.query('TRUNCATE bookings, availability_rules, services, users, tenants CASCADE');
   await pool.end();
   delete process.env.JWT_SECRET;
 });
@@ -192,11 +192,11 @@ describe('DELETE /tenants/:id', () => {
 
     await withTenantContext(pool, blockedId, async (client) => {
       const { rows } = await client.query<{ id: string }>(
-        "INSERT INTO resources (tenant_id, name) VALUES ($1, 'Chair') RETURNING id",
+        "INSERT INTO services (tenant_id, name) VALUES ($1, 'Chair') RETURNING id",
         [blockedId],
       );
       await client.query(
-        `INSERT INTO bookings (tenant_id, resource_id, client_name, client_email, start_at, end_at)
+        `INSERT INTO bookings (tenant_id, service_id, client_name, client_email, start_at, end_at)
          VALUES ($1, $2, 'Client', 'c@c.com', NOW() + INTERVAL '1 hour', NOW() + INTERVAL '2 hours')`,
         [blockedId, rows[0].id],
       );

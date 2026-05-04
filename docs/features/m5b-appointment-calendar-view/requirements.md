@@ -6,7 +6,7 @@
 - As a business owner, I want to switch to a single-day view so that I can see detailed time slots for one day.
 - As a business owner, I want a list view of upcoming appointments so that I can scan them in tabular format.
 - As a business owner, I want to navigate between weeks and days so that I can browse past and future bookings.
-- As a business owner, I want to filter appointments by resource so that I can focus on a specific staff member or room.
+- As a business owner, I want to filter appointments by service so that I can focus on a specific service.
 - As a business owner, I want to click an appointment to see its details so that I can review client information and status.
 - As a business owner, I want to cancel an appointment from the detail dialog so that I can remove it from the schedule.
 - As a business owner, I want to reschedule an appointment from the detail dialog so that I can move it to a new time.
@@ -19,8 +19,8 @@
 - [ ] "Today" button navigates back to the current week (or day in day view).
 - [ ] Prev/next arrows shift by one week in week view, one day in day view.
 - [ ] View toggle switches between Week, Day, and List.
-- [ ] Resource dropdown lists all tenant resources; "All resources" is the default; selecting one filters the active view.
-- [ ] Active view, current date, and selected resource are reflected in URL search params (`view`, `date`, `resourceId`).
+- [ ] Service dropdown lists all tenant services; "All services" is the default; selecting one filters the active view.
+- [ ] Active view, current date, and selected service are reflected in URL search params (`view`, `date`, `serviceId`).
 
 ### Week view
 - [ ] Displays Mon–Sun columns with day-of-week + date labels.
@@ -39,14 +39,14 @@
 - [ ] Column header shows the full date.
 
 ### List view
-- [ ] Renders a table with columns: Date, Time, Client, Resource, Status.
+- [ ] Renders a table with columns: Date, Time, Client, Service, Status.
 - [ ] Fetches all upcoming bookings from today forward (no upper bound).
 - [ ] Status rendered as a shadcn Badge: amber = pending, blue = confirmed, muted = cancelled.
 - [ ] Clicking a row opens the detail dialog.
 - [ ] Shows "No upcoming appointments" empty state when the table is empty.
 
 ### Appointment detail dialog
-- [ ] Shows: client name, email, resource name, date, time range, status Badge.
+- [ ] Shows: client name, email, service name, date, time range, status Badge.
 - [ ] Cancel button is visible for non-cancelled appointments; pressing it opens an AlertDialog for confirmation.
 - [ ] Confirming cancellation sends `PATCH /tenants/:tenantId/bookings/:id` with `{ status: "cancelled" }`.
 - [ ] Reschedule section exposes `datetime-local` inputs for new start and end; submitting sends `PATCH` with `{ startAt, endAt }`.

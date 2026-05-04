@@ -38,11 +38,11 @@ ADR-005 deferred creating a non-owner role to M3. This milestone delivers it.
 
 - Role name: `schedulecore_app`.
 - Granted: `SELECT`, `INSERT`, `UPDATE`, `DELETE` on `tenants`, `users`,
-  `resources`, `availability_rules`, `bookings`, `schema_migrations`.
+  `services`, `availability_rules`, `bookings`, `schema_migrations`.
 - Granted: `USAGE` on all sequences.
 - The API connects as `schedulecore_app` in staging and production
   (`DATABASE_URL` points to a connection string for this role).
-- `FORCE ROW LEVEL SECURITY` is applied to `resources`, `availability_rules`,
+- `FORCE ROW LEVEL SECURITY` is applied to `services`, `availability_rules`,
   and `bookings` so the owner role also cannot bypass RLS.
 - The `tenants` and `users` tables have no RLS (platform-level; access control
   is at the application layer).

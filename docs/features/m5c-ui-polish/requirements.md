@@ -12,7 +12,7 @@
 
 - [ ] All pages use a consistent layout structure (PageShell, PageHeader, PageContent)
 - [ ] Design tokens (colors, radius, shadows) are defined as CSS variables — no hardcoded Tailwind color classes in page components
-- [ ] Login, resource, and availability forms use react-hook-form + zod with per-field validation messages shown on blur
+- [ ] Login, service, and availability forms use react-hook-form + zod with per-field validation messages shown on blur
 - [ ] Delete confirmation uses a modal AlertDialog, not window.confirm
 - [ ] Success and error outcomes show a toast notification via sonner
 - [ ] Loading states show skeleton rows, not plain "Loading…" text

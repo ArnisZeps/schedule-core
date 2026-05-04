@@ -10,11 +10,11 @@ let pool: Db;
 beforeAll(async () => {
   process.env.JWT_SECRET = 'a'.repeat(32);
   pool = createDb();
-  await pool.query('TRUNCATE bookings, availability_rules, resources, users, tenants CASCADE');
+  await pool.query('TRUNCATE bookings, availability_rules, services, users, tenants CASCADE');
 });
 
 afterAll(async () => {
-  await pool.query('TRUNCATE bookings, availability_rules, resources, users, tenants CASCADE');
+  await pool.query('TRUNCATE bookings, availability_rules, services, users, tenants CASCADE');
   await pool.end();
   delete process.env.JWT_SECRET;
 });

@@ -3,9 +3,9 @@ import { AuthProvider } from './context/AuthContext'
 import { RequireAuth } from './components/RequireAuth'
 import { AppLayout } from './components/AppLayout'
 import { LoginPage } from './pages/LoginPage'
-import { ResourceListPage } from './pages/resources/ResourceListPage'
-import { ResourceFormPage } from './pages/resources/ResourceFormPage'
-import { AvailabilityPage } from './pages/resources/AvailabilityPage'
+import { ServiceListPage } from './pages/services/ServiceListPage'
+import { ServiceFormPage } from './pages/services/ServiceFormPage'
+import { AvailabilityPage } from './pages/services/AvailabilityPage'
 import { AppointmentsPage } from './pages/appointments/AppointmentsPage'
 import { Outlet } from 'react-router-dom'
 
@@ -22,7 +22,7 @@ export const routes = [
     element: <AuthLayout />,
     children: [
       { path: '/login', element: <LoginPage /> },
-      { path: '/', element: <Navigate to="/resources" replace /> },
+      { path: '/', element: <Navigate to="/services" replace /> },
       {
         element: (
           <RequireAuth>
@@ -30,10 +30,10 @@ export const routes = [
           </RequireAuth>
         ),
         children: [
-          { path: '/resources', element: <ResourceListPage /> },
-          { path: '/resources/new', element: <ResourceFormPage /> },
-          { path: '/resources/:resourceId', element: <ResourceFormPage /> },
-          { path: '/resources/:resourceId/availability', element: <AvailabilityPage /> },
+          { path: '/services', element: <ServiceListPage /> },
+          { path: '/services/new', element: <ServiceFormPage /> },
+          { path: '/services/:serviceId', element: <ServiceFormPage /> },
+          { path: '/services/:serviceId/availability', element: <AvailabilityPage /> },
           { path: '/appointments', element: <AppointmentsPage /> },
         ],
       },

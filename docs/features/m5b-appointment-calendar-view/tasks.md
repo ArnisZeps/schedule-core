@@ -7,7 +7,7 @@
 - [x] Write RTL tests for all flows (present for approval before implementing)
 - [x] Add `date-fns` to `apps/web` dependencies
 - [x] Implement `useBookings`, `useUpcomingBookings`, `useCancelBooking`, `useRescheduleBooking` hooks
-- [x] Implement `CalendarToolbar` (prev/next/today, view toggle, resource Select)
+- [x] Implement `CalendarToolbar` (prev/next/today, view toggle, service Select)
 - [x] Implement `TimeGutter`
 - [x] Implement `computeColumnLayout` helper and `AppointmentBlock`
 - [x] Implement `DayColumn`

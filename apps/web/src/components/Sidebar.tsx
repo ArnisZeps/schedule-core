@@ -14,7 +14,7 @@ function NavContent() {
       </div>
       <nav className="p-2 flex-1">
         <NavLink
-          to="/resources"
+          to="/services"
           className={({ isActive }) =>
             `flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               isActive
@@ -24,7 +24,7 @@ function NavContent() {
           }
         >
           <LayoutGrid className="size-4" />
-          Resources
+          Services
         </NavLink>
         <NavLink
           to="/appointments"

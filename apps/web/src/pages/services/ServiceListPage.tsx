@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { PackageOpen, MoreHorizontal, Pencil, Calendar, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useResources, useDeleteResource } from '@/hooks/useResources'
+import { useServices, useDeleteService } from '@/hooks/useServices'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -34,9 +34,9 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { LoadingState } from '@/components/ui/LoadingState'
 import { EmptyState } from '@/components/ui/EmptyState'
 
-export function ResourceListPage() {
-  const { data: resources, isLoading } = useResources()
-  const deleteMutation = useDeleteResource()
+export function ServiceListPage() {
+  const { data: services, isLoading } = useServices()
+  const deleteMutation = useDeleteService()
   const navigate = useNavigate()
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
@@ -44,9 +44,9 @@ export function ResourceListPage() {
     if (!deleteId) return
     try {
       await deleteMutation.mutateAsync(deleteId)
-      toast.success('Resource deleted')
+      toast.success('Service deleted')
     } catch {
-      toast.error('Failed to delete resource')
+      toast.error('Failed to delete service')
     } finally {
       setDeleteId(null)
     }
@@ -55,21 +55,21 @@ export function ResourceListPage() {
   return (
     <PageShell>
       <PageHeader
-        title="Resources"
+        title="Services"
         action={
           <Button asChild>
-            <Link to="/resources/new">Add resource</Link>
+            <Link to="/services/new">Add service</Link>
           </Button>
         }
       />
 
       {isLoading ? (
         <LoadingState />
-      ) : !resources?.length ? (
+      ) : !services?.length ? (
         <EmptyState
           icon={<PackageOpen className="size-10" />}
-          title="No resources yet"
-          description="Add your first resource to get started."
+          title="No services yet"
+          description="Add your first service to get started."
         />
       ) : (
         <div className="rounded-lg border bg-card">
@@ -82,11 +82,11 @@ export function ResourceListPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {resources.map(r => (
-                <TableRow key={r.id}>
-                  <TableCell className="font-medium">{r.name}</TableCell>
+              {services.map(s => (
+                <TableRow key={s.id}>
+                  <TableCell className="font-medium">{s.name}</TableCell>
                   <TableCell className="text-muted-foreground">
-                    {r.description ?? '—'}
+                    {s.description ?? '—'}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -98,14 +98,14 @@ export function ResourceListPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
-                          onClick={() => navigate(`/resources/${r.id}`)}
+                          onClick={() => navigate(`/services/${s.id}`)}
                         >
                           <Pencil className="mr-2 size-4" />
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() =>
-                            navigate(`/resources/${r.id}/availability`)
+                            navigate(`/services/${s.id}/availability`)
                           }
                         >
                           <Calendar className="mr-2 size-4" />
@@ -114,7 +114,7 @@ export function ResourceListPage() {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
-                          onClick={() => setDeleteId(r.id)}
+                          onClick={() => setDeleteId(s.id)}
                         >
                           <Trash2 className="mr-2 size-4" />
                           Delete
@@ -135,9 +135,9 @@ export function ResourceListPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete resource?</AlertDialogTitle>
+            <AlertDialogTitle>Delete service?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the resource and all its availability
+              This will permanently delete the service and all its availability
               rules. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

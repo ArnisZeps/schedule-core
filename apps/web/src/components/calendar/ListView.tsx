@@ -13,7 +13,7 @@ import { LoadingState } from '@/components/ui/LoadingState'
 import { ErrorState } from '@/components/ui/ErrorState'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { useUpcomingBookings, type Booking } from '@/hooks/useBookings'
-import type { Resource } from '@/hooks/useResources'
+import type { Service } from '@/hooks/useServices'
 
 const STATUS_BADGE: Record<Booking['status'], 'default' | 'secondary' | 'outline'> = {
   pending: 'outline',
@@ -28,13 +28,13 @@ const STATUS_LABEL: Record<Booking['status'], string> = {
 }
 
 interface ListViewProps {
-  resourceId?: string
-  resources: Resource[]
+  serviceId?: string
+  services: Service[]
   onBookingClick: (booking: Booking) => void
 }
 
-export function ListView({ resourceId, resources, onBookingClick }: ListViewProps) {
-  const { data: bookings, isLoading, isError, refetch } = useUpcomingBookings({ resourceId })
+export function ListView({ serviceId, services, onBookingClick }: ListViewProps) {
+  const { data: bookings, isLoading, isError, refetch } = useUpcomingBookings({ serviceId })
 
   console.log(bookings)
   
@@ -53,7 +53,7 @@ export function ListView({ resourceId, resources, onBookingClick }: ListViewProp
             <TableHead>Date</TableHead>
             <TableHead>Time</TableHead>
             <TableHead>Client</TableHead>
-            <TableHead>Resource</TableHead>
+            <TableHead>Service</TableHead>
             <TableHead>Status</TableHead>
           </TableRow>
         </TableHeader>
@@ -61,7 +61,7 @@ export function ListView({ resourceId, resources, onBookingClick }: ListViewProp
           {bookings.map(booking => {
             const start = new Date(booking.startAt)
             const end = new Date(booking.endAt)
-            const resource = resources.find(r => r.id === booking.resourceId)
+            const service = services.find(s => s.id === booking.serviceId)
             return (
               <TableRow
                 key={booking.id}
@@ -73,7 +73,7 @@ export function ListView({ resourceId, resources, onBookingClick }: ListViewProp
                   {format(start, 'HH:mm')} – {format(end, 'HH:mm')}
                 </TableCell>
                 <TableCell>{booking.clientName}</TableCell>
-                <TableCell>{resource?.name ?? '—'}</TableCell>
+                <TableCell>{service?.name ?? '—'}</TableCell>
                 <TableCell>
                   <Badge variant={STATUS_BADGE[booking.status]}>
                     {STATUS_LABEL[booking.status]}

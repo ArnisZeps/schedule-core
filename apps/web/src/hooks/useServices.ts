@@ -2,60 +2,60 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '@/lib/api'
 import { useAuth } from './useAuth'
 
-export interface Resource {
+export interface Service {
   id: string
   tenantId: string
   name: string
   description?: string
 }
 
-export function useResources() {
+export function useServices() {
   const { user } = useAuth()
   const tenantId = user!.tenantId
-  return useQuery<Resource[]>({
-    queryKey: ['resources', tenantId],
-    queryFn: () => apiFetch(`/tenants/${tenantId}/resources`),
+  return useQuery<Service[]>({
+    queryKey: ['services', tenantId],
+    queryFn: () => apiFetch(`/tenants/${tenantId}/services`),
   })
 }
 
-export function useCreateResource() {
+export function useCreateService() {
   const { user } = useAuth()
   const qc = useQueryClient()
   const tenantId = user!.tenantId
   return useMutation({
     mutationFn: (data: { name: string; description?: string }) =>
-      apiFetch<Resource>(`/tenants/${tenantId}/resources`, {
+      apiFetch<Service>(`/tenants/${tenantId}/services`, {
         method: 'POST',
         body: JSON.stringify(data),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['resources', tenantId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['services', tenantId] }),
   })
 }
 
-export function useUpdateResource(resourceId: string) {
+export function useUpdateService(serviceId: string) {
   const { user } = useAuth()
   const qc = useQueryClient()
   const tenantId = user!.tenantId
   return useMutation({
     mutationFn: (data: { name: string; description?: string }) =>
-      apiFetch<Resource>(`/tenants/${tenantId}/resources/${resourceId}`, {
+      apiFetch<Service>(`/tenants/${tenantId}/services/${serviceId}`, {
         method: 'PATCH',
         body: JSON.stringify(data),
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['resources', tenantId] })
-      qc.invalidateQueries({ queryKey: ['resource', tenantId, resourceId] })
+      qc.invalidateQueries({ queryKey: ['services', tenantId] })
+      qc.invalidateQueries({ queryKey: ['service', tenantId, serviceId] })
     },
   })
 }
 
-export function useDeleteResource() {
+export function useDeleteService() {
   const { user } = useAuth()
   const qc = useQueryClient()
   const tenantId = user!.tenantId
   return useMutation({
-    mutationFn: (resourceId: string) =>
-      apiFetch(`/tenants/${tenantId}/resources/${resourceId}`, { method: 'DELETE' }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['resources', tenantId] }),
+    mutationFn: (serviceId: string) =>
+      apiFetch(`/tenants/${tenantId}/services/${serviceId}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['services', tenantId] }),
   })
 }

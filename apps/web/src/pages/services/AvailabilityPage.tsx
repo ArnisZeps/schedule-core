@@ -33,10 +33,10 @@ import { LoadingState } from '@/components/ui/LoadingState'
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 export function AvailabilityPage() {
-  const { resourceId } = useParams<{ resourceId: string }>()
-  const { data: rules, isLoading } = useAvailabilityRules(resourceId!)
-  const createMutation = useCreateAvailabilityRule(resourceId!)
-  const deleteMutation = useDeleteAvailabilityRule(resourceId!)
+  const { serviceId } = useParams<{ serviceId: string }>()
+  const { data: rules, isLoading } = useAvailabilityRules(serviceId!)
+  const createMutation = useCreateAvailabilityRule(serviceId!)
+  const deleteMutation = useDeleteAvailabilityRule(serviceId!)
 
   const [day, setDay] = useState('1')
   const [startTime, setStartTime] = useState('')
@@ -78,10 +78,10 @@ export function AvailabilityPage() {
     <PageShell>
       <div className="mb-2">
         <Link
-          to={`/resources/${resourceId}`}
+          to={`/services/${serviceId}`}
           className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          ← Back to resource
+          ← Back to service
         </Link>
       </div>
       <PageHeader

@@ -21,7 +21,7 @@ function renderAt(path: string) {
 describe('Login page', () => {
   beforeEach(() => localStorage.clear())
 
-  it('happy path: valid credentials redirect to /resources', async () => {
+  it('happy path: valid credentials redirect to /services', async () => {
     const user = userEvent.setup()
     const router = renderAt('/login')
 
@@ -30,7 +30,7 @@ describe('Login page', () => {
     await user.click(screen.getByRole('button', { name: /log in/i }))
 
     await waitFor(() => {
-      expect(router.state.location.pathname).toBe('/resources')
+      expect(router.state.location.pathname).toBe('/services')
     })
   })
 

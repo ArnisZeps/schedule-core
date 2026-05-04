@@ -14,11 +14,11 @@ function parseJwt(t: string): { sub: string; tenantId: string } {
   return JSON.parse(Buffer.from(t.split('.')[1], 'base64url').toString());
 }
 
-async function createResource(tid: string, name: string): Promise<string> {
+async function createService(tid: string, name: string): Promise<string> {
   let id!: string;
   await withTenantContext(pool, tid, async (client) => {
     const { rows } = await client.query<{ id: string }>(
-      'INSERT INTO resources (tenant_id, name) VALUES ($1, $2) RETURNING id',
+      'INSERT INTO services (tenant_id, name) VALUES ($1, $2) RETURNING id',
       [tid, name],
     );
     id = rows[0].id;
@@ -28,22 +28,22 @@ async function createResource(tid: string, name: string): Promise<string> {
 
 async function createRule(
   tid: string,
-  rid: string,
+  sid: string,
   dayOfWeek: number,
   startTime: string,
   endTime: string,
 ): Promise<void> {
   await withTenantContext(pool, tid, async (client) => {
     await client.query(
-      'INSERT INTO availability_rules (tenant_id, resource_id, day_of_week, start_time, end_time) VALUES ($1, $2, $3, $4, $5)',
-      [tid, rid, dayOfWeek, startTime, endTime],
+      'INSERT INTO availability_rules (tenant_id, service_id, day_of_week, start_time, end_time) VALUES ($1, $2, $3, $4, $5)',
+      [tid, sid, dayOfWeek, startTime, endTime],
     );
   });
 }
 
 async function createBooking(
   tid: string,
-  rid: string,
+  sid: string,
   startAt: string,
   endAt: string,
   status = 'pending',
@@ -51,9 +51,9 @@ async function createBooking(
   let id!: string;
   await withTenantContext(pool, tid, async (client) => {
     const { rows } = await client.query<{ id: string }>(
-      `INSERT INTO bookings (tenant_id, resource_id, client_name, client_email, start_at, end_at, status)
+      `INSERT INTO bookings (tenant_id, service_id, client_name, client_email, start_at, end_at, status)
        VALUES ($1, $2, 'Seed Client', 'seed@example.com', $3, $4, $5) RETURNING id`,
-      [tid, rid, startAt, endAt, status],
+      [tid, sid, startAt, endAt, status],
     );
     id = rows[0].id;
   });
@@ -68,7 +68,7 @@ const MON2 = '2026-06-01';
 beforeAll(async () => {
   process.env.JWT_SECRET = 'a'.repeat(32);
   pool = createDb();
-  await pool.query('TRUNCATE bookings, availability_rules, resources, users, tenants CASCADE');
+  await pool.query('TRUNCATE bookings, availability_rules, services, users, tenants CASCADE');
 
   const res1 = await request(app).post('/auth/signup').send({
     email: 'bookings-owner@example.com',
@@ -89,7 +89,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await pool.query('TRUNCATE bookings, availability_rules, resources, users, tenants CASCADE');
+  await pool.query('TRUNCATE bookings, availability_rules, services, users, tenants CASCADE');
   await pool.end();
   delete process.env.JWT_SECRET;
 });
@@ -99,16 +99,16 @@ afterAll(async () => {
 // ---------------------------------------------------------------------------
 
 describe('GET /tenants/:id/bookings', () => {
-  let resourceId: string;
+  let serviceId: string;
 
   beforeAll(async () => {
-    resourceId = await createResource(tenantId, 'List Bookings Resource');
+    serviceId = await createService(tenantId, 'List Bookings Service');
     // Monday rule — enables availability-checked creates later
-    await createRule(tenantId, resourceId, 1, '09:00', '17:00');
+    await createRule(tenantId, serviceId, 1, '09:00', '17:00');
     // Seed three bookings
-    await createBooking(tenantId, resourceId, `${MON1}T09:00:00Z`, `${MON1}T10:00:00Z`);
-    await createBooking(tenantId, resourceId, `${MON1}T10:00:00Z`, `${MON1}T11:00:00Z`);
-    await createBooking(tenantId, resourceId, '2026-05-05T09:00:00Z', '2026-05-05T10:00:00Z');
+    await createBooking(tenantId, serviceId, `${MON1}T09:00:00Z`, `${MON1}T10:00:00Z`);
+    await createBooking(tenantId, serviceId, `${MON1}T10:00:00Z`, `${MON1}T11:00:00Z`);
+    await createBooking(tenantId, serviceId, '2026-05-05T09:00:00Z', '2026-05-05T10:00:00Z');
   });
 
   it('200 — returns all bookings sorted by start_at ascending', async () => {
@@ -134,20 +134,20 @@ describe('GET /tenants/:id/bookings', () => {
     expect(res.body.every((b: { startAt: string }) => b.startAt.startsWith(MON1))).toBe(true);
   }, 15_000);
 
-  it('200 — resourceId filter returns only bookings for that resource', async () => {
-    const otherResourceId = await createResource(tenantId, 'Other Resource');
-    await createBooking(tenantId, otherResourceId, '2026-05-11T09:00:00Z', '2026-05-11T10:00:00Z');
+  it('200 — serviceId filter returns only bookings for that service', async () => {
+    const otherServiceId = await createService(tenantId, 'Other Service');
+    await createBooking(tenantId, otherServiceId, '2026-05-11T09:00:00Z', '2026-05-11T10:00:00Z');
 
     const res = await request(app)
-      .get(`/tenants/${tenantId}/bookings?resourceId=${resourceId}`)
+      .get(`/tenants/${tenantId}/bookings?serviceId=${serviceId}`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.every((b: { resourceId: string }) => b.resourceId === resourceId)).toBe(true);
+    expect(res.body.every((b: { serviceId: string }) => b.serviceId === serviceId)).toBe(true);
   }, 15_000);
 
   it('200 — status=active excludes cancelled bookings', async () => {
-    const cancelledId = await createBooking(tenantId, resourceId, '2026-05-18T09:00:00Z', '2026-05-18T10:00:00Z', 'cancelled');
+    const cancelledId = await createBooking(tenantId, serviceId, '2026-05-18T09:00:00Z', '2026-05-18T10:00:00Z', 'cancelled');
 
     const allRes = await request(app)
       .get(`/tenants/${tenantId}/bookings`)
@@ -192,11 +192,11 @@ describe('GET /tenants/:id/bookings', () => {
 // ---------------------------------------------------------------------------
 
 describe('POST /tenants/:id/bookings', () => {
-  let resourceId: string;
+  let serviceId: string;
 
   beforeAll(async () => {
-    resourceId = await createResource(tenantId, 'Create Booking Resource');
-    await createRule(tenantId, resourceId, 1, '09:00', '17:00');
+    serviceId = await createService(tenantId, 'Create Booking Service');
+    await createRule(tenantId, serviceId, 1, '09:00', '17:00');
   });
 
   it('201 — creates booking with status pending', async () => {
@@ -204,7 +204,7 @@ describe('POST /tenants/:id/bookings', () => {
       .post(`/tenants/${tenantId}/bookings`)
       .set('Authorization', `Bearer ${token}`)
       .send({
-        resourceId,
+        serviceId,
         clientName: 'Alice',
         clientEmail: 'alice@example.com',
         startAt: `${MON1}T09:00:00Z`,
@@ -214,7 +214,7 @@ describe('POST /tenants/:id/bookings', () => {
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({
       tenantId,
-      resourceId,
+      serviceId,
       clientName: 'Alice',
       clientEmail: 'alice@example.com',
       status: 'pending',
@@ -229,7 +229,7 @@ describe('POST /tenants/:id/bookings', () => {
       .post(`/tenants/${tenantId}/bookings`)
       .set('Authorization', `Bearer ${token}`)
       .send({
-        resourceId,
+        serviceId,
         clientName: 'Bob',
         clientEmail: 'bob@example.com',
         startAt: `${MON1}T09:30:00Z`,
@@ -245,7 +245,7 @@ describe('POST /tenants/:id/bookings', () => {
       .post(`/tenants/${tenantId}/bookings`)
       .set('Authorization', `Bearer ${token}`)
       .send({
-        resourceId,
+        serviceId,
         clientName: 'Charlie',
         clientEmail: 'charlie@example.com',
         startAt: `${MON1}T18:00:00Z`,
@@ -261,7 +261,7 @@ describe('POST /tenants/:id/bookings', () => {
       .post(`/tenants/${tenantId}/bookings`)
       .set('Authorization', `Bearer ${token}`)
       .send({
-        resourceId,
+        serviceId,
         clientName: 'Dave',
         startAt: `${MON1}T14:00:00Z`,
         endAt: `${MON1}T15:00:00Z`,
@@ -276,7 +276,7 @@ describe('POST /tenants/:id/bookings', () => {
       .post(`/tenants/${tenantId}/bookings`)
       .set('Authorization', `Bearer ${token}`)
       .send({
-        resourceId,
+        serviceId,
         clientName: 'Eve',
         clientEmail: 'eve@example.com',
         startAt: `${MON1}T15:00:00Z`,
@@ -292,7 +292,7 @@ describe('POST /tenants/:id/bookings', () => {
       .post(`/tenants/${otherTenantId}/bookings`)
       .set('Authorization', `Bearer ${token}`)
       .send({
-        resourceId,
+        serviceId,
         clientName: 'Frank',
         clientEmail: 'frank@example.com',
         startAt: `${MON1}T13:00:00Z`,
@@ -308,15 +308,15 @@ describe('POST /tenants/:id/bookings', () => {
 // ---------------------------------------------------------------------------
 
 describe('PATCH /tenants/:id/bookings/:id — cancel', () => {
-  let resourceId: string;
+  let serviceId: string;
 
   beforeAll(async () => {
-    resourceId = await createResource(tenantId, 'Cancel Booking Resource');
-    await createRule(tenantId, resourceId, 1, '09:00', '17:00');
+    serviceId = await createService(tenantId, 'Cancel Booking Service');
+    await createRule(tenantId, serviceId, 1, '09:00', '17:00');
   });
 
   it('200 — cancels a pending booking', async () => {
-    const bookingId = await createBooking(tenantId, resourceId, `${MON1}T09:00:00Z`, `${MON1}T10:00:00Z`);
+    const bookingId = await createBooking(tenantId, serviceId, `${MON1}T09:00:00Z`, `${MON1}T10:00:00Z`);
 
     const res = await request(app)
       .patch(`/tenants/${tenantId}/bookings/${bookingId}`)
@@ -330,7 +330,7 @@ describe('PATCH /tenants/:id/bookings/:id — cancel', () => {
 
   it('409 — already_cancelled when cancelling a cancelled booking', async () => {
     const bookingId = await createBooking(
-      tenantId, resourceId, '2026-05-11T09:00:00Z', '2026-05-11T10:00:00Z', 'cancelled',
+      tenantId, serviceId, '2026-05-11T09:00:00Z', '2026-05-11T10:00:00Z', 'cancelled',
     );
 
     const res = await request(app)
@@ -357,17 +357,17 @@ describe('PATCH /tenants/:id/bookings/:id — cancel', () => {
 // ---------------------------------------------------------------------------
 
 describe('PATCH /tenants/:id/bookings/:id — reschedule', () => {
-  let resourceId: string;
+  let serviceId: string;
   // blocker: stays at MON2 13:00-14:00 throughout; used to test overlap rejection
   let blockerId: string;
   // mover: starts at MON2 09:00-10:00; rescheduled in the first test
   let moverId: string;
 
   beforeAll(async () => {
-    resourceId = await createResource(tenantId, 'Reschedule Resource');
-    await createRule(tenantId, resourceId, 1, '09:00', '17:00');
-    blockerId = await createBooking(tenantId, resourceId, `${MON2}T13:00:00Z`, `${MON2}T14:00:00Z`);
-    moverId = await createBooking(tenantId, resourceId, `${MON2}T09:00:00Z`, `${MON2}T10:00:00Z`);
+    serviceId = await createService(tenantId, 'Reschedule Service');
+    await createRule(tenantId, serviceId, 1, '09:00', '17:00');
+    blockerId = await createBooking(tenantId, serviceId, `${MON2}T13:00:00Z`, `${MON2}T14:00:00Z`);
+    moverId = await createBooking(tenantId, serviceId, `${MON2}T09:00:00Z`, `${MON2}T10:00:00Z`);
   });
 
   it('200 — reschedules to a free slot', async () => {
