@@ -7,6 +7,9 @@ import { ServiceListPage } from './pages/services/ServiceListPage'
 import { ServiceFormPage } from './pages/services/ServiceFormPage'
 import { AvailabilityPage } from './pages/services/AvailabilityPage'
 import { AppointmentsPage } from './pages/appointments/AppointmentsPage'
+import { StaffListPage } from './pages/staff/StaffListPage'
+import { StaffCreatePage } from './pages/staff/StaffCreatePage'
+import { StaffDetailPage } from './pages/staff/StaffDetailPage'
 import { Outlet } from 'react-router-dom'
 
 function AuthLayout() {
@@ -35,6 +38,9 @@ export const routes = [
           { path: '/services/:serviceId', element: <ServiceFormPage /> },
           { path: '/services/:serviceId/availability', element: <AvailabilityPage /> },
           { path: '/appointments', element: <AppointmentsPage /> },
+          { path: '/staff', element: <StaffListPage /> },
+          { path: '/staff/new', element: <StaffCreatePage /> },
+          { path: '/staff/:staffId', element: <StaffDetailPage /> },
         ],
       },
       { path: '*', element: <div>404 Not Found</div> },

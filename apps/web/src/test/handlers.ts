@@ -68,6 +68,20 @@ export const SLOTS = [
   { startAt: '2026-05-04T11:00:00.000Z', endAt: '2026-05-04T12:00:00.000Z', available: true },
 ]
 
+export const STAFF = [
+  { id: 'staff-1', tenantId: TENANT_ID, name: 'Alice Smith', email: 'alice@example.com', phone: '+1 555 000 0001', isActive: true, createdAt: '2026-05-01T00:00:00.000Z' },
+  { id: 'staff-2', tenantId: TENANT_ID, name: 'Bob Jones', email: null, phone: null, isActive: false, createdAt: '2026-05-02T00:00:00.000Z' },
+]
+
+export const STAFF_SCHEDULES = [
+  { id: 'sched-1', dayOfWeek: 1, startTime: '09:00', endTime: '17:00' },
+]
+
+export const STAFF_OVERRIDES = [
+  { id: 'ov-1', staffId: 'staff-1', startDate: '2026-07-01', endDate: '2026-07-01', type: 'available', startTime: '09:00', endTime: '17:00', createdAt: '2026-05-01T00:00:00.000Z' },
+  { id: 'ov-2', staffId: 'staff-1', startDate: '2026-07-04', endDate: '2026-07-06', type: 'not_available', startTime: '00:00', endTime: '23:59', createdAt: '2026-05-02T00:00:00.000Z' },
+]
+
 export const handlers = [
   // Auth
   http.post(`${BASE}/auth/login`, async ({ request }) => {
@@ -179,6 +193,84 @@ export const handlers = [
     const booking = BOOKINGS.find(b => b.id === params.bookingId)
     if (!booking) return HttpResponse.json({ message: 'Not found' }, { status: 404 })
     return HttpResponse.json({ ...booking, ...body })
+  }),
+
+  // Staff list
+  http.get(`${BASE}/tenants/:tenantId/staff`, ({ request }) => {
+    const url = new URL(request.url)
+    const includeInactive = url.searchParams.get('includeInactive') === 'true'
+    return HttpResponse.json(includeInactive ? STAFF : STAFF.filter(s => s.isActive))
+  }),
+
+  // Staff create
+  http.post(`${BASE}/tenants/:tenantId/staff`, async ({ params, request }) => {
+    const body = await request.json() as Record<string, unknown>
+    return HttpResponse.json(
+      { id: 'staff-new', tenantId: params.tenantId, name: body.name, email: body.email ?? null, phone: body.phone ?? null, isActive: true, createdAt: new Date().toISOString() },
+      { status: 201 },
+    )
+  }),
+
+  // Staff single
+  http.get(`${BASE}/tenants/:tenantId/staff/:staffId`, ({ params }) => {
+    const member = STAFF.find(s => s.id === params.staffId)
+    if (!member) return HttpResponse.json({ error: 'not_found' }, { status: 404 })
+    return HttpResponse.json(member)
+  }),
+
+  // Staff patch
+  http.patch(`${BASE}/tenants/:tenantId/staff/:staffId`, async ({ params, request }) => {
+    const body = await request.json() as Record<string, unknown>
+    const member = STAFF.find(s => s.id === params.staffId) ?? STAFF[0]
+    return HttpResponse.json({ ...member, ...body })
+  }),
+
+  // Staff services GET
+  http.get(`${BASE}/tenants/:tenantId/staff/:staffId/services`, () => {
+    return HttpResponse.json([SERVICES[0]])
+  }),
+
+  // Staff services PUT
+  http.put(`${BASE}/tenants/:tenantId/staff/:staffId/services`, async ({ request }) => {
+    const body = await request.json() as { serviceIds: string[] }
+    return HttpResponse.json(SERVICES.filter(s => body.serviceIds.includes(s.id)))
+  }),
+
+  // Staff schedules GET
+  http.get(`${BASE}/tenants/:tenantId/staff/:staffId/schedules`, () => {
+    return HttpResponse.json(STAFF_SCHEDULES)
+  }),
+
+  // Staff schedules PUT
+  http.put(`${BASE}/tenants/:tenantId/staff/:staffId/schedules`, async ({ request }) => {
+    const body = await request.json() as { windows: unknown[] }
+    return HttpResponse.json(body.windows)
+  }),
+
+  // Staff overrides GET
+  http.get(`${BASE}/tenants/:tenantId/staff/:staffId/overrides`, () => {
+    return HttpResponse.json(STAFF_OVERRIDES)
+  }),
+
+  // Staff override create
+  http.post(`${BASE}/tenants/:tenantId/staff/:staffId/overrides`, async ({ params, request }) => {
+    const body = await request.json() as Record<string, unknown>
+    return HttpResponse.json(
+      { id: 'ov-new', staffId: params.staffId, ...body, createdAt: new Date().toISOString() },
+      { status: 201 },
+    )
+  }),
+
+  // Staff override update
+  http.patch(`${BASE}/tenants/:tenantId/staff/:staffId/overrides/:overrideId`, async ({ params, request }) => {
+    const body = await request.json() as Record<string, unknown>
+    const override = STAFF_OVERRIDES.find(o => o.id === params.overrideId) ?? STAFF_OVERRIDES[0]
+    return HttpResponse.json({ ...override, ...body })
+  }),
+
+  // Staff override delete
+  http.delete(`${BASE}/tenants/:tenantId/staff/:staffId/overrides/:overrideId`, () => {
+    return new HttpResponse(null, { status: 204 })
   }),
 ]
 
