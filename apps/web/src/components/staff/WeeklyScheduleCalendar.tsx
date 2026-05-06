@@ -4,14 +4,21 @@ import { useStaffSchedules, useUpdateStaffSchedules } from '@/hooks/useStaff'
 import { Button } from '@/components/ui/button'
 import { TimeGutter } from '@/components/calendar/TimeGutter'
 import { WeekdayColumn, type LocalWindow } from './WeekdayColumn'
+import { ScheduleWindowPanel } from './ScheduleWindowPanel'
 import { LoadingState } from '@/components/ui/LoadingState'
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-// Mon–Sun order: dayOfWeek values 1,2,3,4,5,6,0
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0]
 
 let keyCounter = 0
 function nextKey() { return ++keyCounter }
+
+interface PanelState {
+  window?: LocalWindow
+  dayOfWeek?: number
+  prefillStart?: string
+  prefillEnd?: string
+}
 
 interface WeeklyScheduleCalendarProps {
   staffId: string
@@ -21,6 +28,7 @@ export function WeeklyScheduleCalendar({ staffId }: WeeklyScheduleCalendarProps)
   const { data: fetched, isLoading } = useStaffSchedules(staffId)
   const updateMutation = useUpdateStaffSchedules()
   const [windows, setWindows] = useState<LocalWindow[]>([])
+  const [panelState, setPanelState] = useState<PanelState | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -29,43 +37,76 @@ export function WeeklyScheduleCalendar({ staffId }: WeeklyScheduleCalendarProps)
     }
   }, [fetched])
 
-  function handleCreate(dayOfWeek: number, startTime: string, endTime: string) {
-    setWindows(prev => [...prev, { dayOfWeek, startTime, endTime, _key: nextKey() }])
-  }
-
-  function handleDelete(key: number) {
-    setWindows(prev => prev.filter(w => w._key !== key))
-  }
-
-  function handleUpdate(key: number, startTime: string, endTime: string) {
-    setWindows(prev => prev.map(w => w._key === key ? { ...w, startTime, endTime } : w))
-  }
-
-  async function handleSave() {
+  async function autoSave(list: LocalWindow[]) {
     try {
       await updateMutation.mutateAsync({
         staffId,
-        windows: windows.map(({ dayOfWeek, startTime, endTime }) => ({ dayOfWeek, startTime, endTime })),
+        windows: list.map(({ dayOfWeek, startTime, endTime }) => ({ dayOfWeek, startTime, endTime })),
       })
-      toast.success('Schedule saved')
     } catch {
       toast.error('Failed to save schedule')
     }
+  }
+
+  function hasOverlap(list: LocalWindow[], dayOfWeek: number, startTime: string, endTime: string, excludeKey?: number) {
+    return list.some(w =>
+      w.dayOfWeek === dayOfWeek &&
+      w._key !== excludeKey &&
+      w.startTime < endTime &&
+      startTime < w.endTime
+    )
+  }
+
+  function handleTimeSelect(dayOfWeek: number, startTime: string, endTime: string) {
+    setPanelState({ dayOfWeek, prefillStart: startTime, prefillEnd: endTime })
+  }
+
+  function handleBlockClick(win: LocalWindow) {
+    setPanelState({ window: win, dayOfWeek: win.dayOfWeek })
+  }
+
+  function handlePanelCreate(dayOfWeek: number, startTime: string, endTime: string) {
+    if (hasOverlap(windows, dayOfWeek, startTime, endTime)) {
+      toast.error('Time window overlaps an existing one')
+      return
+    }
+    const updated = [...windows, { dayOfWeek, startTime, endTime, _key: nextKey() }]
+    setWindows(updated)
+    setPanelState(null)
+    autoSave(updated)
+  }
+
+  function handlePanelUpdate(key: number, startTime: string, endTime: string) {
+    const target = windows.find(w => w._key === key)
+    if (!target) return
+    if (hasOverlap(windows, target.dayOfWeek, startTime, endTime, key)) {
+      toast.error('Time window overlaps an existing one')
+      return
+    }
+    const updated = windows.map(w => w._key === key ? { ...w, startTime, endTime } : w)
+    setWindows(updated)
+    setPanelState(null)
+    autoSave(updated)
+  }
+
+  function handlePanelDelete(key: number) {
+    const updated = windows.filter(w => w._key !== key)
+    setWindows(updated)
+    setPanelState(null)
+    autoSave(updated)
   }
 
   if (isLoading) return <LoadingState />
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium">Weekly schedule</h3>
-        <Button size="sm" onClick={handleSave} disabled={updateMutation.isPending}>
-          {updateMutation.isPending ? 'Saving…' : 'Save schedule'}
+      <div className="flex justify-end">
+        <Button size="sm" onClick={() => setPanelState({})}>
+          Create schedule
         </Button>
       </div>
 
       <div className="border rounded-lg overflow-hidden">
-        {/* Day headers */}
         <div className="flex border-b bg-muted/40">
           <div className="w-16 flex-shrink-0" />
           {WEEK_ORDER.map(dow => (
@@ -75,7 +116,6 @@ export function WeeklyScheduleCalendar({ staffId }: WeeklyScheduleCalendarProps)
           ))}
         </div>
 
-        {/* Time grid */}
         <div className="overflow-y-auto" style={{ maxHeight: 400 }} ref={scrollRef}>
           <div className="flex">
             <TimeGutter />
@@ -84,14 +124,27 @@ export function WeeklyScheduleCalendar({ staffId }: WeeklyScheduleCalendarProps)
                 key={dow}
                 dayOfWeek={dow}
                 windows={windows.filter(w => w.dayOfWeek === dow)}
-                onWindowCreate={(start, end) => handleCreate(dow, start, end)}
-                onWindowDelete={handleDelete}
-                onWindowUpdate={handleUpdate}
+                onTimeSelect={(start, end) => handleTimeSelect(dow, start, end)}
+                onBlockClick={handleBlockClick}
               />
             ))}
           </div>
         </div>
       </div>
+
+      {panelState !== null && (
+        <ScheduleWindowPanel
+          window={panelState.window}
+          dayOfWeek={panelState.dayOfWeek}
+          prefillStart={panelState.prefillStart}
+          prefillEnd={panelState.prefillEnd}
+          isPending={updateMutation.isPending}
+          onCreate={handlePanelCreate}
+          onUpdate={handlePanelUpdate}
+          onDelete={handlePanelDelete}
+          onClose={() => setPanelState(null)}
+        />
+      )}
     </div>
   )
 }

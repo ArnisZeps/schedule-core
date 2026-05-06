@@ -31,9 +31,8 @@ export interface LocalWindow extends ScheduleWindowInput {
 interface WeekdayColumnProps {
   dayOfWeek: number
   windows: LocalWindow[]
-  onWindowCreate: (startTime: string, endTime: string) => void
-  onWindowDelete: (key: number) => void
-  onWindowUpdate: (key: number, startTime: string, endTime: string) => void
+  onTimeSelect: (startTime: string, endTime: string) => void
+  onBlockClick: (window: LocalWindow) => void
 }
 
 interface Ghost {
@@ -44,16 +43,12 @@ interface Ghost {
 export function WeekdayColumn({
   dayOfWeek,
   windows,
-  onWindowCreate,
-  onWindowDelete,
-  onWindowUpdate,
+  onTimeSelect,
+  onBlockClick,
 }: WeekdayColumnProps) {
   const colRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ startMin: number } | null>(null)
   const [ghost, setGhost] = useState<Ghost | null>(null)
-  const [activeKey, setActiveKey] = useState<number | null>(null)
-  const [editStart, setEditStart] = useState('')
-  const [editEnd, setEditEnd] = useState('')
 
   function getRelativeY(e: MouseEvent | React.MouseEvent): number {
     const rect = colRef.current!.getBoundingClientRect()
@@ -83,31 +78,11 @@ export function WeekdayColumn({
       const hi = Math.max(dragRef.current.startMin, curMin) + SLOT_MINUTES
       dragRef.current = null
       setGhost(null)
-      onWindowCreate(minutesToTime(lo), minutesToTime(hi))
+      onTimeSelect(minutesToTime(lo), minutesToTime(hi))
     }
 
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)
-  }
-
-  function openPopover(w: LocalWindow) {
-    setActiveKey(w._key)
-    setEditStart(w.startTime)
-    setEditEnd(w.endTime)
-  }
-
-  function closePopover() {
-    setActiveKey(null)
-  }
-
-  function handleDelete(key: number) {
-    onWindowDelete(key)
-    closePopover()
-  }
-
-  function handleUpdate(key: number) {
-    onWindowUpdate(key, editStart, editEnd)
-    closePopover()
   }
 
   return (
@@ -118,7 +93,6 @@ export function WeekdayColumn({
       style={{ height: TOTAL_HEIGHT }}
       onMouseDown={handleMouseDown}
     >
-      {/* Hour grid lines */}
       {Array.from({ length: 24 }, (_, i) => (
         <div key={i} className="absolute left-0 right-0 border-t border-border/50" style={{ top: i * HOUR_PX }} />
       ))}
@@ -136,7 +110,6 @@ export function WeekdayColumn({
       {windows.map(w => {
         const top = (timeToMinutes(w.startTime) / 60) * HOUR_PX
         const height = ((timeToMinutes(w.endTime) - timeToMinutes(w.startTime)) / 60) * HOUR_PX
-        const isActive = activeKey === w._key
 
         return (
           <div key={w._key} className="absolute left-0 right-0 z-20" style={{ top, height }}>
@@ -144,65 +117,12 @@ export function WeekdayColumn({
               data-testid="schedule-block"
               className="h-full mx-0.5 rounded bg-blue-500/80 text-white text-xs p-1 cursor-pointer overflow-hidden"
               onMouseDown={e => e.stopPropagation()}
-              onClick={() => openPopover(w)}
+              onClick={() => onBlockClick(w)}
             >
               <span>{w.startTime}</span>
               <span className="mx-0.5">–</span>
               <span>{w.endTime}</span>
             </div>
-
-            {isActive && (
-              <div
-                data-testid="schedule-block-popover"
-                className="absolute left-full top-0 ml-1 z-30 w-48 bg-popover border rounded-lg shadow-lg p-3 space-y-2"
-                onMouseDown={e => e.stopPropagation()}
-              >
-                <div className="space-y-1">
-                  <label className="text-xs font-medium" htmlFor={`st-${w._key}`}>
-                    Start time
-                  </label>
-                  <input
-                    id={`st-${w._key}`}
-                    type="time"
-                    value={editStart}
-                    onChange={e => setEditStart(e.target.value)}
-                    className="w-full border rounded px-2 py-1 text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-medium" htmlFor={`et-${w._key}`}>
-                    End time
-                  </label>
-                  <input
-                    id={`et-${w._key}`}
-                    type="time"
-                    value={editEnd}
-                    onChange={e => setEditEnd(e.target.value)}
-                    className="w-full border rounded px-2 py-1 text-sm"
-                  />
-                </div>
-                <div className="flex gap-1 pt-1">
-                  <button
-                    className="flex-1 text-xs bg-primary text-primary-foreground rounded px-2 py-1"
-                    onClick={() => handleUpdate(w._key)}
-                  >
-                    Update
-                  </button>
-                  <button
-                    className="flex-1 text-xs bg-destructive text-destructive-foreground rounded px-2 py-1"
-                    onClick={() => handleDelete(w._key)}
-                  >
-                    Delete
-                  </button>
-                </div>
-                <button
-                  className="absolute top-1 right-1 text-xs text-muted-foreground"
-                  onClick={closePopover}
-                >
-                  ✕
-                </button>
-              </div>
-            )}
           </div>
         )
       })}

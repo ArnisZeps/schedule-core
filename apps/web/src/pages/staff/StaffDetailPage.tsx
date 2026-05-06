@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { useStaff, useUpdateStaff } from '@/hooks/useStaff'
+import { useStaff, useUpdateStaff, useDeleteStaff } from '@/hooks/useStaff'
 import { StaffForm, type StaffFormValues } from '@/components/staff/StaffForm'
 import { ServiceAssignment } from '@/components/staff/ServiceAssignment'
 import { WeeklyScheduleCalendar } from '@/components/staff/WeeklyScheduleCalendar'
@@ -28,7 +28,9 @@ export function StaffDetailPage() {
   const navigate = useNavigate()
   const { data: staff, isLoading } = useStaff(staffId!)
   const updateMutation = useUpdateStaff()
+  const deleteMutation = useDeleteStaff()
   const [deactivateOpen, setDeactivateOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
 
   async function handleProfileSave(values: StaffFormValues) {
     try {
@@ -51,6 +53,15 @@ export function StaffDetailPage() {
       setDeactivateOpen(false)
     } catch {
       toast.error('Failed to deactivate')
+    }
+  }
+
+  async function handleDelete() {
+    try {
+      await deleteMutation.mutateAsync({ staffId: staffId! })
+      navigate('/staff')
+    } catch {
+      toast.error('Failed to delete staff member')
     }
   }
 
@@ -137,12 +148,29 @@ export function StaffDetailPage() {
       </Card>
 
       {/* Override calendar */}
-      <Card>
+      <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-base">Availability overrides</CardTitle>
         </CardHeader>
         <CardContent>
           <OverrideCalendar staffId={staffId!} />
+        </CardContent>
+      </Card>
+
+      {/* Danger zone */}
+      <Card className="border-destructive/40">
+        <CardHeader>
+          <CardTitle className="text-base text-destructive">Danger zone</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setDeleteOpen(true)}
+            disabled={deleteMutation.isPending}
+          >
+            Delete staff member
+          </Button>
         </CardContent>
       </Card>
 
@@ -160,6 +188,26 @@ export function StaffDetailPage() {
             <AlertDialogAction
               variant="destructive"
               onClick={handleDeactivate}
+            >
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {staff.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently removes the staff member and all their schedules and overrides.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={handleDelete}
             >
               Confirm
             </AlertDialogAction>

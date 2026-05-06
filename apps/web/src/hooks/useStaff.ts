@@ -67,6 +67,17 @@ export function useStaff(staffId: string) {
   })
 }
 
+export function useDeleteStaff() {
+  const { user } = useAuth()
+  const qc = useQueryClient()
+  const tenantId = user!.tenantId
+  return useMutation({
+    mutationFn: ({ staffId }: { staffId: string }) =>
+      apiFetch(`/tenants/${tenantId}/staff/${staffId}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['staff', tenantId] }),
+  })
+}
+
 export function useCreateStaff() {
   const { user } = useAuth()
   const qc = useQueryClient()

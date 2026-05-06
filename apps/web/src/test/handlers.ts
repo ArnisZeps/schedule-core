@@ -218,6 +218,11 @@ export const handlers = [
     return HttpResponse.json(member)
   }),
 
+  // Staff delete
+  http.delete(`${BASE}/tenants/:tenantId/staff/:staffId`, () => {
+    return new HttpResponse(null, { status: 204 })
+  }),
+
   // Staff patch
   http.patch(`${BASE}/tenants/:tenantId/staff/:staffId`, async ({ params, request }) => {
     const body = await request.json() as Record<string, unknown>

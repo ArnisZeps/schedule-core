@@ -149,6 +149,26 @@ describe('Staff', () => {
         expect(capturedBody).toMatchObject({ isActive: true })
       })
     })
+
+    it('delete staff member triggers DELETE request and navigates to list', async () => {
+      const user = userEvent.setup()
+      let deleteCalled = false
+      server.use(
+        http.delete(`${BASE}/tenants/${TENANT_ID}/staff/staff-1`, () => {
+          deleteCalled = true
+          return new HttpResponse(null, { status: 204 })
+        }),
+      )
+      renderAt('/staff/staff-1')
+      await waitFor(() => screen.getByText('Alice Smith'))
+      await user.click(screen.getByRole('button', { name: /delete staff member/i }))
+      await waitFor(() => screen.getByRole('alertdialog'))
+      await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: /confirm/i }))
+      await waitFor(() => {
+        expect(deleteCalled).toBe(true)
+        expect(screen.queryByRole('button', { name: /deactivate/i })).not.toBeInTheDocument()
+      })
+    })
   })
 
   // ---------------------------------------------------------------------------
@@ -217,45 +237,28 @@ describe('Staff', () => {
       expect(within(block).getByText('17:00')).toBeInTheDocument()
     })
 
-    it('drag on a weekday column creates a new pending block', async () => {
+    it('drag on a weekday column opens the schedule window panel', async () => {
       renderAt('/staff/staff-1')
-      // Tuesday column (dayOfWeek=2) — no existing block
       const col = await screen.findByTestId('weekday-col-2')
-      // HOUR_PX=64, TOTAL_HEIGHT=1536: clientY=576 → 9:00, clientY=640 → 10:00
-      // getBoundingClientRect().top is 0 in jsdom so no mocking needed
       fireEvent.mouseDown(col, { clientY: 576 })
       fireEvent.mouseMove(document, { clientY: 640 })
       fireEvent.mouseUp(document, { clientY: 640 })
       await waitFor(() => {
-        expect(screen.getAllByTestId('schedule-block')).toHaveLength(2)
+        expect(screen.getByTestId('schedule-window-panel')).toBeInTheDocument()
       })
     })
 
-    it('clicking a schedule block opens a popover', async () => {
+    it('clicking a schedule block opens the schedule window panel', async () => {
       const user = userEvent.setup()
       renderAt('/staff/staff-1')
       const block = await screen.findByTestId('schedule-block')
       await user.click(block)
       await waitFor(() => {
-        expect(screen.getByTestId('schedule-block-popover')).toBeInTheDocument()
+        expect(screen.getByTestId('schedule-window-panel')).toBeInTheDocument()
       })
     })
 
-    it('popover delete removes the block', async () => {
-      const user = userEvent.setup()
-      renderAt('/staff/staff-1')
-      const block = await screen.findByTestId('schedule-block')
-      await user.click(block)
-      await waitFor(() => screen.getByTestId('schedule-block-popover'))
-      await user.click(
-        within(screen.getByTestId('schedule-block-popover')).getByRole('button', { name: /delete/i }),
-      )
-      await waitFor(() => {
-        expect(screen.queryByTestId('schedule-block')).not.toBeInTheDocument()
-      })
-    })
-
-    it('save schedule sends PUT with windows payload', async () => {
+    it('creating from panel adds a block and saves to API', async () => {
       const user = userEvent.setup()
       let capturedBody: unknown
       server.use(
@@ -265,8 +268,60 @@ describe('Staff', () => {
         }),
       )
       renderAt('/staff/staff-1')
-      await waitFor(() => screen.getByRole('button', { name: /save schedule/i }))
-      await user.click(screen.getByRole('button', { name: /save schedule/i }))
+      const col = await screen.findByTestId('weekday-col-2')
+      fireEvent.mouseDown(col, { clientY: 576 })
+      fireEvent.mouseMove(document, { clientY: 640 })
+      fireEvent.mouseUp(document, { clientY: 640 })
+      await waitFor(() => screen.getByTestId('schedule-window-panel'))
+      await user.click(
+        within(screen.getByTestId('schedule-window-panel')).getByRole('button', { name: /create schedule/i }),
+      )
+      await waitFor(() => {
+        expect(capturedBody).toMatchObject({
+          windows: expect.arrayContaining([
+            expect.objectContaining({ dayOfWeek: 2 }),
+          ]),
+        })
+      })
+    })
+
+    it('deleting from schedule panel removes the block and saves to API', async () => {
+      const user = userEvent.setup()
+      let capturedBody: unknown
+      server.use(
+        http.put(`${BASE}/tenants/${TENANT_ID}/staff/staff-1/schedules`, async ({ request }) => {
+          capturedBody = await request.json()
+          return HttpResponse.json([])
+        }),
+      )
+      renderAt('/staff/staff-1')
+      const block = await screen.findByTestId('schedule-block')
+      await user.click(block)
+      await waitFor(() => screen.getByTestId('schedule-window-panel'))
+      await user.click(
+        within(screen.getByTestId('schedule-window-panel')).getByRole('button', { name: /delete/i }),
+      )
+      await waitFor(() => {
+        expect(screen.queryByTestId('schedule-block')).not.toBeInTheDocument()
+        expect(capturedBody).toMatchObject({ windows: [] })
+      })
+    })
+
+    it('save schedule sends PUT with windows payload (compat check)', async () => {
+      const user = userEvent.setup()
+      let capturedBody: unknown
+      server.use(
+        http.put(`${BASE}/tenants/${TENANT_ID}/staff/staff-1/schedules`, async ({ request }) => {
+          capturedBody = await request.json()
+          return HttpResponse.json([])
+        }),
+      )
+      renderAt('/staff/staff-1')
+      // open existing block panel and update it to trigger auto-save
+      const block = await screen.findByTestId('schedule-block')
+      await user.click(block)
+      await waitFor(() => screen.getByTestId('schedule-window-panel'))
+      await user.click(screen.getByRole('button', { name: /update/i }))
       await waitFor(() => {
         expect(capturedBody).toMatchObject({
           windows: expect.arrayContaining([

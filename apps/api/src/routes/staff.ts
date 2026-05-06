@@ -233,6 +233,16 @@ export function staffRouter(pool: Pool): Router {
     res.json(formatStaff(row));
   });
 
+  router.delete('/:staffId', async (req, res) => {
+    const { tenantId, staffId } = req.params as { tenantId: string; staffId: string };
+    if (req.auth!.tenantId !== tenantId) { res.status(403).json({ error: 'forbidden' }); return; }
+
+    await withTenantContext(pool, tenantId, async (client) => {
+      await client.query('DELETE FROM staff WHERE id = $1', [staffId]);
+    });
+    res.status(204).send();
+  });
+
   // ---------------------------------------------------------------------------
   // Service assignment
   // ---------------------------------------------------------------------------

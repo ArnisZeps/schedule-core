@@ -125,7 +125,9 @@ export function OverrideCalendar({ staffId }: OverrideCalendarProps) {
 
         {/* Time grid */}
         {isLoading ? (
-          <LoadingState />
+          <div style={{ height: 400 }} className="flex items-center justify-center">
+            <LoadingState />
+          </div>
         ) : (
           <div className="overflow-y-auto" style={{ maxHeight: 400 }}>
             <div className="flex">

@@ -5,6 +5,7 @@
 - As a business owner, I want to add staff members with a name, optional email, and optional phone so I can track who works for me.
 - As a business owner, I want to deactivate a staff member so they no longer appear in future booking flows without deleting their record or losing appointment history.
 - As a business owner, I want to reactivate an inactive staff member so they can be assigned to bookings again.
+- As a business owner, I want to permanently delete a staff member and all their associated data so I can comply with data deletion requests (GDPR).
 - As a business owner, I want to assign one or more services to a staff member so the system knows which services they can perform.
 - As a business owner, I want to drag on a weekday calendar to define a staff member's recurring weekly hours so I can set up split shifts visually.
 - As a business owner, I want to drag on a date calendar to create an override block (available or not available) for a staff member so I can handle exceptions like holidays or one-off availability changes.
@@ -35,6 +36,9 @@
 - [ ] A "Reactivate" button (shown when `is_active` is false) sets `is_active = true` via PATCH; navigates back to the list on success.
 - [ ] An `AlertDialog` confirmation is shown before deactivating.
 - [ ] The detail page has three additional sections below the profile: Services, Weekly Schedule, Overrides.
+- [ ] A "Danger zone" section at the bottom of the detail page contains a "Delete staff member" button.
+- [ ] Clicking "Delete staff member" opens an `AlertDialog`; confirming calls `DELETE /tenants/:tenantId/staff/:staffId`, then navigates to `/staff`.
+- [ ] The DELETE permanently removes the staff member and all related schedules, overrides, and service assignments (cascade).
 
 ### Services section
 
@@ -47,13 +51,15 @@
 
 - [ ] Displays a 7-column weekday calendar (Monday–Sunday). No dates — columns represent days of the week only.
 - [ ] Each column shows existing schedule windows as coloured blocks with their time range.
-- [ ] Dragging within a column creates a new time window block (times snapped to the nearest 15-minute boundary).
+- [ ] A "Create schedule" button opens `ScheduleWindowPanel` with a day-of-week picker and blank time fields.
+- [ ] Dragging within a column opens `ScheduleWindowPanel` pre-filled with that column's day and the dragged time range.
 - [ ] A ghost block is shown during drag to indicate the pending window.
 - [ ] Drag interaction is inactive when the pointer is over an existing window block.
-- [ ] Clicking an existing block opens a popover with editable start/end time inputs and a delete button.
-- [ ] `start_time < end_time` is enforced; invalid windows show an inline error in the popover.
-- [ ] A "Save schedule" button commits all pending changes via `PUT /tenants/:tenantId/staff/:staffId/schedules`.
-- [ ] Multiple windows per day are valid (split shifts).
+- [ ] Clicking an existing block opens `ScheduleWindowPanel` in edit mode (day shown as label, not editable).
+- [ ] `ScheduleWindowPanel` is a slide-over panel (same pattern as `OverridePanel`) with start time, end time, and "Create schedule" / "Update" / "Delete" buttons.
+- [ ] Each create, update, or delete action immediately calls `PUT /tenants/:tenantId/staff/:staffId/schedules` with the full updated window list (auto-save; no separate "Save schedule" button).
+- [ ] Overlapping windows on the same day are rejected with a toast error; the panel stays open.
+- [ ] Multiple non-overlapping windows per day are valid (split shifts).
 
 ### Overrides section
 
@@ -92,5 +98,5 @@
 - [ ] API integration tests cover: PUT services replaces full set, GET returns assigned services, empty array removes all assignments.
 - [ ] API integration tests cover: PUT schedules replaces full set, GET returns all windows, PUT with empty array removes all windows.
 - [ ] API integration tests cover: create override (available), create override (not_available), update override (change type and dates), delete override, start_time >= end_time returns 422, start_date > end_date returns 422.
-- [ ] RTL + MSW tests cover: staff list renders active/inactive, create form validation, service checkbox save, weekday calendar drag creates a block, block popover edit/delete, override calendar drag opens panel pre-filled, override panel create/edit/delete flow.
+- [ ] RTL + MSW tests cover: staff list renders active/inactive, create form validation, service checkbox save, weekday calendar drag opens `ScheduleWindowPanel`, panel create/delete auto-saves via PUT, block click opens panel in edit mode, delete staff member via Danger zone, override calendar drag opens panel pre-filled, override panel create/edit/delete flow.
 - [ ] No console errors on any happy-path flow.
