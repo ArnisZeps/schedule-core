@@ -106,11 +106,12 @@ export function WeeklyScheduleCalendar({ staffId }: WeeklyScheduleCalendarProps)
         </Button>
       </div>
 
-      <div className="border rounded-lg overflow-hidden">
+      <div className="overflow-x-auto">
+      <div className="border rounded-lg overflow-hidden" style={{ minWidth: 480 }}>
         <div className="flex border-b bg-muted/40">
           <div className="w-16 flex-shrink-0" />
           {WEEK_ORDER.map(dow => (
-            <div key={dow} className="flex-1 text-center py-2 text-xs font-medium text-muted-foreground">
+            <div key={dow} className="flex-1 text-center py-2 text-xs font-medium text-muted-foreground" style={{ minWidth: 52 }}>
               {DAY_LABELS[dow]}
             </div>
           ))}
@@ -130,6 +131,7 @@ export function WeeklyScheduleCalendar({ staffId }: WeeklyScheduleCalendarProps)
             ))}
           </div>
         </div>
+      </div>
       </div>
 
       {panelState !== null && (

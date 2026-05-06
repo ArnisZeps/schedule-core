@@ -90,7 +90,7 @@ export function WeekdayColumn({
       ref={colRef}
       data-testid={`weekday-col-${dayOfWeek}`}
       className="flex-1 relative border-l select-none cursor-crosshair"
-      style={{ height: TOTAL_HEIGHT }}
+      style={{ height: TOTAL_HEIGHT, minWidth: 52 }}
       onMouseDown={handleMouseDown}
     >
       {Array.from({ length: 24 }, (_, i) => (

@@ -75,7 +75,7 @@ export function OverrideCalendar({ staffId }: OverrideCalendarProps) {
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center gap-2 justify-between">
         <div className="flex items-center gap-2">
           <Button
             size="sm"
@@ -109,7 +109,8 @@ export function OverrideCalendar({ staffId }: OverrideCalendarProps) {
         </Button>
       </div>
 
-      <div className="border rounded-lg overflow-hidden">
+      <div className="overflow-x-auto">
+      <div className="border rounded-lg overflow-hidden" style={{ minWidth: 480 }}>
         {/* Day headers */}
         <div className="flex sticky top-0 bg-background z-10 border-b">
           <div className="w-16 flex-shrink-0" />
@@ -117,6 +118,7 @@ export function OverrideCalendar({ staffId }: OverrideCalendarProps) {
             <div
               key={day.toISOString()}
               className="flex-1 text-center py-2 text-xs font-medium text-muted-foreground"
+              style={{ minWidth: 52 }}
             >
               {format(day, 'EEE d')}
             </div>
@@ -148,6 +150,7 @@ export function OverrideCalendar({ staffId }: OverrideCalendarProps) {
             </div>
           </div>
         )}
+      </div>
       </div>
 
       {panelState !== null && (
@@ -215,7 +218,7 @@ function OverrideColumn({ date, overrides, onTimeSelect, onOverrideClick }: Over
       ref={colRef}
       data-testid={`override-col-${date}`}
       className="flex-1 relative border-l select-none cursor-crosshair"
-      style={{ height: TOTAL_HEIGHT }}
+      style={{ height: TOTAL_HEIGHT, minWidth: 52 }}
       onMouseDown={handleMouseDown}
     >
       {Array.from({ length: 24 }, (_, i) => (

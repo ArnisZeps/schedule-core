@@ -57,7 +57,7 @@
 ### Owner UI — Weekly schedule calendar
 - [x] Write RTL + MSW tests: windows render per day, drag creates a new block (simulate mousedown/mousemove/mouseup), block popover edit updates times, popover delete removes block, save triggers PUT with correct payload
 - [x] Implement `WeekdayColumn` (drag gesture, ghost block, window blocks, block popover)
-- [x] Implement `WeeklyScheduleCalendar` (7 columns, pending-change state, save button)
+- [x] Implement `WeeklyScheduleCalendar` (7 columns, auto-save on each panel action, "Create schedule" button)
 - [x] Implement `useStaffSchedules` query and `useUpdateStaffSchedules` mutation hooks
 - [x] Wire `WeeklyScheduleCalendar` into `StaffDetailPage`
 
@@ -68,3 +68,13 @@
 - [x] Implement `OverrideCalendar` (week/day view toggle, navigation, "Create override" button, day columns with drag, override block rendering)
 - [x] Implement override hooks: `useStaffOverrides`, `useCreateStaffOverride`, `useUpdateStaffOverride`, `useDeleteStaffOverride`
 - [x] Wire `OverrideCalendar` into `StaffDetailPage`
+
+### Post-spec additions (vibe-coded during stabilisation)
+- [x] Refactor weekly schedule from popover+save-button to `ScheduleWindowPanel` slide-over with auto-save
+- [x] Implement `ScheduleWindowPanel` (day picker in create mode, start/end time, create/update/delete)
+- [x] Add client-side overlap check in `WeeklyScheduleCalendar` (toast on overlap, panel stays open)
+- [x] Fix CORS: add `PUT` to `Access-Control-Allow-Methods` in `apps/api/src/app.ts`
+- [x] Fix override calendar height jump: skeleton wrapped in fixed-height container matching grid
+- [x] Add `DELETE /tenants/:tenantId/staff/:staffId` API endpoint
+- [x] Implement `useDeleteStaff` hook
+- [x] Add "Danger zone" section to `StaffDetailPage` with "Delete staff member" button and AlertDialog

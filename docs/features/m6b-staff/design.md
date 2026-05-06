@@ -34,7 +34,8 @@ Constraints:
 | `apps/web/src/components/staff/StaffForm.tsx` | Name/email/phone form used for create and profile edit |
 | `apps/web/src/components/staff/ServiceAssignment.tsx` | Service checkbox list with save button |
 | `apps/web/src/components/staff/WeeklyScheduleCalendar.tsx` | 7-column weekday calendar; owns drag state and pending-change list |
-| `apps/web/src/components/staff/WeekdayColumn.tsx` | Single day column with drag gesture, window blocks, and block popover |
+| `apps/web/src/components/staff/WeekdayColumn.tsx` | Single day column with drag gesture, ghost block, and window blocks; delegates editing to `ScheduleWindowPanel` |
+| `apps/web/src/components/staff/ScheduleWindowPanel.tsx` | Slide-over panel for creating and editing schedule windows: day picker (create mode), start/end time, create/update/delete |
 | `apps/web/src/components/staff/OverrideCalendar.tsx` | Week/day view calendar for overrides; toolbar with view toggle, navigation, create button |
 | `apps/web/src/components/staff/OverrideBlock.tsx` | Coloured block rendered on the override calendar (green / red) |
 | `apps/web/src/components/staff/OverridePanel.tsx` | Slide-over panel for create/edit: date range, type toggle, start/end time |
@@ -146,11 +147,14 @@ RLS context is set inside each transaction via `SET LOCAL app.current_tenant_id`
 **Staff CRUD**
 
 ```
-GET   /tenants/:tenantId/staff                ?includeInactive=true
-POST  /tenants/:tenantId/staff
-GET   /tenants/:tenantId/staff/:staffId
-PATCH /tenants/:tenantId/staff/:staffId
+GET    /tenants/:tenantId/staff                ?includeInactive=true
+POST   /tenants/:tenantId/staff
+GET    /tenants/:tenantId/staff/:staffId
+PATCH  /tenants/:tenantId/staff/:staffId
+DELETE /tenants/:tenantId/staff/:staffId
 ```
+
+`DELETE` permanently removes the staff member row. All related rows in `staff_services`, `staff_schedules`, and `staff_schedule_overrides` are removed via `ON DELETE CASCADE`. Returns 204 No Content.
 
 `GET` list returns only `is_active = true` by default; `?includeInactive=true` returns all.
 
@@ -253,14 +257,18 @@ Override response shape:
 `WeekdayColumn` receives:
 
 ```ts
-onWindowCreate: (dayOfWeek: number, startTime: string, endTime: string) => void
+onTimeSelect: (startTime: string, endTime: string) => void
+onBlockClick: (window: LocalWindow) => void
 ```
 
 - `mousedown` on the column container (not on an existing block): start drag.
 - `mousemove`: render a ghost `div` spanning drag start to current position (same pattern as `DayColumn` in the appointments page).
-- `mouseup`: compute snapped start/end (15-min grid), call `onWindowCreate` and clear drag state.
-- `WeeklyScheduleCalendar` accumulates pending windows in local state; "Save schedule" commits via PUT.
-- Clicking an existing block opens a popover (shadcn `Popover`) with time inputs and a delete button. Changes are reflected immediately in local state; committed on "Save schedule".
+- `mouseup`: compute snapped start/end (15-min grid), call `onTimeSelect` and clear drag state.
+- `WeeklyScheduleCalendar` opens `ScheduleWindowPanel` with the column's `dayOfWeek` pre-selected and the dragged times pre-filled.
+- A "Create schedule" button in the calendar toolbar opens `ScheduleWindowPanel` with all fields blank (user picks day from a select).
+- Clicking an existing block calls `onBlockClick`; `WeeklyScheduleCalendar` opens `ScheduleWindowPanel` in edit mode.
+- Each panel action (create / update / delete) immediately calls `PUT /schedules` with the full updated window list — no separate "Save schedule" button.
+- Overlap check: before adding or updating a window, `WeeklyScheduleCalendar` checks for same-day time overlap. If detected, a toast error is shown and the panel stays open; PUT is not called.
 
 ### Override calendar drag protocol
 
@@ -284,6 +292,7 @@ function useStaffList(includeInactive?: boolean): UseQueryResult<Staff[]>
 function useStaff(staffId: string): UseQueryResult<Staff>
 function useCreateStaff(): UseMutationResult<Staff, ApiError, CreateStaffInput>
 function useUpdateStaff(): UseMutationResult<Staff, ApiError, { staffId: string } & UpdateStaffInput>
+function useDeleteStaff(): UseMutationResult<void, ApiError, { staffId: string }>
 
 // Service assignment
 function useStaffServices(staffId: string): UseQueryResult<Service[]>
@@ -331,13 +340,8 @@ need system access in MVP; keeping a separate `staff` table preserves the auth b
 
 - `availability_rules` and `GET /:id/slots` continue to drive slot generation after M6b. Staff
   schedules are managed but have no effect on booking validation until M6d performs the cutover.
-- No overlap validation on `staff_schedules` rows for the same day — same deliberate choice as
-  `availability_rules` (documented in data model). Owners are responsible for non-overlapping
-  windows; the calendar renders them visually to make conflicts obvious.
-- No overlap validation on `staff_schedule_overrides`. Overlapping overrides are stored and
-  rendered on the calendar; M6d defines precedence rules when computing availability.
-- No overlap check on `staff_schedules` rows for the same day — same deliberate choice as
-  `availability_rules` (documented in data model).
+- Overlap validation on `staff_schedules` is enforced **in the UI only** (client-side, before PUT). The database has no overlap constraint. This catches accidental overlaps during the drag/panel flow without requiring a server round-trip or complex constraint logic.
+- No overlap validation on `staff_schedule_overrides`. Overlapping overrides are stored and rendered on the calendar; M6d defines precedence rules when computing availability.
 - Deactivating a staff member with future bookings is allowed without warning in MVP.
 
 ## Out of scope
