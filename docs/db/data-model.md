@@ -102,9 +102,84 @@ An appointment made by a client for a specific service. Duration is encoded as `
 
 ---
 
+## staff
+
+A person who performs services for a tenant. Can be assigned to services, have a recurring weekly schedule, and date-range availability overrides.
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| id | UUID | PK, DEFAULT gen_random_uuid() |
+| tenant_id | UUID | NOT NULL, FK → tenants(id) ON DELETE CASCADE |
+| name | TEXT | NOT NULL |
+| email | TEXT | nullable |
+| phone | TEXT | nullable |
+| is_active | BOOLEAN | NOT NULL, DEFAULT true |
+| created_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() |
+
+**Indexes:** `(tenant_id)`, `(tenant_id, is_active)`
+
+---
+
+## staff_services
+
+Join table linking staff members to the services they can perform.
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| staff_id | UUID | NOT NULL, FK → staff(id) ON DELETE CASCADE |
+| service_id | UUID | NOT NULL, FK → services(id) ON DELETE CASCADE |
+| tenant_id | UUID | NOT NULL, FK → tenants(id) ON DELETE CASCADE — denormalised for RLS |
+
+**PK:** `(staff_id, service_id)`
+
+**Index:** `(tenant_id)`
+
+---
+
+## staff_schedules
+
+Recurring weekly availability windows for a staff member. Each row defines one time window on one day of the week.
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| id | UUID | PK, DEFAULT gen_random_uuid() |
+| staff_id | UUID | NOT NULL, FK → staff(id) ON DELETE CASCADE |
+| tenant_id | UUID | NOT NULL, FK → tenants(id) ON DELETE CASCADE — denormalised for RLS |
+| day_of_week | SMALLINT | NOT NULL, CHECK (0–6), 0 = Sunday |
+| start_time | TIME | NOT NULL |
+| end_time | TIME | NOT NULL |
+
+**Constraints:** `start_time < end_time`
+
+**Indexes:** `(staff_id)`, `(tenant_id)`
+
+---
+
+## staff_schedule_overrides
+
+Date-range exceptions to the recurring schedule. Type `available` adds availability; `not_available` blocks it.
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| id | UUID | PK, DEFAULT gen_random_uuid() |
+| staff_id | UUID | NOT NULL, FK → staff(id) ON DELETE CASCADE |
+| tenant_id | UUID | NOT NULL, FK → tenants(id) ON DELETE CASCADE — denormalised for RLS |
+| start_date | DATE | NOT NULL |
+| end_date | DATE | NOT NULL |
+| type | TEXT | NOT NULL, CHECK IN ('available', 'not_available') |
+| start_time | TIME | NOT NULL |
+| end_time | TIME | NOT NULL |
+| created_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() |
+
+**Constraints:** `start_date <= end_date`, `start_time < end_time`
+
+**Indexes:** `(staff_id)`, `(tenant_id)`, `(staff_id, start_date, end_date)` — for range queries
+
+---
+
 ## RLS Policies
 
-RLS is enabled on `services`, `availability_rules`, and `bookings`. All three use the same policy shape:
+RLS is enabled on `services`, `availability_rules`, `bookings`, `staff`, `staff_services`, `staff_schedules`, and `staff_schedule_overrides`. All use the same policy shape:
 
 ```sql
 USING     (tenant_id = current_setting('app.current_tenant_id', true)::uuid)

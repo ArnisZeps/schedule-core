@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutGrid, CalendarDays } from 'lucide-react'
+import { LayoutGrid, CalendarDays, Users } from 'lucide-react'
 
 interface SidebarProps {
   open: boolean
@@ -38,6 +38,19 @@ function NavContent() {
         >
           <CalendarDays className="size-4" />
           Calendar
+        </NavLink>
+        <NavLink
+          to="/staff"
+          className={({ isActive }) =>
+            `flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              isActive
+                ? 'bg-accent text-accent-foreground'
+                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+            }`
+          }
+        >
+          <Users className="size-4" />
+          Staff
         </NavLink>
       </nav>
     </div>
