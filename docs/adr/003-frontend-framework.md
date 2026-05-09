@@ -1,7 +1,7 @@
 # ADR 003 — Frontend Framework: Vite + React
 
 **Date:** 2026-04-11
-**Status:** Accepted
+**Status:** Superseded by ADR-010
 
 ## Context
 
