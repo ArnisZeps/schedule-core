@@ -1,22 +1,42 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createMemoryRouter, RouterProvider } from 'react-router-dom'
+import { useRouter } from 'next/navigation'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AuthProvider } from '../../providers/AuthProvider'
 import { server } from './handlers'
 import { http, HttpResponse } from 'msw'
-import { routes } from '@/App'
+import { AvailabilityPage } from '@/page-components/services/AvailabilityPage'
 import { TEST_TOKEN, TENANT_ID } from './handlers'
 
-function renderAt(path: string) {
-  const router = createMemoryRouter(routes, { initialEntries: [path] })
+vi.mock('next/navigation', () => ({
+  useRouter: vi.fn(),
+  useSearchParams: vi.fn(() => new URLSearchParams()),
+  useParams: vi.fn(() => ({ serviceId: 'res-1' })),
+  usePathname: vi.fn(() => '/services/res-1/availability'),
+}))
+
+vi.mock('next/link', () => ({
+  default: ({ href, children, ...props }: { href: string; children: React.ReactNode; [k: string]: unknown }) =>
+    <a href={String(href)} {...props as object}>{children}</a>,
+}))
+
+let mockPush: ReturnType<typeof vi.fn>
+let mockReplace: ReturnType<typeof vi.fn>
+
+beforeEach(() => {
+  mockPush = vi.fn()
+  mockReplace = vi.fn()
+  vi.mocked(useRouter).mockReturnValue({ push: mockPush, replace: mockReplace, back: vi.fn() } as any)
+})
+
+function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <RouterProvider router={router} />
+      <AuthProvider><AvailabilityPage /></AuthProvider>
     </QueryClientProvider>,
   )
-  return router
 }
 
 describe('Availability rules', () => {
@@ -26,7 +46,7 @@ describe('Availability rules', () => {
   })
 
   it('shows existing time windows in the weekly grid', async () => {
-    renderAt('/services/res-1/availability')
+    renderPage()
 
     await waitFor(() => {
       expect(screen.getByText('09:00')).toBeInTheDocument()
@@ -48,7 +68,7 @@ describe('Availability rules', () => {
       ),
     )
 
-    renderAt('/services/res-1/availability')
+    renderPage()
     await waitFor(() => screen.getByText('09:00'))
 
     // Open the day Select, pick Tuesday (index 2)
@@ -74,7 +94,7 @@ describe('Availability rules', () => {
       ),
     )
 
-    renderAt('/services/res-1/availability')
+    renderPage()
     await waitFor(() => screen.getByText('09:00'))
 
     await user.click(screen.getByRole('combobox', { name: /day/i }))
@@ -92,7 +112,7 @@ describe('Availability rules', () => {
   it('delete removes rule from grid', async () => {
     const user = userEvent.setup()
 
-    renderAt('/services/res-1/availability')
+    renderPage()
     await waitFor(() => screen.getByText('09:00'))
 
     server.use(

@@ -1,9 +1,31 @@
-import { NavLink } from 'react-router-dom'
+'use client'
+
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { LayoutGrid, CalendarDays, Users } from 'lucide-react'
 
 interface SidebarProps {
   open: boolean
   onClose: () => void
+}
+
+function NavItem({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
+  const pathname = usePathname()
+  const isActive = pathname === href || pathname.startsWith(href + '/')
+
+  return (
+    <Link
+      href={href}
+      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+        isActive
+          ? 'bg-accent text-accent-foreground'
+          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+      }`}
+    >
+      {icon}
+      {label}
+    </Link>
+  )
 }
 
 function NavContent() {
@@ -13,45 +35,9 @@ function NavContent() {
         <span className="text-sm font-semibold text-foreground">ScheduleCore</span>
       </div>
       <nav className="p-2 flex-1">
-        <NavLink
-          to="/services"
-          className={({ isActive }) =>
-            `flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              isActive
-                ? 'bg-accent text-accent-foreground'
-                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-            }`
-          }
-        >
-          <LayoutGrid className="size-4" />
-          Services
-        </NavLink>
-        <NavLink
-          to="/appointments"
-          className={({ isActive }) =>
-            `flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              isActive
-                ? 'bg-accent text-accent-foreground'
-                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-            }`
-          }
-        >
-          <CalendarDays className="size-4" />
-          Calendar
-        </NavLink>
-        <NavLink
-          to="/staff"
-          className={({ isActive }) =>
-            `flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              isActive
-                ? 'bg-accent text-accent-foreground'
-                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-            }`
-          }
-        >
-          <Users className="size-4" />
-          Staff
-        </NavLink>
+        <NavItem href="/services" icon={<LayoutGrid className="size-4" />} label="Services" />
+        <NavItem href="/appointments" icon={<CalendarDays className="size-4" />} label="Calendar" />
+        <NavItem href="/staff" icon={<Users className="size-4" />} label="Staff" />
       </nav>
     </div>
   )
