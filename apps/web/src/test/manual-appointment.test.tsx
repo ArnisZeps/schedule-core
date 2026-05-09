@@ -1,25 +1,46 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createMemoryRouter, RouterProvider } from 'react-router-dom'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AuthProvider } from '../../providers/AuthProvider'
 import { http, HttpResponse } from 'msw'
 import { server } from './handlers'
-import { routes } from '@/App'
+import { AppointmentsPage } from '@/page-components/appointments/AppointmentsPage'
 import { TEST_TOKEN, TENANT_ID, SLOTS } from './handlers'
+
+vi.mock('next/navigation', () => ({
+  useRouter: vi.fn(),
+  useSearchParams: vi.fn(() => new URLSearchParams()),
+  useParams: vi.fn(() => ({})),
+  usePathname: vi.fn(() => '/appointments'),
+}))
+
+vi.mock('next/link', () => ({
+  default: ({ href, children, ...props }: { href: string; children: React.ReactNode; [k: string]: unknown }) =>
+    <a href={String(href)} {...props as object}>{children}</a>,
+}))
 
 const FIXED_NOW = new Date('2026-05-04T10:00:00.000Z')
 const BASE = 'http://localhost:3001'
 
-function renderAt(path: string) {
-  const router = createMemoryRouter(routes, { initialEntries: [path] })
+let mockPush: ReturnType<typeof vi.fn>
+let mockReplace: ReturnType<typeof vi.fn>
+
+beforeEach(() => {
+  mockPush = vi.fn()
+  mockReplace = vi.fn()
+  vi.mocked(useRouter).mockReturnValue({ push: mockPush, replace: mockReplace, back: vi.fn() } as any)
+})
+
+function renderAppointments(search = 'view=week&date=2026-05-04') {
+  vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams(search) as any)
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <RouterProvider router={router} />
+      <AuthProvider><AppointmentsPage /></AuthProvider>
     </QueryClientProvider>,
   )
-  return router
 }
 
 describe('Manual appointment entry', () => {
@@ -35,14 +56,14 @@ describe('Manual appointment entry', () => {
   })
 
   it('panel opens via toolbar "New appointment" button', async () => {
-    renderAt('/appointments?view=week&date=2026-05-04')
+    renderAppointments('view=week&date=2026-05-04')
     const btn = await screen.findByTestId('new-appointment-btn')
     await userEvent.click(btn)
     expect(screen.getByTestId('new-appointment-panel')).toBeInTheDocument()
   })
 
   it('panel closes when backdrop is clicked', async () => {
-    renderAt('/appointments?view=week&date=2026-05-04')
+    renderAppointments('view=week&date=2026-05-04')
     const btn = await screen.findByTestId('new-appointment-btn')
     await userEvent.click(btn)
     expect(screen.getByTestId('new-appointment-panel')).toBeInTheDocument()
@@ -53,7 +74,7 @@ describe('Manual appointment entry', () => {
   })
 
   it('slot grid renders available and taken states', async () => {
-    renderAt('/appointments?view=week&date=2026-05-04')
+    renderAppointments('view=week&date=2026-05-04')
     const btn = await screen.findByTestId('new-appointment-btn')
     await userEvent.click(btn)
     await waitFor(() => expect(screen.getAllByTestId('slot-available').length).toBeGreaterThan(0))
@@ -61,7 +82,7 @@ describe('Manual appointment entry', () => {
   })
 
   it('conflict warning appears when taken slot is selected', async () => {
-    renderAt('/appointments?view=week&date=2026-05-04')
+    renderAppointments('view=week&date=2026-05-04')
     const btn = await screen.findByTestId('new-appointment-btn')
     await userEvent.click(btn)
     await waitFor(() => expect(screen.getAllByTestId('slot-taken').length).toBeGreaterThan(0))
@@ -95,7 +116,7 @@ describe('Manual appointment entry', () => {
       }),
     )
 
-    renderAt('/appointments?view=week&date=2026-05-04')
+    renderAppointments('view=week&date=2026-05-04')
     const btn = await screen.findByTestId('new-appointment-btn')
     await userEvent.click(btn)
 
@@ -114,7 +135,7 @@ describe('Manual appointment entry', () => {
   })
 
   it('shows validation error when name is missing', async () => {
-    renderAt('/appointments?view=week&date=2026-05-04')
+    renderAppointments('view=week&date=2026-05-04')
     const btn = await screen.findByTestId('new-appointment-btn')
     await userEvent.click(btn)
     // Only fill phone, not name
@@ -124,7 +145,7 @@ describe('Manual appointment entry', () => {
   })
 
   it('shows validation error when phone is too short', async () => {
-    renderAt('/appointments?view=week&date=2026-05-04')
+    renderAppointments('view=week&date=2026-05-04')
     const btn = await screen.findByTestId('new-appointment-btn')
     await userEvent.click(btn)
     await userEvent.type(screen.getByLabelText('Name'), 'Test Client')

@@ -1,0 +1,115 @@
+import { z } from 'zod';
+import { db } from '@/lib/server/db';
+import { withAuth } from '@/lib/server/withAuth';
+import { withTenantContext } from '@/lib/server/withTenantContext';
+
+type OverrideRow = {
+  id: string;
+  staff_id: string;
+  start_date: string;
+  end_date: string;
+  type: string;
+  start_time: string;
+  end_time: string;
+  created_at: Date;
+};
+
+const OVERRIDE_SELECT =
+  'id, staff_id, start_date::text AS start_date, end_date::text AS end_date, type, start_time, end_time, created_at';
+
+function formatOverride(r: OverrideRow) {
+  return {
+    id: r.id,
+    staffId: r.staff_id,
+    startDate: r.start_date,
+    endDate: r.end_date,
+    type: r.type,
+    startTime: r.start_time.substring(0, 5),
+    endTime: r.end_time.substring(0, 5),
+    createdAt: r.created_at,
+  };
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME = /^\d{2}:\d{2}$/;
+
+const overrideBodySchema = z
+  .object({
+    startDate: z.string().regex(DATE_RE),
+    endDate: z.string().regex(DATE_RE),
+    type: z.enum(['available', 'not_available']),
+    startTime: z.string().regex(TIME),
+    endTime: z.string().regex(TIME),
+  })
+  .refine((d) => d.startTime < d.endTime, { message: 'startTime must be before endTime' })
+  .refine((d) => d.startDate <= d.endDate, { message: 'startDate must be on or before endDate' });
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ tenantId: string; staffId: string }> },
+) {
+  const auth = withAuth(request);
+  if (!auth) return Response.json({ error: 'unauthorized' }, { status: 401 });
+
+  const { tenantId, staffId } = await params;
+  if (auth.tenantId !== tenantId) return Response.json({ error: 'forbidden' }, { status: 403 });
+
+  const sp = new URL(request.url).searchParams;
+  const from = sp.get('from') ?? undefined;
+  const to = sp.get('to') ?? undefined;
+
+  const conditions = ['staff_id = $1'];
+  const queryParams: unknown[] = [staffId];
+
+  if (from && DATE_RE.test(from)) {
+    queryParams.push(from);
+    conditions.push(`end_date >= $${queryParams.length}::date`);
+  }
+  if (to && DATE_RE.test(to)) {
+    queryParams.push(to);
+    conditions.push(`start_date <= $${queryParams.length}::date`);
+  }
+
+  const rows = await withTenantContext(db, tenantId, async (client) => {
+    const { rows } = await client.query<OverrideRow>(
+      `SELECT ${OVERRIDE_SELECT} FROM staff_schedule_overrides WHERE ${conditions.join(' AND ')} ORDER BY start_date, start_time`,
+      queryParams,
+    );
+    return rows;
+  });
+
+  return Response.json(rows.map(formatOverride));
+}
+
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ tenantId: string; staffId: string }> },
+) {
+  const auth = withAuth(request);
+  if (!auth) return Response.json({ error: 'unauthorized' }, { status: 401 });
+
+  const { tenantId, staffId } = await params;
+  if (auth.tenantId !== tenantId) return Response.json({ error: 'forbidden' }, { status: 403 });
+
+  const body = await request.json();
+  const parsed = overrideBodySchema.safeParse(body);
+  if (!parsed.success) {
+    return Response.json(
+      { error: 'validation_error', details: parsed.error.issues.map((i) => i.path.join('.') || i.message) },
+      { status: 422 },
+    );
+  }
+
+  const { startDate, endDate, type, startTime, endTime } = parsed.data;
+  const row = await withTenantContext(db, tenantId, async (client) => {
+    const { rows } = await client.query<OverrideRow>(
+      `INSERT INTO staff_schedule_overrides (staff_id, tenant_id, start_date, end_date, type, start_time, end_time)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING ${OVERRIDE_SELECT}`,
+      [staffId, tenantId, startDate, endDate, type, startTime, endTime],
+    );
+    return rows[0];
+  });
+
+  return Response.json(formatOverride(row), { status: 201 });
+}

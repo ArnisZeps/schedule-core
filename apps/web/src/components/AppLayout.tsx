@@ -1,5 +1,6 @@
+'use client'
+
 import { useState } from 'react'
-import { Outlet } from 'react-router-dom'
 import { Menu } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { Sidebar } from '@/components/Sidebar'
@@ -12,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-export function AppLayout() {
+export function AppLayout({ children }: { children: React.ReactNode }) {
   const { logout, user } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const initials = user?.email?.charAt(0).toUpperCase() ?? 'U'
@@ -47,7 +48,7 @@ export function AppLayout() {
           </div>
         </header>
         <main className="flex-1 overflow-auto p-6">
-          <Outlet />
+          {children}
         </main>
       </div>
     </div>

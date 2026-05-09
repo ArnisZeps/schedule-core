@@ -1,26 +1,49 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, waitFor, within, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { createMemoryRouter, RouterProvider } from 'react-router-dom'
+import { useRouter, useParams } from 'next/navigation'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { AuthProvider } from '../../providers/AuthProvider'
 import { server } from './handlers'
 import { http, HttpResponse } from 'msw'
-import { routes } from '@/App'
+import { StaffListPage } from '@/page-components/staff/StaffListPage'
+import { StaffCreatePage } from '@/page-components/staff/StaffCreatePage'
+import { StaffDetailPage } from '@/page-components/staff/StaffDetailPage'
 import { TEST_TOKEN, TENANT_ID, STAFF, STAFF_OVERRIDES } from './handlers'
+
+vi.mock('next/navigation', () => ({
+  useRouter: vi.fn(),
+  useSearchParams: vi.fn(() => new URLSearchParams()),
+  useParams: vi.fn(() => ({})),
+  usePathname: vi.fn(() => '/staff'),
+}))
+
+vi.mock('next/link', () => ({
+  default: ({ href, children, ...props }: { href: string; children: React.ReactNode; [k: string]: unknown }) =>
+    <a href={String(href)} {...props as object}>{children}</a>,
+}))
 
 const BASE = 'http://localhost:3001'
 // July 1 2026 is a Wednesday — override data (ov-1: Jul 1, ov-2: Jul 4-6) is in this week
 const FIXED_TODAY = new Date('2026-07-01T10:00:00.000Z')
 
-function renderAt(path: string) {
-  const router = createMemoryRouter(routes, { initialEntries: [path] })
+let mockPush: ReturnType<typeof vi.fn>
+let mockReplace: ReturnType<typeof vi.fn>
+
+beforeEach(() => {
+  mockPush = vi.fn()
+  mockReplace = vi.fn()
+  vi.mocked(useRouter).mockReturnValue({ push: mockPush, replace: mockReplace, back: vi.fn() } as any)
+  vi.mocked(useParams).mockReturnValue({})
+})
+
+function renderPage(component: React.ReactElement) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <RouterProvider router={router} />
+      <AuthProvider>{component}</AuthProvider>
     </QueryClientProvider>,
   )
-  return router
 }
 
 describe('Staff', () => {
@@ -35,7 +58,7 @@ describe('Staff', () => {
 
   describe('Staff list', () => {
     it('renders active staff members', async () => {
-      renderAt('/staff')
+      renderPage(<StaffListPage />)
       await waitFor(() => {
         expect(screen.getByText('Alice Smith')).toBeInTheDocument()
         expect(screen.queryByText('Bob Jones')).not.toBeInTheDocument()
@@ -44,7 +67,7 @@ describe('Staff', () => {
 
     it('show-inactive toggle reveals deactivated staff', async () => {
       const user = userEvent.setup()
-      renderAt('/staff')
+      renderPage(<StaffListPage />)
       await waitFor(() => screen.getByText('Alice Smith'))
       await user.click(screen.getByRole('checkbox', { name: /show inactive/i }))
       await waitFor(() => {
@@ -53,7 +76,7 @@ describe('Staff', () => {
     })
 
     it('add staff button is present', async () => {
-      renderAt('/staff')
+      renderPage(<StaffListPage />)
       await waitFor(() => {
         expect(screen.getByRole('link', { name: /add staff/i })).toBeInTheDocument()
       })
@@ -67,7 +90,7 @@ describe('Staff', () => {
   describe('Staff create form', () => {
     it('name required validation prevents submit', async () => {
       const user = userEvent.setup()
-      renderAt('/staff/new')
+      renderPage(<StaffCreatePage />)
       await waitFor(() => screen.getByLabelText(/name/i))
       await user.click(screen.getByRole('button', { name: /save/i }))
       await waitFor(() => {
@@ -77,7 +100,7 @@ describe('Staff', () => {
 
     it('invalid email format shows validation error', async () => {
       const user = userEvent.setup()
-      renderAt('/staff/new')
+      renderPage(<StaffCreatePage />)
       await waitFor(() => screen.getByLabelText(/name/i))
       await user.type(screen.getByLabelText(/name/i), 'Test Staff')
       await user.type(screen.getByLabelText(/email/i), 'not-an-email')
@@ -89,12 +112,12 @@ describe('Staff', () => {
 
     it('valid submit navigates to the new staff detail page', async () => {
       const user = userEvent.setup()
-      const router = renderAt('/staff/new')
+      renderPage(<StaffCreatePage />)
       await waitFor(() => screen.getByLabelText(/name/i))
       await user.type(screen.getByLabelText(/name/i), 'New Staff')
       await user.click(screen.getByRole('button', { name: /save/i }))
       await waitFor(() => {
-        expect(router.state.location.pathname).toMatch(/^\/staff\//)
+        expect(mockPush.mock.calls[0]?.[0]).toMatch(/^\/staff\//)
       })
     })
   })
@@ -104,9 +127,13 @@ describe('Staff', () => {
   // ---------------------------------------------------------------------------
 
   describe('Staff detail — profile', () => {
+    beforeEach(() => {
+      vi.mocked(useParams).mockReturnValue({ staffId: 'staff-1' })
+    })
+
     it('deactivate button opens confirmation dialog', async () => {
       const user = userEvent.setup()
-      renderAt('/staff/staff-1')
+      renderPage(<StaffDetailPage />)
       await waitFor(() => screen.getByText('Alice Smith'))
       await user.click(screen.getByRole('button', { name: /deactivate/i }))
       await waitFor(() => {
@@ -123,7 +150,7 @@ describe('Staff', () => {
           return HttpResponse.json({ ...STAFF[0], isActive: false })
         }),
       )
-      renderAt('/staff/staff-1')
+      renderPage(<StaffDetailPage />)
       await waitFor(() => screen.getByText('Alice Smith'))
       await user.click(screen.getByRole('button', { name: /deactivate/i }))
       await waitFor(() => screen.getByRole('alertdialog'))
@@ -135,6 +162,7 @@ describe('Staff', () => {
 
     it('reactivate button sends PATCH { isActive: true } for inactive staff', async () => {
       const user = userEvent.setup()
+      vi.mocked(useParams).mockReturnValue({ staffId: 'staff-2' })
       let capturedBody: unknown
       server.use(
         http.patch(`${BASE}/tenants/${TENANT_ID}/staff/staff-2`, async ({ request }) => {
@@ -142,7 +170,7 @@ describe('Staff', () => {
           return HttpResponse.json({ ...STAFF[1], isActive: true })
         }),
       )
-      renderAt('/staff/staff-2')
+      renderPage(<StaffDetailPage />)
       await waitFor(() => screen.getByText('Bob Jones'))
       await user.click(screen.getByRole('button', { name: /reactivate/i }))
       await waitFor(() => {
@@ -159,14 +187,14 @@ describe('Staff', () => {
           return new HttpResponse(null, { status: 204 })
         }),
       )
-      renderAt('/staff/staff-1')
+      renderPage(<StaffDetailPage />)
       await waitFor(() => screen.getByText('Alice Smith'))
       await user.click(screen.getByRole('button', { name: /delete staff member/i }))
       await waitFor(() => screen.getByRole('alertdialog'))
       await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: /confirm/i }))
       await waitFor(() => {
         expect(deleteCalled).toBe(true)
-        expect(screen.queryByRole('button', { name: /deactivate/i })).not.toBeInTheDocument()
+        expect(mockPush).toHaveBeenCalledWith('/staff')
       })
     })
   })
@@ -176,8 +204,12 @@ describe('Staff', () => {
   // ---------------------------------------------------------------------------
 
   describe('Service assignment', () => {
+    beforeEach(() => {
+      vi.mocked(useParams).mockReturnValue({ staffId: 'staff-1' })
+    })
+
     it('checkboxes reflect assigned services', async () => {
-      renderAt('/staff/staff-1')
+      renderPage(<StaffDetailPage />)
       await waitFor(() => {
         // handler returns [SERVICES[0]] for GET /staff/:staffId/services
         expect(screen.getByRole('checkbox', { name: /meeting room a/i })).toBeChecked()
@@ -194,7 +226,7 @@ describe('Staff', () => {
           return HttpResponse.json([])
         }),
       )
-      renderAt('/staff/staff-1')
+      renderPage(<StaffDetailPage />)
       await waitFor(() => screen.getByRole('checkbox', { name: /meeting room a/i }))
       await user.click(screen.getByRole('checkbox', { name: /staff: alice/i }))
       await user.click(screen.getByRole('button', { name: /save services/i }))
@@ -214,7 +246,7 @@ describe('Staff', () => {
           return HttpResponse.json([])
         }),
       )
-      renderAt('/staff/staff-1')
+      renderPage(<StaffDetailPage />)
       await waitFor(() => screen.getByRole('checkbox', { name: /meeting room a/i }))
       await user.click(screen.getByRole('checkbox', { name: /meeting room a/i }))
       await user.click(screen.getByRole('button', { name: /save services/i }))
@@ -229,8 +261,12 @@ describe('Staff', () => {
   // ---------------------------------------------------------------------------
 
   describe('Weekly schedule calendar', () => {
+    beforeEach(() => {
+      vi.mocked(useParams).mockReturnValue({ staffId: 'staff-1' })
+    })
+
     it('renders existing schedule windows', async () => {
-      renderAt('/staff/staff-1')
+      renderPage(<StaffDetailPage />)
       // sched-1: dayOfWeek=1 (Monday), 09:00–17:00
       const block = await screen.findByTestId('schedule-block')
       expect(within(block).getByText('09:00')).toBeInTheDocument()
@@ -238,7 +274,7 @@ describe('Staff', () => {
     })
 
     it('drag on a weekday column opens the schedule window panel', async () => {
-      renderAt('/staff/staff-1')
+      renderPage(<StaffDetailPage />)
       const col = await screen.findByTestId('weekday-col-2')
       fireEvent.mouseDown(col, { clientY: 576 })
       fireEvent.mouseMove(document, { clientY: 640 })
@@ -250,7 +286,7 @@ describe('Staff', () => {
 
     it('clicking a schedule block opens the schedule window panel', async () => {
       const user = userEvent.setup()
-      renderAt('/staff/staff-1')
+      renderPage(<StaffDetailPage />)
       const block = await screen.findByTestId('schedule-block')
       await user.click(block)
       await waitFor(() => {
@@ -267,7 +303,7 @@ describe('Staff', () => {
           return HttpResponse.json([])
         }),
       )
-      renderAt('/staff/staff-1')
+      renderPage(<StaffDetailPage />)
       const col = await screen.findByTestId('weekday-col-2')
       fireEvent.mouseDown(col, { clientY: 576 })
       fireEvent.mouseMove(document, { clientY: 640 })
@@ -294,7 +330,7 @@ describe('Staff', () => {
           return HttpResponse.json([])
         }),
       )
-      renderAt('/staff/staff-1')
+      renderPage(<StaffDetailPage />)
       const block = await screen.findByTestId('schedule-block')
       await user.click(block)
       await waitFor(() => screen.getByTestId('schedule-window-panel'))
@@ -316,7 +352,7 @@ describe('Staff', () => {
           return HttpResponse.json([])
         }),
       )
-      renderAt('/staff/staff-1')
+      renderPage(<StaffDetailPage />)
       // open existing block panel and update it to trigger auto-save
       const block = await screen.findByTestId('schedule-block')
       await user.click(block)
@@ -338,6 +374,7 @@ describe('Staff', () => {
 
   describe('Override calendar', () => {
     beforeEach(() => {
+      vi.mocked(useParams).mockReturnValue({ staffId: 'staff-1' })
       vi.useFakeTimers({ toFake: ['Date'] })
       vi.setSystemTime(FIXED_TODAY)
     })
@@ -347,7 +384,7 @@ describe('Staff', () => {
     })
 
     it('renders green block for available override', async () => {
-      renderAt('/staff/staff-1')
+      renderPage(<StaffDetailPage />)
       await waitFor(() => {
         const block = screen.getByTestId('override-block-ov-1')
         expect(block).toBeInTheDocument()
@@ -356,7 +393,7 @@ describe('Staff', () => {
     })
 
     it('renders red block for not_available override', async () => {
-      renderAt('/staff/staff-1')
+      renderPage(<StaffDetailPage />)
       await waitFor(() => {
         const block = screen.getByTestId(`override-block-${STAFF_OVERRIDES[1].id}`)
         expect(block).toBeInTheDocument()
@@ -366,7 +403,7 @@ describe('Staff', () => {
 
     it('create override button opens blank panel', async () => {
       const user = userEvent.setup()
-      renderAt('/staff/staff-1')
+      renderPage(<StaffDetailPage />)
       await waitFor(() => screen.getByRole('button', { name: /create override/i }))
       await user.click(screen.getByRole('button', { name: /create override/i }))
       await waitFor(() => {
@@ -377,7 +414,7 @@ describe('Staff', () => {
 
     it('clicking an override block opens panel in edit mode', async () => {
       const user = userEvent.setup()
-      renderAt('/staff/staff-1')
+      renderPage(<StaffDetailPage />)
       const block = await screen.findByTestId('override-block-ov-1')
       await user.click(block)
       await waitFor(() => {
@@ -387,7 +424,7 @@ describe('Staff', () => {
     })
 
     it('drag on override calendar column opens panel with pre-filled date and start time', async () => {
-      renderAt('/staff/staff-1')
+      renderPage(<StaffDetailPage />)
       // Thu July 2 — col testid uses ISO date; no existing override on this day
       const col = await screen.findByTestId('override-col-2026-07-03') // Friday
       // HOUR_PX=64, TOTAL_HEIGHT=1536: clientY=576 → 09:00
@@ -410,7 +447,7 @@ describe('Staff', () => {
           return new HttpResponse(null, { status: 204 })
         }),
       )
-      renderAt('/staff/staff-1')
+      renderPage(<StaffDetailPage />)
       const block = await screen.findByTestId('override-block-ov-1')
       await user.click(block)
       await waitFor(() => screen.getByTestId('override-panel'))

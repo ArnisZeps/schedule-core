@@ -31,4 +31,3 @@ You are running /design-mode. Your job is to produce feature documentation only 
 ## Rules
 - No code, no plan files, no package changes — docs only
 - Never contradict or silently deviate from existing ADRs
-- If a doc referenced in the task doesn't exist, say so and stop

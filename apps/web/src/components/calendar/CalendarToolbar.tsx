@@ -1,4 +1,6 @@
-import { useSearchParams } from 'react-router-dom'
+'use client'
+
+import { useSearchParams, useRouter } from 'next/navigation'
 import { addDays, subDays, parseISO, format } from 'date-fns'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -17,19 +19,18 @@ interface CalendarToolbarProps {
 }
 
 export function CalendarToolbar({ services, onNewAppointment }: CalendarToolbarProps) {
-  const [params, setParams] = useSearchParams()
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const isMobile = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches
-  const view = (params.get('view') || (isMobile ? 'day' : 'week')) as 'week' | 'day' | 'list'
-  const dateStr = params.get('date') || format(new Date(), 'yyyy-MM-dd')
-  const serviceId = params.get('serviceId') || undefined
+  const view = (searchParams.get('view') || (isMobile ? 'day' : 'week')) as 'week' | 'day' | 'list'
+  const dateStr = searchParams.get('date') || format(new Date(), 'yyyy-MM-dd')
+  const serviceId = searchParams.get('serviceId') || undefined
 
   function setParam(key: string, value: string | null) {
-    setParams(prev => {
-      const next = new URLSearchParams(prev)
-      if (value === null) next.delete(key)
-      else next.set(key, value)
-      return next
-    })
+    const next = new URLSearchParams(searchParams.toString())
+    if (value === null) next.delete(key)
+    else next.set(key, value)
+    router.push(`/appointments?${next.toString()}`)
   }
 
   function navigate(direction: 'prev' | 'next' | 'today') {

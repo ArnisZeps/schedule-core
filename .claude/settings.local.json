@@ -24,7 +24,9 @@
       "mcp__Neon__list_projects",
       "mcp__Neon__list_branch_computes",
       "mcp__Neon__run_sql",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "PowerShell(Remove-Item *)",
+      "PowerShell(Get-Process *)"
     ]
   }
 }
