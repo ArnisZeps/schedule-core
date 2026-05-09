@@ -15,5 +15,8 @@
   "engines": {
     "node": ">=20",
     "pnpm": ">=9"
+  },
+  "pnpm": {
+    "ignoredOptionalDependencies": ["bufferutil", "utf-8-validate"]
   }
 }
