@@ -23,7 +23,7 @@ addition; it is tree-shakeable and already the ecosystem standard for this use c
 
 | File | Responsibility |
 |------|----------------|
-| `src/pages/appointments/AppointmentsPage.tsx` | Reads URL search params (`view`, `date`, `serviceId`); fetches bookings + services; composes toolbar and active view |
+| `src/page-components/AppointmentsPage.tsx` | Reads URL search params (`view`, `date`, `serviceId`); fetches bookings + services; composes toolbar and active view |
 
 ### Calendar components
 
@@ -118,7 +118,7 @@ O(n²) worst case; n (appointments per day per service) is small in practice.
 | `date` | `YYYY-MM-DD` | today |
 | `serviceId` | UUID | absent = all services |
 
-Managed via `useSearchParams` from react-router-dom.
+Managed via `useSearchParams` from `next/navigation`.
 
 ### Hook interfaces
 

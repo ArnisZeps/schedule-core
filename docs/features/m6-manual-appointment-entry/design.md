@@ -15,7 +15,7 @@ Constraints:
 - `services` gains `duration_minutes` — required by the slot grid here and by the M7 booking
   widget. Better to add it now than create a gap mid-roadmap.
 - No client table. Client identity is free-text (name + phone) stored per booking.
-- Raw SQL, no ORM (ADR-004). Express Router (ADR-002). shadcn/ui (ADR-009).
+- Raw SQL, no ORM (ADR-004). shadcn/ui (ADR-009).
 
 ## Components
 
@@ -34,12 +34,13 @@ Constraints:
 | `apps/web/src/components/calendar/DayColumn.tsx` | Add drag-selection gesture; ghost block during drag; `onTimeSelect` prop |
 | `apps/web/src/components/calendar/CalendarToolbar.tsx` | Add "New appointment" Button |
 | `apps/web/src/components/calendar/AppointmentDetailDialog.tsx` | Show `clientPhone`; show `clientEmail` only when non-null; show `notes` when non-null |
-| `apps/web/src/pages/appointments/AppointmentsPage.tsx` | Panel open state; `onTimeSelect` handler; backdrop dismiss |
+| `apps/web/src/page-components/AppointmentsPage.tsx` | Panel open state; `onTimeSelect` handler; backdrop dismiss |
 | `apps/web/src/hooks/useBookings.ts` | Extend `Booking` type: add `clientPhone`, `notes: string | null`; change `clientEmail` to `string | null` |
-| `apps/api/src/routes/bookings.ts` | POST: add `clientPhone` (required), `clientEmail` (optional), `notes` (optional), `override` (optional bool); PATCH: add `notes`; extend `BookingRow`, `SELECT_COLS`, `format` |
-| `apps/api/src/routes/services.ts` | Add `duration_minutes` to `ServiceRow`, `format`, SQL, `createSchema`, `patchSchema`; add `GET /:id/slots` handler |
-| `apps/api/src/routes/public.ts` | Extend `BookingRow`, `SELECT_COLS`, `format` for `client_phone`, `notes`; `client_email` stays required in the public schema |
-| `apps/api/src/lib/availability.ts` | Add `generateAllSlots` — same as `generateSlots` but includes taken slots with `available: false` |
+| `apps/web/app/api/tenants/[tenantId]/bookings/route.ts` | POST: add `clientPhone` (required), `clientEmail` (optional), `notes` (optional), `override` (optional bool); PATCH: add `notes`; extend `BookingRow`, `SELECT_COLS`, `format` |
+| `apps/web/app/api/tenants/[tenantId]/services/[serviceId]/route.ts` | Add `duration_minutes` to `ServiceRow`, `format`, SQL, `createSchema`, `patchSchema` |
+| `apps/web/app/api/tenants/[tenantId]/services/[serviceId]/slots/route.ts` | New: `GET` handler returning all slots with `available` flag |
+| `apps/web/app/api/public/[tenantSlug]/bookings/route.ts` | Extend `BookingRow`, `SELECT_COLS`, `format` for `client_phone`, `notes`; `client_email` stays required in the public schema |
+| `apps/web/src/lib/server/availability.ts` | Add `generateAllSlots` — same as `generateSlots` but includes taken slots with `available: false` |
 | `packages/db/migrations/0004_m6_phone_notes_duration.sql` | Schema changes (see below) |
 | `docs/db/data-model.md` | Document new columns |
 | `docs/features/m4b-bookings-api/design.md` | Update POST contract and response shape |
@@ -129,8 +130,8 @@ Returns all time slots in the service's availability window for the given date:
 - Returns `[]` when no availability rules exist for that day of the week.
 - `400` missing/invalid date, `403`, `404` service not found.
 
-Implemented as `GET /:id/slots` in `apps/api/src/routes/services.ts`. Backed by the new
-`generateAllSlots(client, serviceId, date, durationMinutes)` helper in `availability.ts`.
+Implemented as `GET /api/tenants/:tenantId/services/:serviceId/slots` in `apps/web/app/api/tenants/[tenantId]/services/[serviceId]/slots/route.ts`. Backed by the new
+`generateAllSlots(client, serviceId, date, durationMinutes)` helper in `apps/web/src/lib/server/availability.ts`.
 
 ### Hook interfaces
 

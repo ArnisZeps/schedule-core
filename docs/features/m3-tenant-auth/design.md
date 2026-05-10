@@ -10,7 +10,6 @@ non-development environments.
 Constraints:
 - JWT stateless (resolved in roadmap; ADR-007).
 - Raw SQL, no ORM (ADR-004).
-- Express, no decorator magic (ADR-002).
 - Non-owner Postgres role required before RLS is meaningful (ADR-005).
 
 ## Data model addition
@@ -36,11 +35,12 @@ Multiple users per tenant are supported. Signup creates the first user (the owne
 | File | Responsibility |
 |------|----------------|
 | `packages/db/migrations/0002_tenant_auth.sql` | Add `users` table; create `schedulecore_app` role with minimal grants; `FORCE ROW LEVEL SECURITY` on tenant-scoped tables |
-| `apps/api/src/routes/auth.ts` | `POST /auth/signup` and `POST /auth/login` handlers |
-| `apps/api/src/middleware/auth.ts` | JWT verification; attaches `req.auth = { userId, tenantId }` |
-| `apps/api/src/middleware/tenant-context.ts` | Helper: wraps a DB transaction and executes `SET LOCAL app.current_tenant_id = ?` before running queries |
-| `apps/api/src/lib/jwt.ts` | `signToken(payload)` and `verifyToken(token)` thin wrappers around `jsonwebtoken` |
-| `apps/api/src/lib/password.ts` | `hashPassword(plain)` and `verifyPassword(plain, hash)` wrappers around `bcryptjs` |
+| `apps/web/app/api/auth/signup/route.ts` | `POST /api/auth/signup` handler |
+| `apps/web/app/api/auth/login/route.ts` | `POST /api/auth/login` handler |
+| `apps/web/src/lib/server/withAuth.ts` | JWT verification middleware for Next.js Route Handlers |
+| `apps/web/src/lib/server/withTenantContext.ts` | Helper: wraps a DB transaction and executes `SET LOCAL app.current_tenant_id = ?` before running queries |
+| `apps/web/src/lib/server/jwt.ts` | `signToken(payload)` and `verifyToken(token)` thin wrappers around `jose` |
+| `apps/web/src/lib/server/password.ts` | `hashPassword(plain)` and `verifyPassword(plain, hash)` wrappers around `bcryptjs` |
 
 ## Contracts
 

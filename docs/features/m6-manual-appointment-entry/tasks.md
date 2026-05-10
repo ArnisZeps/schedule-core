@@ -2,6 +2,8 @@
 
 <!-- Never delete tasks. Mark done, append new ones. -->
 
+> **Note:** File paths in tasks below reflect the pre-migration (Express + Vite SPA) architecture. API files are now under `apps/web/app/api/`, page components under `src/page-components/`. See `docs/features/next-js-migration/` and `docs/features/api-nextjs-migration/`.
+
 ## 2026-05-04 Initial implementation
 
 ### Schema and data model

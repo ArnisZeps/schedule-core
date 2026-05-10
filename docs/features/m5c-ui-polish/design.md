@@ -51,10 +51,10 @@ Avatar, DropdownMenu, Sonner (Toaster), Form (wraps react-hook-form)
 | `src/main.tsx` | Add `<Toaster />` (sonner) |
 | `src/components/AppLayout.tsx` | Use shadcn layout; breadcrumb wired to route |
 | `src/components/Sidebar.tsx` | Lucide icons; user email + avatar at bottom |
-| `src/pages/LoginPage.tsx` | Card wrapper; RHF + zod; per-field validation |
-| `src/pages/services/ServiceListPage.tsx` | shadcn Table; AlertDialog delete; EmptyState; LoadingState; DropdownMenu row actions; toast on delete |
-| `src/pages/services/ServiceFormPage.tsx` | Card wrapper; RHF + zod; toast on save |
-| `src/pages/services/AvailabilityPage.tsx` | shadcn Select + Input; toast on add/delete |
+| `src/page-components/LoginPage.tsx` | Card wrapper; RHF + zod; per-field validation |
+| `src/page-components/ServiceListPage.tsx` | shadcn Table; AlertDialog delete; EmptyState; LoadingState; DropdownMenu row actions; toast on delete |
+| `src/page-components/ServiceFormPage.tsx` | Card wrapper; RHF + zod; toast on save |
+| `src/page-components/AvailabilityPage.tsx` | shadcn Select + Input; toast on add/delete |
 
 ## Contracts
 

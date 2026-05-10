@@ -2,6 +2,8 @@
 
 <!-- Never delete tasks. Mark done, append new ones. -->
 
+> **Note:** File paths in tasks below reflect the pre-migration (Vite SPA + React Router) architecture. Pages are now in `src/page-components/`, routing via Next.js App Router under `apps/web/app/`. See `docs/features/next-js-migration/`.
+
 ## 2026-04-30 Initial implementation
 
 ### Phase 0 — Setup

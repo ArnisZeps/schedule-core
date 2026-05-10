@@ -10,7 +10,6 @@ milestones build on a stable, tested contract.
 
 Constraints:
 - Raw SQL, no ORM (ADR-004).
-- Express routers (ADR-002).
 - Owner routes behind JWT auth; every owner query inside `withTenantContext` (ADR-005, ADR-007).
 - No new tables — `bookings` was defined in M1.
 
@@ -18,12 +17,13 @@ Constraints:
 
 | File | Responsibility |
 |------|----------------|
-| `apps/api/src/routes/bookings.ts` | Owner-side booking handlers and router |
-| `apps/api/src/routes/public.ts` | Public (no-auth) slots + booking creation handlers |
-| `apps/api/src/lib/availability.ts` | Shared helpers: overlap check, availability-rule check, slot generation |
-| `apps/api/src/app.ts` | Mount routers at `/tenants/:tenantId/bookings` and `/public/:tenantSlug` |
+| `apps/web/app/api/tenants/[tenantId]/bookings/route.ts` | Owner-side booking list + create handlers |
+| `apps/web/app/api/tenants/[tenantId]/bookings/[bookingId]/route.ts` | Owner-side booking update handler |
+| `apps/web/app/api/public/[tenantSlug]/services/[serviceId]/slots/route.ts` | Public slot generation handler |
+| `apps/web/app/api/public/[tenantSlug]/bookings/route.ts` | Public booking creation handler |
+| `apps/web/src/lib/server/availability.ts` | Shared helpers: overlap check, availability-rule check, slot generation |
 
-`apps/api/src/middleware/auth.ts` and `apps/api/src/middleware/tenant-context.ts` are reused
+`apps/web/src/lib/server/withAuth.ts` and `apps/web/src/lib/server/withTenantContext.ts` are reused
 unchanged from M3/M4.
 
 ## Contracts
@@ -152,7 +152,7 @@ explicitly into queries.
 
 ---
 
-## Shared helpers — `apps/api/src/lib/availability.ts`
+## Shared helpers — `apps/web/src/lib/server/availability.ts`
 
 ### `checkOverlap(client, serviceId, start, end, excludeId?)`
 
