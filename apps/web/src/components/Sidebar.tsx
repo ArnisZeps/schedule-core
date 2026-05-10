@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutGrid, CalendarDays, Users } from 'lucide-react'
+import { LayoutGrid, CalendarDays, Users, MapPin } from 'lucide-react'
 
 interface SidebarProps {
   open: boolean
@@ -38,6 +38,7 @@ function NavContent() {
         <NavItem href="/services" icon={<LayoutGrid className="size-4" />} label="Services" />
         <NavItem href="/appointments" icon={<CalendarDays className="size-4" />} label="Calendar" />
         <NavItem href="/staff" icon={<Users className="size-4" />} label="Staff" />
+        <NavItem href="/locations" icon={<MapPin className="size-4" />} label="Locations" />
       </nav>
     </div>
   )

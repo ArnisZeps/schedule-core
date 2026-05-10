@@ -17,6 +17,7 @@ export function StaffCreatePage() {
       name: values.name,
       email: values.email || null,
       phone: values.phone || null,
+      locationId: values.locationId,
     })
     toast.success('Staff member created')
     router.push(`/staff/${staff.id}`)

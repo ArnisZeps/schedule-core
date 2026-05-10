@@ -17,7 +17,7 @@ beforeAll(async () => {
   client = await pool.connect();
 
   await client.query(
-    'DROP TABLE IF EXISTS bookings, availability_rules, services, tenants, schema_migrations CASCADE',
+    'DROP TABLE IF EXISTS bookings, staff_services, staff_schedule_overrides, staff_schedules, staff, availability_rules, services, locations, tenants, schema_migrations CASCADE',
   );
 
   await migrate(url);
@@ -25,7 +25,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await client.query(
-    'DROP TABLE IF EXISTS bookings, availability_rules, services, tenants, schema_migrations CASCADE',
+    'DROP TABLE IF EXISTS bookings, staff_services, staff_schedule_overrides, staff_schedules, staff, availability_rules, services, locations, tenants, schema_migrations CASCADE',
   );
   client.release();
   await pool.end();
@@ -47,6 +47,22 @@ async function insertService(tenantId: string, name = 'Test Service') {
   const result = await client.query(
     'INSERT INTO services (tenant_id, name) VALUES ($1, $2) RETURNING id',
     [tenantId, name],
+  );
+  return result.rows[0].id as string;
+}
+
+async function insertLocation(tenantId: string, name = 'Test Branch') {
+  const result = await client.query(
+    'INSERT INTO locations (tenant_id, name, timezone) VALUES ($1, $2, $3) RETURNING id',
+    [tenantId, name, 'UTC'],
+  );
+  return result.rows[0].id as string;
+}
+
+async function insertStaff(tenantId: string, locationId: string, name = 'Test Staff') {
+  const result = await client.query(
+    'INSERT INTO staff (tenant_id, name, location_id) VALUES ($1, $2, $3) RETURNING id',
+    [tenantId, name, locationId],
   );
   return result.rows[0].id as string;
 }
@@ -215,10 +231,12 @@ describe('availability_rules', () => {
 describe('bookings', () => {
   let tenantId: string;
   let serviceId: string;
+  let locationId: string;
 
   beforeAll(async () => {
     tenantId = await insertTenant('test-bookings-tenant');
     serviceId = await insertService(tenantId);
+    locationId = await insertLocation(tenantId);
   });
 
   afterAll(async () => {
@@ -229,16 +247,9 @@ describe('bookings', () => {
 
   it('inserts successfully with default status', async () => {
     const { rows } = await client.query(
-      `INSERT INTO bookings (tenant_id, service_id, client_name, client_email, start_at, end_at)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, status`,
-      [
-        tenantId,
-        serviceId,
-        'Alice',
-        'alice@example.com',
-        '2026-05-01 09:00:00+00',
-        '2026-05-01 10:00:00+00',
-      ],
+      `INSERT INTO bookings (tenant_id, service_id, location_id, client_name, client_email, start_at, end_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, status`,
+      [tenantId, serviceId, locationId, 'Alice', 'alice@example.com', '2026-05-01 09:00:00+00', '2026-05-01 10:00:00+00'],
     );
     expect(rows[0].id).toBeDefined();
     expect(rows[0].status).toBe('pending');
@@ -247,16 +258,9 @@ describe('bookings', () => {
   it('rejects start_at >= end_at', async () => {
     await expect(
       client.query(
-        `INSERT INTO bookings (tenant_id, service_id, client_name, client_email, start_at, end_at)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [
-          tenantId,
-          serviceId,
-          'Bob',
-          'bob@example.com',
-          '2026-05-01 10:00:00+00',
-          '2026-05-01 09:00:00+00',
-        ],
+        `INSERT INTO bookings (tenant_id, service_id, location_id, client_name, client_email, start_at, end_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [tenantId, serviceId, locationId, 'Bob', 'bob@example.com', '2026-05-01 10:00:00+00', '2026-05-01 09:00:00+00'],
       ),
     ).rejects.toMatchObject({ code: '23514' }); // check_violation
   });
@@ -264,17 +268,9 @@ describe('bookings', () => {
   it('rejects invalid status value', async () => {
     await expect(
       client.query(
-        `INSERT INTO bookings (tenant_id, service_id, client_name, client_email, start_at, end_at, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [
-          tenantId,
-          serviceId,
-          'Carol',
-          'carol@example.com',
-          '2026-05-01 11:00:00+00',
-          '2026-05-01 12:00:00+00',
-          'unknown',
-        ],
+        `INSERT INTO bookings (tenant_id, service_id, location_id, client_name, client_email, start_at, end_at, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [tenantId, serviceId, locationId, 'Carol', 'carol@example.com', '2026-05-01 11:00:00+00', '2026-05-01 12:00:00+00', 'unknown'],
       ),
     ).rejects.toMatchObject({ code: '23514' }); // check_violation
   });
@@ -282,17 +278,11 @@ describe('bookings', () => {
   it('blocks tenant deletion when bookings exist (RESTRICT)', async () => {
     const tmpTenantId = await insertTenant('test-restrict-tenant');
     const tmpServiceId = await insertService(tmpTenantId);
+    const tmpLocationId = await insertLocation(tmpTenantId);
     await client.query(
-      `INSERT INTO bookings (tenant_id, service_id, client_name, client_email, start_at, end_at)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [
-        tmpTenantId,
-        tmpServiceId,
-        'Dave',
-        'dave@example.com',
-        '2026-05-02 09:00:00+00',
-        '2026-05-02 10:00:00+00',
-      ],
+      `INSERT INTO bookings (tenant_id, service_id, location_id, client_name, client_email, start_at, end_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [tmpTenantId, tmpServiceId, tmpLocationId, 'Dave', 'dave@example.com', '2026-05-02 09:00:00+00', '2026-05-02 10:00:00+00'],
     );
 
     await expect(
@@ -307,17 +297,11 @@ describe('bookings', () => {
   it('blocks service deletion when bookings exist (RESTRICT)', async () => {
     const tmpTenantId = await insertTenant('test-service-restrict-tenant');
     const tmpServiceId = await insertService(tmpTenantId);
+    const tmpLocationId = await insertLocation(tmpTenantId);
     await client.query(
-      `INSERT INTO bookings (tenant_id, service_id, client_name, client_email, start_at, end_at)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [
-        tmpTenantId,
-        tmpServiceId,
-        'Eve',
-        'eve@example.com',
-        '2026-05-03 09:00:00+00',
-        '2026-05-03 10:00:00+00',
-      ],
+      `INSERT INTO bookings (tenant_id, service_id, location_id, client_name, client_email, start_at, end_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [tmpTenantId, tmpServiceId, tmpLocationId, 'Eve', 'eve@example.com', '2026-05-03 09:00:00+00', '2026-05-03 10:00:00+00'],
     );
 
     await expect(
@@ -378,5 +362,87 @@ describe.skip('RLS (deferred to M3 — requires non-owner app role)', () => {
     expect(result.rows.length).toBeGreaterThan(0);
 
     await client.query('DELETE FROM tenants WHERE id = $1', [tenantId]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// locations
+// ---------------------------------------------------------------------------
+
+describe('locations', () => {
+  let tenantId: string;
+
+  beforeAll(async () => {
+    tenantId = await insertTenant('test-locations-tenant');
+  });
+
+  afterAll(async () => {
+    await client.query('DELETE FROM tenants WHERE id = $1', [tenantId]);
+  });
+
+  it('inserts with defaults (timezone UTC, is_active true)', async () => {
+    const { rows } = await client.query(
+      'INSERT INTO locations (tenant_id, name) VALUES ($1, $2) RETURNING id, timezone, is_active',
+      [tenantId, 'Main Branch'],
+    );
+    expect(rows[0].id).toBeDefined();
+    expect(rows[0].timezone).toBe('UTC');
+    expect(rows[0].is_active).toBe(true);
+  });
+
+  it('rejects null name', async () => {
+    await expect(
+      client.query('INSERT INTO locations (tenant_id, name) VALUES ($1, $2)', [tenantId, null]),
+    ).rejects.toMatchObject({ code: '23502' }); // not_null_violation
+  });
+
+  it('rejects unknown tenant_id (FK violation)', async () => {
+    await expect(
+      client.query(
+        'INSERT INTO locations (tenant_id, name) VALUES ($1, $2)',
+        ['00000000-0000-0000-0000-000000000000', 'Ghost'],
+      ),
+    ).rejects.toMatchObject({ code: '23503' }); // foreign_key_violation
+  });
+
+  it('blocks location deletion when staff reference it (RESTRICT)', async () => {
+    const tmpTenantId = await insertTenant('test-loc-restrict-staff');
+    const tmpLocationId = await insertLocation(tmpTenantId);
+    await insertStaff(tmpTenantId, tmpLocationId);
+
+    await expect(
+      client.query('DELETE FROM locations WHERE id = $1', [tmpLocationId]),
+    ).rejects.toMatchObject({ code: '23503' }); // foreign_key_violation (RESTRICT from staff)
+
+    await client.query('DELETE FROM staff WHERE tenant_id = $1', [tmpTenantId]);
+    await client.query('DELETE FROM tenants WHERE id = $1', [tmpTenantId]);
+  });
+
+  it('blocks location deletion when bookings reference it (RESTRICT)', async () => {
+    const tmpTenantId = await insertTenant('test-loc-restrict-bk');
+    const tmpServiceId = await insertService(tmpTenantId);
+    const tmpLocationId = await insertLocation(tmpTenantId);
+    await client.query(
+      `INSERT INTO bookings (tenant_id, service_id, location_id, client_name, client_email, start_at, end_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [tmpTenantId, tmpServiceId, tmpLocationId, 'X', 'x@x.com', '2026-06-01 10:00:00+00', '2026-06-01 11:00:00+00'],
+    );
+
+    await expect(
+      client.query('DELETE FROM locations WHERE id = $1', [tmpLocationId]),
+    ).rejects.toMatchObject({ code: '23503' }); // foreign_key_violation (RESTRICT from bookings)
+
+    await client.query('DELETE FROM bookings WHERE tenant_id = $1', [tmpTenantId]);
+    await client.query('DELETE FROM tenants WHERE id = $1', [tmpTenantId]);
+  });
+
+  it('cascades delete when tenant is deleted', async () => {
+    const tmpTenantId = await insertTenant('test-loc-cascade');
+    const tmpLocationId = await insertLocation(tmpTenantId);
+
+    await client.query('DELETE FROM tenants WHERE id = $1', [tmpTenantId]);
+
+    const { rows } = await client.query('SELECT id FROM locations WHERE id = $1', [tmpLocationId]);
+    expect(rows).toHaveLength(0);
   });
 });

@@ -6,6 +6,7 @@ export interface Booking {
   id: string
   tenantId: string
   serviceId: string
+  locationId: string
   clientName: string
   clientPhone: string
   clientEmail: string | null

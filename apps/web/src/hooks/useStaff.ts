@@ -10,6 +10,7 @@ export interface Staff {
   email: string | null
   phone: string | null
   isActive: boolean
+  locationId: string
   createdAt: string
 }
 
@@ -45,13 +46,16 @@ export interface OverrideInput {
   endTime: string
 }
 
-export function useStaffList(includeInactive?: boolean) {
+export function useStaffList(includeInactive?: boolean, locationId?: string) {
   const { user } = useAuth()
   const tenantId = user!.tenantId
   return useQuery<Staff[]>({
-    queryKey: ['staff', tenantId, { includeInactive: !!includeInactive }],
+    queryKey: ['staff', tenantId, { includeInactive: !!includeInactive, locationId }],
     queryFn: () => {
-      const qs = includeInactive ? '?includeInactive=true' : ''
+      const params = new URLSearchParams()
+      if (includeInactive) params.set('includeInactive', 'true')
+      if (locationId) params.set('locationId', locationId)
+      const qs = params.toString() ? `?${params}` : ''
       return apiFetch(`/tenants/${tenantId}/staff${qs}`)
     },
   })
@@ -83,7 +87,7 @@ export function useCreateStaff() {
   const qc = useQueryClient()
   const tenantId = user!.tenantId
   return useMutation({
-    mutationFn: (data: { name: string; email?: string | null; phone?: string | null }) =>
+    mutationFn: (data: { name: string; email?: string | null; phone?: string | null; locationId: string }) =>
       apiFetch<Staff>(`/tenants/${tenantId}/staff`, {
         method: 'POST',
         body: JSON.stringify(data),
@@ -106,6 +110,7 @@ export function useUpdateStaff() {
       email?: string | null
       phone?: string | null
       isActive?: boolean
+      locationId?: string
     }) =>
       apiFetch<Staff>(`/tenants/${tenantId}/staff/${staffId}`, {
         method: 'PATCH',

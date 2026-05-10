@@ -12,6 +12,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { useLocations } from '@/hooks/useLocations'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -19,6 +20,7 @@ const schema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string(),
   phone: z.string(),
+  locationId: z.string(),
 })
 
 export type StaffFormValues = z.infer<typeof schema>
@@ -28,21 +30,36 @@ interface StaffFormProps {
   onSubmit: (values: StaffFormValues) => Promise<void>
   isPending?: boolean
   onCancel?: () => void
+  forceShowLocation?: boolean
 }
 
-export function StaffForm({ defaultValues, onSubmit, isPending, onCancel }: StaffFormProps) {
+export function StaffForm({ defaultValues, onSubmit, isPending, onCancel, forceShowLocation }: StaffFormProps) {
+  const { data: locations = [] } = useLocations()
+  const activeLocations = locations.filter(l => l.isActive)
+  const showLocationPicker = forceShowLocation || activeLocations.length > 1
+
   const form = useForm<StaffFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', email: '', phone: '', ...defaultValues },
+    defaultValues: { name: '', email: '', phone: '', locationId: '', ...defaultValues },
   })
 
   useEffect(() => {
-    if (defaultValues) form.reset({ name: '', email: '', phone: '', ...defaultValues })
-  }, [defaultValues?.name, defaultValues?.email, defaultValues?.phone]) // eslint-disable-line
+    if (defaultValues) form.reset({ name: '', email: '', phone: '', locationId: '', ...defaultValues })
+  }, [defaultValues?.name, defaultValues?.email, defaultValues?.phone, defaultValues?.locationId]) // eslint-disable-line
+
+  useEffect(() => {
+    if (!showLocationPicker && activeLocations.length === 1) {
+      form.setValue('locationId', activeLocations[0].id)
+    }
+  }, [showLocationPicker, activeLocations.length]) // eslint-disable-line
 
   async function handleValidateAndSubmit(values: StaffFormValues) {
     if (values.email && !EMAIL_RE.test(values.email)) {
       form.setError('email', { message: 'Invalid email' })
+      return
+    }
+    if (showLocationPicker && !values.locationId) {
+      form.setError('locationId', { message: 'Location is required' })
       return
     }
     await onSubmit(values)
@@ -99,6 +116,30 @@ export function StaffForm({ defaultValues, onSubmit, isPending, onCancel }: Staf
             </FormItem>
           )}
         />
+        {showLocationPicker && (
+          <FormField
+            control={form.control}
+            name="locationId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Location</FormLabel>
+                <FormControl>
+                  <select
+                    {...field}
+                    value={field.value ?? ''}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  >
+                    <option value="">Select location</option>
+                    {activeLocations.map(loc => (
+                      <option key={loc.id} value={loc.id}>{loc.name}</option>
+                    ))}
+                  </select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
         <div className="flex gap-2 pt-2">
           <Button type="submit" disabled={isPending}>
             {isPending ? 'Saving…' : 'Save'}

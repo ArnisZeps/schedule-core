@@ -58,7 +58,7 @@ describe('Services', () => {
 
   it('shows empty state when no services exist', async () => {
     server.use(
-      http.get(`http://localhost:3001/tenants/${TENANT_ID}/services`, () =>
+      http.get(`/api/tenants/${TENANT_ID}/services`, () =>
         HttpResponse.json([]),
       ),
     )
@@ -97,7 +97,7 @@ describe('Services', () => {
     await waitFor(() => screen.getByText('Meeting Room A'))
 
     server.use(
-      http.get(`http://localhost:3001/tenants/${TENANT_ID}/services`, () =>
+      http.get(`/api/tenants/${TENANT_ID}/services`, () =>
         HttpResponse.json([]),
       ),
     )
@@ -117,7 +117,7 @@ describe('Services', () => {
     const user = userEvent.setup()
 
     server.use(
-      http.delete(`http://localhost:3001/tenants/${TENANT_ID}/services/:serviceId`, () =>
+      http.delete(`/api/tenants/${TENANT_ID}/services/:serviceId`, () =>
         HttpResponse.json({ message: 'Service has existing bookings' }, { status: 409 }),
       ),
     )

@@ -10,10 +10,11 @@ type StaffRow = {
   email: string | null;
   phone: string | null;
   is_active: boolean;
+  location_id: string;
   created_at: Date;
 };
 
-const STAFF_COLS = 'id, tenant_id, name, email, phone, is_active, created_at';
+const STAFF_COLS = 'id, tenant_id, name, email, phone, is_active, location_id, created_at';
 
 function formatStaff(r: StaffRow) {
   return {
@@ -23,6 +24,7 @@ function formatStaff(r: StaffRow) {
     email: r.email,
     phone: r.phone,
     isActive: r.is_active,
+    locationId: r.location_id,
     createdAt: r.created_at,
   };
 }
@@ -32,6 +34,7 @@ const patchStaffSchema = z.object({
   email: z.string().email().nullish(),
   phone: z.string().nullish(),
   isActive: z.boolean().optional(),
+  locationId: z.string().uuid().optional(),
 });
 
 export async function GET(
@@ -75,14 +78,15 @@ export async function PATCH(
     );
   }
 
-  const { name, email, phone, isActive } = parsed.data;
+  const { name, email, phone, isActive, locationId } = parsed.data;
   const sets: string[] = [];
   const values: unknown[] = [];
   let i = 1;
-  if (name !== undefined)     { sets.push(`name = $${i++}`);      values.push(name); }
-  if (email !== undefined)    { sets.push(`email = $${i++}`);     values.push(email ?? null); }
-  if (phone !== undefined)    { sets.push(`phone = $${i++}`);     values.push(phone ?? null); }
-  if (isActive !== undefined) { sets.push(`is_active = $${i++}`); values.push(isActive); }
+  if (name !== undefined)       { sets.push(`name = $${i++}`);        values.push(name); }
+  if (email !== undefined)      { sets.push(`email = $${i++}`);       values.push(email ?? null); }
+  if (phone !== undefined)      { sets.push(`phone = $${i++}`);       values.push(phone ?? null); }
+  if (isActive !== undefined)   { sets.push(`is_active = $${i++}`);   values.push(isActive); }
+  if (locationId !== undefined) { sets.push(`location_id = $${i++}`); values.push(locationId); }
   values.push(staffId);
 
   const row = await withTenantContext(db, tenantId, async (client) => {

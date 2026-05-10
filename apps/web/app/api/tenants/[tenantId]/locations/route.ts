@@ -3,37 +3,34 @@ import { db } from '@/lib/server/db';
 import { withAuth } from '@/lib/server/withAuth';
 import { withTenantContext } from '@/lib/server/withTenantContext';
 
-type StaffRow = {
+type LocationRow = {
   id: string;
   tenant_id: string;
   name: string;
-  email: string | null;
-  phone: string | null;
+  address: string | null;
+  timezone: string;
   is_active: boolean;
-  location_id: string;
   created_at: Date;
 };
 
-const STAFF_COLS = 'id, tenant_id, name, email, phone, is_active, location_id, created_at';
+const LOCATION_COLS = 'id, tenant_id, name, address, timezone, is_active, created_at';
 
-function formatStaff(r: StaffRow) {
+function formatLocation(r: LocationRow) {
   return {
     id: r.id,
     tenantId: r.tenant_id,
     name: r.name,
-    email: r.email,
-    phone: r.phone,
+    address: r.address,
+    timezone: r.timezone,
     isActive: r.is_active,
-    locationId: r.location_id,
     createdAt: r.created_at,
   };
 }
 
-const createStaffSchema = z.object({
+const createLocationSchema = z.object({
   name: z.string().min(1),
-  email: z.string().email().nullish(),
-  phone: z.string().nullish(),
-  locationId: z.string().uuid(),
+  address: z.string().optional(),
+  timezone: z.string().min(1),
 });
 
 export async function GET(
@@ -46,24 +43,16 @@ export async function GET(
   const { tenantId } = await params;
   if (auth.tenantId !== tenantId) return Response.json({ error: 'forbidden' }, { status: 403 });
 
-  const sp = new URL(request.url).searchParams;
-  const includeInactive = sp.get('includeInactive') === 'true';
-  const locationId = sp.get('locationId') ?? undefined;
+  const includeInactive = new URL(request.url).searchParams.get('includeInactive') === 'true';
   const rows = await withTenantContext(db, tenantId, async (client) => {
-    const conditions: string[] = [];
-    const values: unknown[] = [];
-    let i = 1;
-    if (!includeInactive) { conditions.push('is_active = true'); }
-    if (locationId) { conditions.push(`location_id = $${i++}`); values.push(locationId); }
-    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const { rows } = await client.query<StaffRow>(
-      `SELECT ${STAFF_COLS} FROM staff ${where} ORDER BY created_at`,
-      values,
-    );
+    const sql = includeInactive
+      ? `SELECT ${LOCATION_COLS} FROM locations ORDER BY created_at`
+      : `SELECT ${LOCATION_COLS} FROM locations WHERE is_active = true ORDER BY created_at`;
+    const { rows } = await client.query<LocationRow>(sql);
     return rows;
   });
 
-  return Response.json(rows.map(formatStaff));
+  return Response.json(rows.map(formatLocation));
 }
 
 export async function POST(
@@ -77,7 +66,7 @@ export async function POST(
   if (auth.tenantId !== tenantId) return Response.json({ error: 'forbidden' }, { status: 403 });
 
   const body = await request.json();
-  const parsed = createStaffSchema.safeParse(body);
+  const parsed = createLocationSchema.safeParse(body);
   if (!parsed.success) {
     return Response.json(
       { error: 'validation_error', details: parsed.error.issues.map((i) => i.path.join('.') || i.message) },
@@ -85,14 +74,23 @@ export async function POST(
     );
   }
 
-  const { name, email, phone, locationId } = parsed.data;
+  const { name, address, timezone } = parsed.data;
+
+  const validTimezones = Intl.supportedValuesOf('timeZone');
+  if (!validTimezones.includes(timezone)) {
+    return Response.json(
+      { error: 'validation_error', details: ['timezone'] },
+      { status: 422 },
+    );
+  }
+
   const row = await withTenantContext(db, tenantId, async (client) => {
-    const { rows } = await client.query<StaffRow>(
-      `INSERT INTO staff (tenant_id, name, email, phone, location_id) VALUES ($1, $2, $3, $4, $5) RETURNING ${STAFF_COLS}`,
-      [tenantId, name, email ?? null, phone ?? null, locationId],
+    const { rows } = await client.query<LocationRow>(
+      `INSERT INTO locations (tenant_id, name, address, timezone) VALUES ($1, $2, $3, $4) RETURNING ${LOCATION_COLS}`,
+      [tenantId, name, address ?? null, timezone],
     );
     return rows[0];
   });
 
-  return Response.json(formatStaff(row), { status: 201 });
+  return Response.json(formatLocation(row), { status: 201 });
 }

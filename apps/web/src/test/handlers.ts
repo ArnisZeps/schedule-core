@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 
-const BASE = 'http://localhost:3001'
+const BASE = '/api'
 
 // Minimal JWT with tenantId=tenant-1, userId=user-1, exp=far future
 // payload: { sub: 'user-1', tenantId: 'tenant-1', exp: 9999999999 }
@@ -20,6 +20,7 @@ export const BOOKINGS = [
     id: 'bk-1',
     tenantId: TENANT_ID,
     serviceId: 'res-1',
+    locationId: 'loc-1',
     clientName: 'Alice Smith',
     clientPhone: '+1 555 000 0001',
     clientEmail: 'alice@test.com',
@@ -33,6 +34,7 @@ export const BOOKINGS = [
     id: 'bk-2',
     tenantId: TENANT_ID,
     serviceId: 'res-2',
+    locationId: 'loc-1',
     clientName: 'Bob Jones',
     clientPhone: '+1 555 000 0002',
     clientEmail: null,
@@ -46,6 +48,7 @@ export const BOOKINGS = [
     id: 'bk-3',
     tenantId: TENANT_ID,
     serviceId: 'res-1',
+    locationId: 'loc-1',
     clientName: 'Carol White',
     clientPhone: '+1 555 000 0003',
     clientEmail: 'carol@test.com',
@@ -68,9 +71,14 @@ export const SLOTS = [
   { startAt: '2026-05-04T11:00:00.000Z', endAt: '2026-05-04T12:00:00.000Z', available: true },
 ]
 
+export const LOCATIONS = [
+  { id: 'loc-1', tenantId: TENANT_ID, name: 'Main Branch', address: '123 Main St', timezone: 'Europe/Riga', isActive: true, createdAt: '2026-05-01T00:00:00.000Z' },
+  { id: 'loc-2', tenantId: TENANT_ID, name: 'East Branch', address: null, timezone: 'Europe/Riga', isActive: false, createdAt: '2026-05-02T00:00:00.000Z' },
+]
+
 export const STAFF = [
-  { id: 'staff-1', tenantId: TENANT_ID, name: 'Alice Smith', email: 'alice@example.com', phone: '+1 555 000 0001', isActive: true, createdAt: '2026-05-01T00:00:00.000Z' },
-  { id: 'staff-2', tenantId: TENANT_ID, name: 'Bob Jones', email: null, phone: null, isActive: false, createdAt: '2026-05-02T00:00:00.000Z' },
+  { id: 'staff-1', tenantId: TENANT_ID, name: 'Alice Smith', email: 'alice@example.com', phone: '+1 555 000 0001', isActive: true, locationId: 'loc-1', createdAt: '2026-05-01T00:00:00.000Z' },
+  { id: 'staff-2', tenantId: TENANT_ID, name: 'Bob Jones', email: null, phone: null, isActive: false, locationId: 'loc-1', createdAt: '2026-05-02T00:00:00.000Z' },
 ]
 
 export const STAFF_SCHEDULES = [
@@ -83,6 +91,41 @@ export const STAFF_OVERRIDES = [
 ]
 
 export const handlers = [
+  // Locations list
+  http.get(`${BASE}/tenants/:tenantId/locations`, ({ request }) => {
+    const url = new URL(request.url)
+    const includeInactive = url.searchParams.get('includeInactive') === 'true'
+    return HttpResponse.json(includeInactive ? LOCATIONS : LOCATIONS.filter(l => l.isActive))
+  }),
+
+  // Location create
+  http.post(`${BASE}/tenants/:tenantId/locations`, async ({ params, request }) => {
+    const body = await request.json() as Record<string, unknown>
+    return HttpResponse.json(
+      { id: 'loc-new', tenantId: params.tenantId, address: null, isActive: true, createdAt: new Date().toISOString(), ...body },
+      { status: 201 },
+    )
+  }),
+
+  // Location single
+  http.get(`${BASE}/tenants/:tenantId/locations/:locationId`, ({ params }) => {
+    const loc = LOCATIONS.find(l => l.id === params.locationId)
+    if (!loc) return HttpResponse.json({ error: 'not_found' }, { status: 404 })
+    return HttpResponse.json(loc)
+  }),
+
+  // Location update
+  http.patch(`${BASE}/tenants/:tenantId/locations/:locationId`, async ({ params, request }) => {
+    const body = await request.json() as Record<string, unknown>
+    const loc = LOCATIONS.find(l => l.id === params.locationId) ?? LOCATIONS[0]
+    return HttpResponse.json({ ...loc, ...body })
+  }),
+
+  // Location delete
+  http.delete(`${BASE}/tenants/:tenantId/locations/:locationId`, () => {
+    return new HttpResponse(null, { status: 204 })
+  }),
+
   // Auth
   http.post(`${BASE}/auth/login`, async ({ request }) => {
     const body = await request.json() as { email: string; password: string }
@@ -174,6 +217,7 @@ export const handlers = [
         id: 'bk-new',
         tenantId: params.tenantId,
         serviceId: body.serviceId,
+        locationId: body.locationId ?? 'loc-1',
         clientName: body.clientName,
         clientPhone: body.clientPhone,
         clientEmail: body.clientEmail ?? null,
@@ -206,7 +250,7 @@ export const handlers = [
   http.post(`${BASE}/tenants/:tenantId/staff`, async ({ params, request }) => {
     const body = await request.json() as Record<string, unknown>
     return HttpResponse.json(
-      { id: 'staff-new', tenantId: params.tenantId, name: body.name, email: body.email ?? null, phone: body.phone ?? null, isActive: true, createdAt: new Date().toISOString() },
+      { id: 'staff-new', tenantId: params.tenantId, name: body.name, email: body.email ?? null, phone: body.phone ?? null, locationId: body.locationId ?? 'loc-1', isActive: true, createdAt: new Date().toISOString() },
       { status: 201 },
     )
   }),

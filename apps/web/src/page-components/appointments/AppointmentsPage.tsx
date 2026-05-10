@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { format, parseISO, startOfWeek, endOfWeek, addDays } from 'date-fns'
 import { useServices } from '@/hooks/useServices'
 import { useBookings, type Booking } from '@/hooks/useBookings'
+import { useLocations } from '@/hooks/useLocations'
 import { CalendarToolbar } from '@/components/calendar/CalendarToolbar'
 import { WeekView } from '@/components/calendar/WeekView'
 import { DayView } from '@/components/calendar/DayView'
@@ -27,6 +28,7 @@ export function AppointmentsPage() {
   const serviceId = params.get('serviceId') || undefined
 
   const { data: services = [] } = useServices()
+  const { data: locations = [] } = useLocations(true)
 
   const date = parseISO(dateStr)
   const from =
@@ -104,6 +106,7 @@ export function AppointmentsPage() {
         <AppointmentDetailDialog
           booking={selectedBooking}
           services={services}
+          locations={locations}
           open={true}
           onClose={() => setSelectedBooking(null)}
         />

@@ -7,7 +7,7 @@ import { AuthProvider } from '../../providers/AuthProvider'
 import { http, HttpResponse } from 'msw'
 import { server } from './handlers'
 import { AppointmentsPage } from '@/page-components/appointments/AppointmentsPage'
-import { TEST_TOKEN, TENANT_ID, SLOTS } from './handlers'
+import { TEST_TOKEN, TENANT_ID, SLOTS, LOCATIONS } from './handlers'
 
 vi.mock('next/navigation', () => ({
   useRouter: vi.fn(),
@@ -22,7 +22,7 @@ vi.mock('next/link', () => ({
 }))
 
 const FIXED_NOW = new Date('2026-05-04T10:00:00.000Z')
-const BASE = 'http://localhost:3001'
+const BASE = '/api'
 
 let mockPush: ReturnType<typeof vi.fn>
 let mockReplace: ReturnType<typeof vi.fn>
@@ -152,5 +152,57 @@ describe('Manual appointment entry', () => {
     await userEvent.type(screen.getByLabelText('Phone'), '123')
     await userEvent.click(screen.getByTestId('submit-booking'))
     expect(screen.getByTestId('panel-error')).toHaveTextContent('Phone')
+  })
+
+  // ---------------------------------------------------------------------------
+  // Location selector in NewAppointmentPanel
+  // ---------------------------------------------------------------------------
+
+  it('location selector is hidden for single-location tenant', async () => {
+    // default LOCATIONS has 1 active location → hide selector
+    renderAppointments('view=week&date=2026-05-04')
+    const btn = await screen.findByTestId('new-appointment-btn')
+    await userEvent.click(btn)
+    await waitFor(() => screen.getByTestId('new-appointment-panel'))
+    expect(screen.queryByLabelText(/location/i)).not.toBeInTheDocument()
+  })
+
+  it('location selector is shown for multi-location tenant', async () => {
+    server.use(
+      http.get(`${BASE}/tenants/${TENANT_ID}/locations`, () =>
+        HttpResponse.json([
+          ...LOCATIONS.filter(l => l.isActive),
+          { id: 'loc-3', tenantId: TENANT_ID, name: 'West Branch', address: null, timezone: 'UTC', isActive: true, createdAt: '2026-05-03T00:00:00.000Z' },
+        ]),
+      ),
+    )
+    renderAppointments('view=week&date=2026-05-04')
+    const btn = await screen.findByTestId('new-appointment-btn')
+    await userEvent.click(btn)
+    await waitFor(() => screen.getByLabelText(/location/i))
+    expect(screen.getByLabelText(/location/i)).toBeInTheDocument()
+  })
+
+  it('submitting without location on multi-location tenant shows validation error', async () => {
+    server.use(
+      http.get(`${BASE}/tenants/${TENANT_ID}/locations`, () =>
+        HttpResponse.json([
+          ...LOCATIONS.filter(l => l.isActive),
+          { id: 'loc-3', tenantId: TENANT_ID, name: 'West Branch', address: null, timezone: 'UTC', isActive: true, createdAt: '2026-05-03T00:00:00.000Z' },
+        ]),
+      ),
+    )
+    renderAppointments('view=week&date=2026-05-04')
+    const btn = await screen.findByTestId('new-appointment-btn')
+    await userEvent.click(btn)
+    await waitFor(() => screen.getByLabelText(/name/i))
+    await userEvent.type(screen.getByLabelText('Name'), 'Test Client')
+    await userEvent.type(screen.getByLabelText('Phone'), '+1 555 123 4567')
+    await waitFor(() => expect(screen.getAllByTestId('slot-available').length).toBeGreaterThan(0))
+    await userEvent.click(screen.getAllByTestId('slot-available')[0])
+    await userEvent.click(screen.getByTestId('submit-booking'))
+    await waitFor(() => {
+      expect(screen.getByTestId('panel-error')).toHaveTextContent(/location/i)
+    })
   })
 })

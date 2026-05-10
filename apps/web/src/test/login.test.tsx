@@ -57,7 +57,7 @@ describe('Login page', () => {
   it('invalid credentials show inline error without page reload', async () => {
     const user = userEvent.setup()
     server.use(
-      http.post('http://localhost:3001/auth/login', () =>
+      http.post('/api/auth/login', () =>
         HttpResponse.json({ message: 'Invalid credentials' }, { status: 401 }),
       ),
     )

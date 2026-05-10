@@ -5,6 +5,7 @@ import type { Booking } from './useBookings'
 
 export interface CreateBookingInput {
   serviceId: string
+  locationId?: string
   clientName: string
   clientPhone: string
   clientEmail?: string

@@ -162,7 +162,7 @@ describe('Appointments Calendar', () => {
 
     it('shows "No upcoming appointments" empty state when list is empty', async () => {
       server.use(
-        http.get(`http://localhost:3001/tenants/${TENANT_ID}/bookings`, () =>
+        http.get(`/api/tenants/${TENANT_ID}/bookings`, () =>
           HttpResponse.json([]),
         ),
       )
@@ -213,7 +213,7 @@ describe('Appointments Calendar', () => {
       const user = userEvent.setup()
       let capturedBody: unknown
       server.use(
-        http.patch(`http://localhost:3001/tenants/${TENANT_ID}/bookings/bk-1`, async ({ request }) => {
+        http.patch(`/api/tenants/${TENANT_ID}/bookings/bk-1`, async ({ request }) => {
           capturedBody = await request.json()
           return HttpResponse.json({ ...BOOKINGS[0], status: 'cancelled' })
         }),
@@ -231,7 +231,7 @@ describe('Appointments Calendar', () => {
     it('409 on cancel shows inline error and keeps dialog open', async () => {
       const user = userEvent.setup()
       server.use(
-        http.patch(`http://localhost:3001/tenants/${TENANT_ID}/bookings/bk-1`, () =>
+        http.patch(`/api/tenants/${TENANT_ID}/bookings/bk-1`, () =>
           HttpResponse.json({ message: 'Already cancelled' }, { status: 409 }),
         ),
       )
@@ -261,7 +261,7 @@ describe('Appointments Calendar', () => {
       const user = userEvent.setup()
       let capturedBody: unknown
       server.use(
-        http.patch(`http://localhost:3001/tenants/${TENANT_ID}/bookings/bk-1`, async ({ request }) => {
+        http.patch(`/api/tenants/${TENANT_ID}/bookings/bk-1`, async ({ request }) => {
           capturedBody = await request.json()
           return HttpResponse.json({
             ...BOOKINGS[0],

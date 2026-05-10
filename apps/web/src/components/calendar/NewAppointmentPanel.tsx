@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import type { Service } from '@/hooks/useServices'
 import { useServiceSlots } from '@/hooks/useServiceSlots'
 import { useCreateBooking } from '@/hooks/useCreateBooking'
+import { useLocations } from '@/hooks/useLocations'
 import { ApiError } from '@/lib/api'
 
 interface NewAppointmentPanelProps {
@@ -30,6 +31,7 @@ export function NewAppointmentPanel({
   const [clientEmail, setClientEmail] = useState('')
   const [notes, setNotes] = useState('')
   const [serviceId, setServiceId] = useState(services[0]?.id ?? '')
+  const [locationId, setLocationId] = useState('')
   const [date, setDate] = useState(() =>
     prefillStart ? format(prefillStart, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
   )
@@ -41,6 +43,16 @@ export function NewAppointmentPanel({
   const [override, setOverride] = useState(false)
   const [error, setError] = useState('')
   const prevServiceDateRef = useRef({ serviceId: services[0]?.id ?? '', date: prefillStart ? format(prefillStart, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd') })
+
+  const { data: locations = [] } = useLocations()
+  const activeLocations = locations.filter(l => l.isActive)
+  const showLocationPicker = activeLocations.length > 1
+
+  useEffect(() => {
+    if (!showLocationPicker && activeLocations.length === 1) {
+      setLocationId(activeLocations[0].id)
+    }
+  }, [showLocationPicker, activeLocations.length]) // eslint-disable-line
 
   const { data: slots = [], isFetching: slotsFetching } = useServiceSlots(serviceId, date)
   const createBooking = useCreateBooking()
@@ -62,10 +74,12 @@ export function NewAppointmentPanel({
     if (!clientName.trim()) { setError('Client name is required'); return }
     if (!clientPhone.trim() || clientPhone.length < 7) { setError('Phone must be at least 7 characters'); return }
     if (!selectedSlot) { setError('Please select a time slot'); return }
+    if (showLocationPicker && !locationId) { setError('Please select a location'); return }
 
     createBooking.mutate(
       {
         serviceId,
+        locationId: locationId || undefined,
         clientName: clientName.trim(),
         clientPhone: clientPhone.trim(),
         clientEmail: clientEmail.trim() || undefined,
@@ -160,6 +174,24 @@ export function NewAppointmentPanel({
             ))}
           </div>
         </div>
+
+        {/* Location selector (hidden for single-location tenants) */}
+        {showLocationPicker && (
+          <div className="space-y-1">
+            <Label htmlFor="appt-location">Location</Label>
+            <select
+              id="appt-location"
+              value={locationId}
+              onChange={e => setLocationId(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+            >
+              <option value="">Select location</option>
+              {activeLocations.map(loc => (
+                <option key={loc.id} value={loc.id}>{loc.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Date row */}
         <div className="space-y-1">
