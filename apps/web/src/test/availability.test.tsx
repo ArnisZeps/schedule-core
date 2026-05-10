@@ -59,7 +59,7 @@ describe('Availability rules', () => {
 
     server.use(
       http.get(
-        `http://localhost:3001/tenants/${TENANT_ID}/services/res-1/availability-rules`,
+        `/api/tenants/${TENANT_ID}/services/res-1/availability-rules`,
         () =>
           HttpResponse.json([
             { id: 'rule-1', serviceId: 'res-1', dayOfWeek: 0, startTime: '09:00', endTime: '17:00' },
@@ -89,7 +89,7 @@ describe('Availability rules', () => {
     const user = userEvent.setup()
     server.use(
       http.post(
-        `http://localhost:3001/tenants/${TENANT_ID}/services/res-1/availability-rules`,
+        `/api/tenants/${TENANT_ID}/services/res-1/availability-rules`,
         () => HttpResponse.json({ message: 'Overlapping availability window' }, { status: 409 }),
       ),
     )
@@ -117,7 +117,7 @@ describe('Availability rules', () => {
 
     server.use(
       http.get(
-        `http://localhost:3001/tenants/${TENANT_ID}/services/res-1/availability-rules`,
+        `/api/tenants/${TENANT_ID}/services/res-1/availability-rules`,
         () => HttpResponse.json([]),
       ),
     )

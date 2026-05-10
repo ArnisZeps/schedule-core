@@ -76,15 +76,36 @@ Weekly repeating schedule for a service. Each row defines one time window on one
 
 ---
 
+## locations
+
+A physical or logical location belonging to a tenant (e.g. a branch or site). Every booking and every staff member belongs to exactly one location.
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| id | UUID | PK, DEFAULT gen_random_uuid() |
+| tenant_id | UUID | NOT NULL, FK → tenants(id) ON DELETE CASCADE |
+| name | TEXT | NOT NULL |
+| address | TEXT | nullable |
+| timezone | TEXT | NOT NULL, DEFAULT 'UTC' — IANA timezone name |
+| is_active | BOOLEAN | NOT NULL, DEFAULT true |
+| created_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() |
+
+**Index:** `(tenant_id)`
+
+**RLS:** enabled + FORCE ROW LEVEL SECURITY. Migration seeds one default location per existing tenant before applying FORCE.
+
+---
+
 ## bookings
 
-An appointment made by a client for a specific service. Duration is encoded as `start_at`/`end_at`.
+An appointment made by a client for a specific service at a specific location. Duration is encoded as `start_at`/`end_at`.
 
 | Column | Type | Constraints |
 |--------|------|-------------|
 | id | UUID | PK |
 | tenant_id | UUID | NOT NULL, FK → tenants(id) ON DELETE RESTRICT |
 | service_id | UUID | NOT NULL, FK → services(id) ON DELETE RESTRICT |
+| location_id | UUID | NOT NULL, FK → locations(id) ON DELETE RESTRICT |
 | client_name | TEXT | NOT NULL |
 | client_phone | TEXT | NOT NULL — mandatory contact; free text, min 7 chars enforced at API layer |
 | client_email | TEXT | nullable — optional; required by the public booking endpoint, optional for owner manual entry |
@@ -96,9 +117,9 @@ An appointment made by a client for a specific service. Duration is encoded as `
 
 **Constraints:** `start_at < end_at`
 
-`ON DELETE RESTRICT` on both FKs — tenants and services cannot be deleted while bookings exist (preserve booking history).
+`ON DELETE RESTRICT` on tenant, service, and location FKs — these records cannot be deleted while bookings exist (preserve booking history).
 
-**Indexes:** `(tenant_id)`, `(service_id)`, `(tenant_id, start_at, end_at)` — the composite index supports overlap queries during booking.
+**Indexes:** `(tenant_id)`, `(service_id)`, `(location_id)`, `(tenant_id, start_at, end_at)` — the composite index supports overlap queries during booking.
 
 ---
 
@@ -114,9 +135,10 @@ A person who performs services for a tenant. Can be assigned to services, have a
 | email | TEXT | nullable |
 | phone | TEXT | nullable |
 | is_active | BOOLEAN | NOT NULL, DEFAULT true |
+| location_id | UUID | NOT NULL, FK → locations(id) ON DELETE RESTRICT |
 | created_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() |
 
-**Indexes:** `(tenant_id)`, `(tenant_id, is_active)`
+**Indexes:** `(tenant_id)`, `(tenant_id, is_active)`, `(location_id)`
 
 ---
 
@@ -179,7 +201,7 @@ Date-range exceptions to the recurring schedule. Type `available` adds availabil
 
 ## RLS Policies
 
-RLS is enabled on `services`, `availability_rules`, `bookings`, `staff`, `staff_services`, `staff_schedules`, and `staff_schedule_overrides`. All use the same policy shape:
+RLS is enabled on `locations`, `services`, `availability_rules`, `bookings`, `staff`, `staff_services`, `staff_schedules`, and `staff_schedule_overrides`. All use the same policy shape:
 
 ```sql
 USING     (tenant_id = current_setting('app.current_tenant_id', true)::uuid)

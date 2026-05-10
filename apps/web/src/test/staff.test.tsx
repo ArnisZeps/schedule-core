@@ -9,7 +9,7 @@ import { http, HttpResponse } from 'msw'
 import { StaffListPage } from '@/page-components/staff/StaffListPage'
 import { StaffCreatePage } from '@/page-components/staff/StaffCreatePage'
 import { StaffDetailPage } from '@/page-components/staff/StaffDetailPage'
-import { TEST_TOKEN, TENANT_ID, STAFF, STAFF_OVERRIDES } from './handlers'
+import { TEST_TOKEN, TENANT_ID, STAFF, STAFF_OVERRIDES, LOCATIONS } from './handlers'
 
 vi.mock('next/navigation', () => ({
   useRouter: vi.fn(),
@@ -23,7 +23,7 @@ vi.mock('next/link', () => ({
     <a href={String(href)} {...props as object}>{children}</a>,
 }))
 
-const BASE = 'http://localhost:3001'
+const BASE = '/api'
 // July 1 2026 is a Wednesday — override data (ov-1: Jul 1, ov-2: Jul 4-6) is in this week
 const FIXED_TODAY = new Date('2026-07-01T10:00:00.000Z')
 
@@ -457,6 +457,126 @@ describe('Staff', () => {
       await waitFor(() => {
         expect(deleteCalled).toBe(true)
         expect(screen.queryByTestId('override-panel')).not.toBeInTheDocument()
+      })
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // Staff location — create form (single-location tenant)
+  // ---------------------------------------------------------------------------
+
+  describe('Staff create form — location', () => {
+    it('location dropdown is hidden for single-location tenant and value is auto-applied', async () => {
+      // default LOCATIONS has 1 active location → single-location → hide dropdown
+      renderPage(<StaffCreatePage />)
+      await waitFor(() => screen.getByLabelText(/name/i))
+      // dropdown should be absent from DOM
+      expect(screen.queryByLabelText(/location/i)).not.toBeInTheDocument()
+    })
+
+    it('location dropdown is shown for multi-location tenant', async () => {
+      server.use(
+        http.get(`${BASE}/tenants/${TENANT_ID}/locations`, () =>
+          HttpResponse.json([
+            ...LOCATIONS.filter(l => l.isActive),
+            { id: 'loc-3', tenantId: TENANT_ID, name: 'West Branch', address: null, timezone: 'UTC', isActive: true, createdAt: '2026-05-03T00:00:00.000Z' },
+          ]),
+        ),
+      )
+      renderPage(<StaffCreatePage />)
+      await waitFor(() => screen.getByLabelText(/location/i))
+      expect(screen.getByLabelText(/location/i)).toBeInTheDocument()
+    })
+
+    it('submitting without location on multi-location tenant shows validation error', async () => {
+      server.use(
+        http.get(`${BASE}/tenants/${TENANT_ID}/locations`, () =>
+          HttpResponse.json([
+            ...LOCATIONS.filter(l => l.isActive),
+            { id: 'loc-3', tenantId: TENANT_ID, name: 'West Branch', address: null, timezone: 'UTC', isActive: true, createdAt: '2026-05-03T00:00:00.000Z' },
+          ]),
+        ),
+      )
+      const user = userEvent.setup()
+      renderPage(<StaffCreatePage />)
+      await waitFor(() => screen.getByLabelText(/name/i))
+      await user.type(screen.getByLabelText(/name/i), 'New Staff')
+      await user.click(screen.getByRole('button', { name: /save/i }))
+      await waitFor(() => {
+        expect(screen.getByText(/location is required/i)).toBeInTheDocument()
+      })
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // Staff list — location filter
+  // ---------------------------------------------------------------------------
+
+  describe('Staff list — location filter', () => {
+    it('location filter is hidden for single-location tenant', async () => {
+      // default LOCATIONS has 1 active location → single-location → hide filter
+      renderPage(<StaffListPage />)
+      await waitFor(() => screen.getByText('Alice Smith'))
+      expect(screen.queryByLabelText(/filter by location/i)).not.toBeInTheDocument()
+    })
+
+    it('location filter is shown for multi-location tenant', async () => {
+      server.use(
+        http.get(`${BASE}/tenants/${TENANT_ID}/locations`, () =>
+          HttpResponse.json([
+            ...LOCATIONS.filter(l => l.isActive),
+            { id: 'loc-3', tenantId: TENANT_ID, name: 'West Branch', address: null, timezone: 'UTC', isActive: true, createdAt: '2026-05-03T00:00:00.000Z' },
+          ]),
+        ),
+      )
+      renderPage(<StaffListPage />)
+      await waitFor(() => screen.getByLabelText(/filter by location/i))
+      expect(screen.getByLabelText(/filter by location/i)).toBeInTheDocument()
+    })
+
+    it('selecting a location re-fetches staff filtered by that location', async () => {
+      server.use(
+        http.get(`${BASE}/tenants/${TENANT_ID}/locations`, () =>
+          HttpResponse.json([
+            ...LOCATIONS.filter(l => l.isActive),
+            { id: 'loc-3', tenantId: TENANT_ID, name: 'West Branch', address: null, timezone: 'UTC', isActive: true, createdAt: '2026-05-03T00:00:00.000Z' },
+          ]),
+        ),
+      )
+      let capturedLocationId: string | null = null
+      server.use(
+        http.get(`${BASE}/tenants/${TENANT_ID}/staff`, ({ request }) => {
+          const url = new URL(request.url)
+          capturedLocationId = url.searchParams.get('locationId')
+          return HttpResponse.json(STAFF.filter(s => s.isActive))
+        }),
+      )
+      const user = userEvent.setup()
+      renderPage(<StaffListPage />)
+      await waitFor(() => screen.getByLabelText(/filter by location/i))
+      // select West Branch (loc-3)
+      await user.selectOptions(screen.getByLabelText(/filter by location/i), 'loc-3')
+      await waitFor(() => {
+        expect(capturedLocationId).toBe('loc-3')
+      })
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // Staff detail — location in profile section
+  // ---------------------------------------------------------------------------
+
+  describe('Staff detail — location', () => {
+    beforeEach(() => {
+      vi.mocked(useParams).mockReturnValue({ staffId: 'staff-1' })
+    })
+
+    it('shows location dropdown in profile section', async () => {
+      renderPage(<StaffDetailPage />)
+      await waitFor(() => {
+        expect(screen.getByText('Alice Smith')).toBeInTheDocument()
+        // profile section shows location
+        expect(screen.getAllByLabelText(/location/i).length).toBeGreaterThan(0)
       })
     })
   })

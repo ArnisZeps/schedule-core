@@ -41,6 +41,7 @@ export function StaffDetailPage() {
         name: values.name,
         email: values.email || null,
         phone: values.phone || null,
+        locationId: values.locationId || undefined,
       })
       toast.success('Profile updated')
     } catch {
@@ -101,10 +102,12 @@ export function StaffDetailPage() {
               name: staff.name,
               email: staff.email ?? undefined,
               phone: staff.phone ?? undefined,
+              locationId: staff.locationId,
             }}
             onSubmit={handleProfileSave}
             isPending={updateMutation.isPending}
             onCancel={() => router.push('/staff')}
+            forceShowLocation
           />
           <div className="border-t pt-4">
             {staff.isActive ? (

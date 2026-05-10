@@ -8,6 +8,7 @@ type BookingRow = {
   id: string;
   tenant_id: string;
   service_id: string;
+  location_id: string;
   client_name: string;
   client_phone: string;
   client_email: string | null;
@@ -23,6 +24,7 @@ function format(r: BookingRow) {
     id: r.id,
     tenantId: r.tenant_id,
     serviceId: r.service_id,
+    locationId: r.location_id,
     clientName: r.client_name,
     clientPhone: r.client_phone,
     clientEmail: r.client_email,
@@ -36,11 +38,12 @@ function format(r: BookingRow) {
 
 const ISO8601 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
 const SELECT_COLS =
-  'id, tenant_id, service_id, client_name, client_phone, client_email, start_at, end_at, status, notes, created_at';
+  'id, tenant_id, service_id, location_id, client_name, client_phone, client_email, start_at, end_at, status, notes, created_at';
 
 const createSchema = z
   .object({
     serviceId: z.string().uuid(),
+    locationId: z.string().uuid(),
     clientName: z.string().min(1),
     clientPhone: z.string().min(7),
     clientEmail: z.string().email().optional(),
@@ -114,7 +117,7 @@ export async function POST(
     return Response.json({ error: 'validation_error', details }, { status: 422 });
   }
 
-  const { serviceId, clientName, clientPhone, clientEmail, startAt, endAt, notes, override } = parsed.data;
+  const { serviceId, locationId, clientName, clientPhone, clientEmail, startAt, endAt, notes, override } = parsed.data;
   const start = new Date(startAt);
   const end = new Date(endAt);
 
@@ -132,9 +135,9 @@ export async function POST(
     }
 
     const { rows } = await client.query<BookingRow>(
-      `INSERT INTO bookings (tenant_id, service_id, client_name, client_phone, client_email, start_at, end_at, status, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8) RETURNING ${SELECT_COLS}`,
-      [tenantId, serviceId, clientName, clientPhone, clientEmail ?? null, start, end, notes ?? null],
+      `INSERT INTO bookings (tenant_id, service_id, location_id, client_name, client_phone, client_email, start_at, end_at, status, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', $9) RETURNING ${SELECT_COLS}`,
+      [tenantId, serviceId, locationId, clientName, clientPhone, clientEmail ?? null, start, end, notes ?? null],
     );
     return rows[0];
   });

@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input'
 import type { Booking } from '@/hooks/useBookings'
 import { useCancelBooking, useRescheduleBooking } from '@/hooks/useBookings'
 import type { Service } from '@/hooks/useServices'
+import type { Location } from '@/hooks/useLocations'
 import { ApiError } from '@/lib/api'
 
 const STATUS_BADGE: Record<Booking['status'], 'default' | 'secondary' | 'outline' | 'destructive'> = {
@@ -46,6 +47,7 @@ function toDatetimeLocal(isoStr: string): string {
 interface AppointmentDetailDialogProps {
   booking: Booking
   services: Service[]
+  locations?: Location[]
   open: boolean
   onClose: () => void
 }
@@ -53,6 +55,7 @@ interface AppointmentDetailDialogProps {
 export function AppointmentDetailDialog({
   booking,
   services,
+  locations,
   open,
   onClose,
 }: AppointmentDetailDialogProps) {
@@ -66,6 +69,7 @@ export function AppointmentDetailDialog({
   const rescheduleBooking = useRescheduleBooking()
 
   const service = services.find(s => s.id === booking.serviceId)
+  const location = locations?.find(l => l.id === booking.locationId)
   const start = new Date(booking.startAt)
   const end = new Date(booking.endAt)
 
@@ -134,8 +138,10 @@ export function AppointmentDetailDialog({
               )}
             </div>
 
-            <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="flex items-center gap-2 text-muted-foreground flex-wrap">
               <span>{service?.name ?? booking.serviceId}</span>
+              <span>·</span>
+              <span>{location?.name ?? '—'}</span>
               <span>·</span>
               <span>{format(start, 'MMM d, yyyy')}</span>
               <span>·</span>
