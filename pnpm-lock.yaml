@@ -23,9 +23,6 @@ importers:
       '@neondatabase/serverless':
         specifier: ^0.9.4
         version: 0.9.5
-      '@schedule-core/db':
-        specifier: workspace:*
-        version: link:../../packages/db
       '@tanstack/react-query':
         specifier: ^5.100.6
         version: 5.100.6(react@18.3.1)
