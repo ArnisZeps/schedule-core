@@ -1,4 +1,4 @@
-import type { PoolClient } from '@schedule-core/db';
+import type { PoolClient } from '@neondatabase/serverless';
 
 export async function checkOverlap(
   client: PoolClient,

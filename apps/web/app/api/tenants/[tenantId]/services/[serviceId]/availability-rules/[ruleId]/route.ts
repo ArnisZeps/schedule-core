@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { PoolClient } from '@schedule-core/db';
+import type { PoolClient } from '@neondatabase/serverless';
 import { db } from '@/lib/server/db';
 import { withAuth } from '@/lib/server/withAuth';
 import { withTenantContext } from '@/lib/server/withTenantContext';

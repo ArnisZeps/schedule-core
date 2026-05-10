@@ -1,4 +1,4 @@
-import type { Pool, PoolClient } from '@schedule-core/db';
+import type { Pool, PoolClient } from '@neondatabase/serverless';
 
 export async function withTenantContext<T>(
   pool: Pool,
