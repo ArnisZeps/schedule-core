@@ -2,6 +2,8 @@
 
 <!-- Never delete tasks. Mark done, append new ones. -->
 
+> **Note:** File paths in tasks below reflect the pre-migration (Express) architecture. Actual files are now under `apps/web/app/api/` and `apps/web/src/lib/server/`. See `docs/features/api-nextjs-migration/`.
+
 ## 2026-05-02 Initial implementation
 
 ### Phase 0 — Setup

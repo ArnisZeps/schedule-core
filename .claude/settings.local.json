@@ -26,7 +26,8 @@
       "mcp__Neon__run_sql",
       "Bash(npx tsc *)",
       "PowerShell(Remove-Item *)",
-      "PowerShell(Get-Process *)"
+      "PowerShell(Get-Process *)",
+      "Bash(grep -E \"\\\\.\\(ts|js|json\\)$\")"
     ]
   }
 }

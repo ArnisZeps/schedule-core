@@ -6,7 +6,6 @@ M3 delivered authentication (signup/login, JWT issuance, RLS enforcement via the
 
 Constraints:
 - Raw SQL, no ORM (ADR-004).
-- Express routers, no framework magic (ADR-002).
 - Row-level multi-tenancy; every tenant-scoped query runs inside `withTenantContext` (ADR-005, ADR-007).
 - All routes behind JWT auth middleware from M3.
 - No UI (roadmap: M4 is API-only).
@@ -15,11 +14,13 @@ Constraints:
 
 | File | Responsibility |
 |------|----------------|
-| `apps/api/src/routes/tenants.ts` | Tenant CRUD handlers and router |
-| `apps/api/src/routes/services.ts` | Service CRUD handlers and router |
-| `apps/api/src/routes/availability-rules.ts` | Availability rule CRUD + overlap validation |
-| `apps/api/src/middleware/auth.ts` | JWT verification — reused from M3, no changes |
-| `apps/api/src/middleware/tenant-context.ts` | `withTenantContext` helper — reused from M3, no changes |
+| `apps/web/app/api/tenants/[tenantId]/route.ts` | Tenant read/update/delete handlers |
+| `apps/web/app/api/tenants/[tenantId]/services/route.ts` | Service list + create handlers |
+| `apps/web/app/api/tenants/[tenantId]/services/[serviceId]/route.ts` | Service read/update/delete handlers |
+| `apps/web/app/api/tenants/[tenantId]/services/[serviceId]/availability-rules/route.ts` | Availability rule list + create handlers |
+| `apps/web/app/api/tenants/[tenantId]/services/[serviceId]/availability-rules/[ruleId]/route.ts` | Availability rule read/update/delete handlers |
+| `apps/web/src/lib/server/withAuth.ts` | JWT verification — reused from M3, no changes |
+| `apps/web/src/lib/server/withTenantContext.ts` | `withTenantContext` helper — reused from M3, no changes |
 
 No new migration. All tables (`tenants`, `services`, `availability_rules`, `bookings`) and the `schedulecore_app` role are already in place from M1–M3.
 

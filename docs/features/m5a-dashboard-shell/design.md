@@ -11,45 +11,44 @@ establish component and data-fetching patterns that the rest of the dashboard ca
 
 | Package | Kind | Purpose |
 |---------|------|---------|
-| react-router-dom | runtime | client-side routing (named in ADR-003) |
-| @tanstack/react-query | runtime | server-state: fetch, cache, loading/error (named in ADR-003) |
+| @tanstack/react-query | runtime | server-state: fetch, cache, loading/error |
 | tailwindcss | devDep | utility CSS |
 | postcss | devDep | Tailwind pipeline |
-| autoprefixer | devDep | vendor prefixes |
 
 ## Components
 
 | File | Responsibility |
 |------|----------------|
-| `apps/web/src/App.tsx` | `createBrowserRouter` route tree |
-| `apps/web/src/main.tsx` | Mount `QueryClientProvider` → `RouterProvider`; `AuthProvider` inside router |
-| `apps/web/src/lib/api.ts` | `apiFetch<T>`: reads token from `AuthContext`, injects `Authorization` header, throws `ApiError` on non-2xx, calls `logout()` + redirect on 401 |
-| `apps/web/src/lib/queryClient.ts` | Singleton `QueryClient`; global `onError` triggers logout on 401 |
+| `apps/web/app/(dashboard)/layout.tsx` | Auth guard + dashboard shell (reads localStorage token; redirects to `/login` if missing) |
+| `apps/web/app/(auth)/login/page.tsx` | Login route (public) |
+| `apps/web/app/(dashboard)/services/page.tsx` | Services list route |
+| `apps/web/app/(dashboard)/services/new/page.tsx` | Service create route |
+| `apps/web/app/(dashboard)/services/[serviceId]/page.tsx` | Service edit route |
+| `apps/web/app/(dashboard)/services/[serviceId]/availability/page.tsx` | Availability rules route |
+| `apps/web/src/lib/api.ts` | `apiFetch<T>`: reads token from `localStorage`, injects `Authorization` header, throws `ApiError` on non-2xx, redirects to `/login` on 401 |
+| `apps/web/src/lib/queryClient.ts` | Singleton `QueryClient` |
 | `apps/web/src/context/AuthContext.tsx` | Reads/writes JWT in `localStorage`; decodes payload (no sig verify — API enforces); exposes `{ user, token, login, logout }` |
-| `apps/web/src/components/RequireAuth.tsx` | Reads `AuthContext.user`; if null or token expired, `<Navigate to="/login" state={{ next: location }} />` |
-| `apps/web/src/components/AppLayout.tsx` | Responsive shell: sidebar + `<Outlet>`; header with hamburger on mobile |
+| `apps/web/src/components/AppLayout.tsx` | Responsive shell: sidebar + children; header with hamburger on mobile |
 | `apps/web/src/components/Sidebar.tsx` | Nav links (Services); collapses to slide-over on mobile |
-| `apps/web/src/components/ui/Button.tsx` | Tailwind button with `variant` prop (primary / secondary / danger) |
-| `apps/web/src/components/ui/Input.tsx` | Labelled input with inline error display |
 | `apps/web/src/hooks/useAuth.ts` | `useContext(AuthContext)` with null-guard throw |
 | `apps/web/src/hooks/useServices.ts` | `useQuery` for list; `useMutation` for create / update / delete |
 | `apps/web/src/hooks/useService.ts` | `useQuery` for single service by id |
 | `apps/web/src/hooks/useAvailabilityRules.ts` | `useQuery` for list; `useMutation` for create / delete |
-| `apps/web/src/pages/LoginPage.tsx` | Email + password form → `POST /auth/login` → `login(token)` → redirect |
-| `apps/web/src/pages/services/ServiceListPage.tsx` | Table: name, description, edit link, delete action, availability link |
-| `apps/web/src/pages/services/ServiceFormPage.tsx` | Create (no `:serviceId`) and edit (`:serviceId` present) in one component |
-| `apps/web/src/pages/services/AvailabilityPage.tsx` | Weekly grid; inline add-window form; delete per row |
+| `apps/web/src/page-components/LoginPage.tsx` | Email + password form → `POST /api/auth/login` → `login(token)` → redirect |
+| `apps/web/src/page-components/ServiceListPage.tsx` | Table: name, description, edit link, delete action, availability link |
+| `apps/web/src/page-components/ServiceFormPage.tsx` | Create and edit in one component |
+| `apps/web/src/page-components/AvailabilityPage.tsx` | Weekly grid; inline add-window form; delete per row |
 
 ## Routes
 
+Routing via Next.js App Router directory structure:
+
 ```
-/login                                → LoginPage (public)
-/                                     → <Navigate to="/services" />
-/services                             → RequireAuth → AppLayout → ServiceListPage
-/services/new                         → RequireAuth → AppLayout → ServiceFormPage (create)
-/services/:serviceId                  → RequireAuth → AppLayout → ServiceFormPage (edit)
-/services/:serviceId/availability     → RequireAuth → AppLayout → AvailabilityPage
-*                                     → 404 page
+/login                                → (auth)/login/page.tsx (public)
+/services                             → (dashboard)/services/page.tsx (auth-guarded by layout)
+/services/new                         → (dashboard)/services/new/page.tsx
+/services/[serviceId]                 → (dashboard)/services/[serviceId]/page.tsx
+/services/[serviceId]/availability    → (dashboard)/services/[serviceId]/availability/page.tsx
 ```
 
 ## Contracts
@@ -64,7 +63,7 @@ interface IAuthContext { user: User | null; token: string | null; login(token: s
 // api.ts
 class ApiError extends Error { constructor(public status: number, message: string) {} }
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T>
-// Base URL: import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
+// Base URL: process.env.NEXT_PUBLIC_API_URL ?? '/api'
 
 // API calls used
 // POST   /auth/login                                              → { token }
@@ -89,9 +88,7 @@ Three config files added to `apps/web/`:
 
 ## Rejected alternatives
 
-- **Next.js / SSR**: Already rejected in ADR-003. No SEO need for an authenticated dashboard.
-- **Shadcn/ui**: More components than needed at this stage; adds setup overhead. Plain Tailwind primitives keep the bundle lean.
-- **TanStack Router**: Stronger TypeScript but more boilerplate. react-router-dom is explicitly named in ADR-003.
+- **Shadcn/ui**: More components than needed at this stage; adds setup overhead. Plain Tailwind primitives keep the bundle lean. (Adopted in M5c.)
 - **localStorage alternatives (httpOnly cookie)**: Requires CSRF protection and backend cookie-setting changes. Out of scope for MVP; JWT in localStorage is the simplest path.
 - **Plain fetch + useState**: Manual loading/error/stale tracking in every component. TanStack Query eliminates this boilerplate.
 

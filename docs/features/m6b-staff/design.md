@@ -18,7 +18,7 @@ here — that wiring is M6d. The `availability_rules` table and its API endpoint
 operational until M6d performs the cutover.
 
 Constraints:
-- Raw SQL, no ORM (ADR-004). Express Router (ADR-002). shadcn/ui (ADR-009).
+- Raw SQL, no ORM (ADR-004). shadcn/ui (ADR-009).
 - `tenant_id` denormalised on all new tables for RLS (ADR-005).
 - No new infrastructure dependencies.
 
@@ -28,9 +28,14 @@ Constraints:
 
 | File | Responsibility |
 |------|----------------|
-| `apps/api/src/routes/staff.ts` | All staff routes: CRUD, service assignment, schedules, overrides |
-| `apps/web/src/pages/staff/StaffListPage.tsx` | List of staff with active/inactive toggle and create entry point |
-| `apps/web/src/pages/staff/StaffDetailPage.tsx` | Profile edit, deactivate/reactivate; hosts Services, Schedule, Overrides sections |
+| `apps/web/app/api/tenants/[tenantId]/staff/route.ts` | Staff list + create handlers |
+| `apps/web/app/api/tenants/[tenantId]/staff/[staffId]/route.ts` | Staff read/update/delete handlers |
+| `apps/web/app/api/tenants/[tenantId]/staff/[staffId]/services/route.ts` | Staff service assignment handlers |
+| `apps/web/app/api/tenants/[tenantId]/staff/[staffId]/schedules/route.ts` | Staff schedule CRUD handlers |
+| `apps/web/app/api/tenants/[tenantId]/staff/[staffId]/overrides/route.ts` | Staff override list + create handlers |
+| `apps/web/app/api/tenants/[tenantId]/staff/[staffId]/overrides/[overrideId]/route.ts` | Staff override update/delete handlers |
+| `apps/web/src/page-components/staff/StaffListPage.tsx` | List of staff with active/inactive toggle and create entry point |
+| `apps/web/src/page-components/staff/StaffDetailPage.tsx` | Profile edit, deactivate/reactivate; hosts Services, Schedule, Overrides sections |
 | `apps/web/src/components/staff/StaffForm.tsx` | Name/email/phone form used for create and profile edit |
 | `apps/web/src/components/staff/ServiceAssignment.tsx` | Service checkbox list with save button |
 | `apps/web/src/components/staff/WeeklyScheduleCalendar.tsx` | 7-column weekday calendar; owns drag state and pending-change list |
@@ -47,7 +52,9 @@ Constraints:
 | File | Change |
 |------|--------|
 | `apps/web/src/components/layout/Sidebar.tsx` | Add "Staff" nav entry linking to `/staff` |
-| `apps/web/src/App.tsx` (or router file) | Add `/staff` and `/staff/:staffId` routes |
+| `apps/web/app/(dashboard)/staff/page.tsx` | Staff list route |
+| `apps/web/app/(dashboard)/staff/new/page.tsx` | Staff create route |
+| `apps/web/app/(dashboard)/staff/[staffId]/page.tsx` | Staff detail route |
 | `docs/db/data-model.md` | Document the four new tables |
 
 ## Contracts

@@ -1,4 +1,4 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? '/api'
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
