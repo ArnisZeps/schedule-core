@@ -43,9 +43,19 @@ export async function GET(
     const durationMinutes = rows[0].duration_minutes;
 
     if (staffId) {
-      return generateStaffSlots(client, staffId, date, durationMinutes);
+      const { rows: tzRows } = await client.query<{ timezone: string }>(
+        'SELECT l.timezone FROM staff s JOIN locations l ON l.id = s.location_id WHERE s.id = $1',
+        [staffId],
+      );
+      const timezone = tzRows[0]?.timezone ?? 'UTC';
+      return generateStaffSlots(client, staffId, date, durationMinutes, timezone);
     }
-    return generateAnyAvailableSlots(client, tenantId, serviceId, locationId!, date, durationMinutes);
+    const { rows: tzRows } = await client.query<{ timezone: string }>(
+      'SELECT timezone FROM locations WHERE id = $1',
+      [locationId],
+    );
+    const timezone = tzRows[0]?.timezone ?? 'UTC';
+    return generateAnyAvailableSlots(client, tenantId, serviceId, locationId!, date, durationMinutes, timezone);
   });
 
   if (result === null) return Response.json({ error: 'not_found' }, { status: 404 });

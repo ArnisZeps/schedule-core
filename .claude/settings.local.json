@@ -32,7 +32,11 @@
       "Bash(Remove-Item \"C:\\\\Users\\\\zepsa\\\\Documents\\\\Projects\\\\schedule-core\\\\apps\\\\web\\\\app\\\\api\\\\tenants\\\\[tenantId]\\\\services\\\\[serviceId]\\\\availability-rules\\\\route.ts\" -Force)",
       "Bash(Remove-Item \"C:\\\\Users\\\\zepsa\\\\Documents\\\\Projects\\\\schedule-core\\\\apps\\\\web\\\\app\\\\api\\\\tenants\\\\[tenantId]\\\\services\\\\[serviceId]\\\\availability-rules\\\\[ruleId]\\\\route.ts\" -Force)",
       "Bash(Remove-Item \"C:\\\\Users\\\\zepsa\\\\Documents\\\\Projects\\\\schedule-core\\\\apps\\\\web\\\\app\\\\api\\\\tenants\\\\[tenantId]\\\\services\\\\[serviceId]\\\\availability-rules\" -Force -Recurse)",
-      "Bash(Write-Output \"Deleted availability-rules API routes\")"
+      "Bash(Write-Output \"Deleted availability-rules API routes\")",
+      "Bash(kill -f 22420)",
+      "Bash(kill -f 22668)",
+      "Bash(taskkill //PID 22420 //F)",
+      "Bash(taskkill //PID 22668 //F)"
     ]
   }
 }
