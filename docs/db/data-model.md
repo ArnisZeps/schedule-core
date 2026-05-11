@@ -54,26 +54,6 @@ A bookable service within a tenant: a haircut, consultation, massage, etc. Tenan
 
 ---
 
-## availability_rules
-
-Weekly repeating schedule for a service. Each row defines one time window on one day of the week. Tenants configure these via the admin dashboard. Exceptions (blocked days, holidays) are out of scope for M1.
-
-| Column | Type | Constraints |
-|--------|------|-------------|
-| id | UUID | PK |
-| tenant_id | UUID | NOT NULL, FK → tenants(id) ON DELETE CASCADE — denormalised for RLS |
-| service_id | UUID | NOT NULL, FK → services(id) ON DELETE CASCADE |
-| day_of_week | SMALLINT | NOT NULL, CHECK (0–6), 0 = Sunday |
-| start_time | TIME | NOT NULL |
-| end_time | TIME | NOT NULL |
-| created_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() |
-
-**Constraints:** `start_time < end_time`
-
-**Indexes:** `(service_id)`, `(tenant_id)`
-
-**Note:** No overlap constraint between rules on the same day (two rules for the same slot are not prevented). Business logic enforcement deferred to M4.
-
 ---
 
 ## locations
@@ -112,14 +92,15 @@ An appointment made by a client for a specific service at a specific location. D
 | start_at | TIMESTAMPTZ | NOT NULL |
 | end_at | TIMESTAMPTZ | NOT NULL |
 | status | TEXT | NOT NULL, DEFAULT 'pending', CHECK IN ('pending', 'confirmed', 'cancelled') |
+| staff_id | UUID | nullable, FK → staff(id) ON DELETE RESTRICT — staff member assigned to this booking; null for bookings created before M6d |
 | notes | TEXT | nullable — internal staff notes, not exposed to clients |
 | created_at | TIMESTAMPTZ | NOT NULL, DEFAULT now() |
 
 **Constraints:** `start_at < end_at`
 
-`ON DELETE RESTRICT` on tenant, service, and location FKs — these records cannot be deleted while bookings exist (preserve booking history).
+`ON DELETE RESTRICT` on tenant, service, location, and staff FKs — these records cannot be deleted while bookings exist (preserve booking history).
 
-**Indexes:** `(tenant_id)`, `(service_id)`, `(location_id)`, `(tenant_id, start_at, end_at)` — the composite index supports overlap queries during booking.
+**Indexes:** `(tenant_id)`, `(service_id)`, `(location_id)`, `(staff_id)`, `(tenant_id, start_at, end_at)` — the composite index supports overlap queries during booking.
 
 ---
 
@@ -201,7 +182,7 @@ Date-range exceptions to the recurring schedule. Type `available` adds availabil
 
 ## RLS Policies
 
-RLS is enabled on `locations`, `services`, `availability_rules`, `bookings`, `staff`, `staff_services`, `staff_schedules`, and `staff_schedule_overrides`. All use the same policy shape:
+RLS is enabled on `locations`, `services`, `bookings`, `staff`, `staff_services`, `staff_schedules`, and `staff_schedule_overrides`. All use the same policy shape:
 
 ```sql
 USING     (tenant_id = current_setting('app.current_tenant_id', true)::uuid)

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { PackageOpen, MoreHorizontal, Pencil, Calendar, Trash2 } from 'lucide-react'
+import { PackageOpen, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useServices, useDeleteService } from '@/hooks/useServices'
 import { Button } from '@/components/ui/button'
@@ -106,14 +106,6 @@ export function ServiceListPage() {
                           <Pencil className="mr-2 size-4" />
                           Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() =>
-                            router.push(`/services/${s.id}/availability`)
-                          }
-                        >
-                          <Calendar className="mr-2 size-4" />
-                          Availability
-                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
@@ -140,8 +132,7 @@ export function ServiceListPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete service?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the service and all its availability
-              rules. This action cannot be undone.
+              This will permanently delete the service. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

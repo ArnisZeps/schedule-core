@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect } from 'react'
-import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -136,16 +135,6 @@ export function ServiceFormPage() {
           </Form>
         </CardContent>
       </Card>
-      {isEdit && (
-        <div className="mt-4">
-          <Link
-            href={`/services/${serviceId}/availability`}
-            className="text-sm text-primary hover:underline"
-          >
-            Manage availability
-          </Link>
-        </div>
-      )}
     </PageShell>
   )
 }

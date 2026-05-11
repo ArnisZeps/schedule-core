@@ -16,6 +16,9 @@
       "vitest/globals"
     ],
     "paths": {
+      "@/app/*": [
+        "./app/*"
+      ],
       "@/*": [
         "./src/*"
       ]

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { db } from '@/lib/server/db';
-import { checkOverlap, checkWithinAvailability } from '@/lib/server/availability';
+import { checkOverlap } from '@/lib/server/availability';
 
 // TODO: add Upstash Rate Limit before M7
 
@@ -90,9 +90,6 @@ export async function POST(
     }
     const locationId = locationRows[0].id;
 
-    if (!(await checkWithinAvailability(client, serviceId, start, end))) {
-      return Response.json({ error: 'outside_availability' }, { status: 409 });
-    }
     if (await checkOverlap(client, serviceId, start, end)) {
       return Response.json({ error: 'overlap' }, { status: 409 });
     }

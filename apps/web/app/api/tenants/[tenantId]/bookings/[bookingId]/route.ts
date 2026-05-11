@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { db } from '@/lib/server/db';
 import { withAuth } from '@/lib/server/withAuth';
 import { withTenantContext } from '@/lib/server/withTenantContext';
-import { checkOverlap, checkWithinAvailability } from '@/lib/server/availability';
+import { checkOverlap } from '@/lib/server/availability';
 
 type BookingRow = {
   id: string;
@@ -106,9 +106,6 @@ export async function PATCH(
     const serviceId = cur.service_id;
 
     if (patch.startAt || patch.endAt) {
-      if (!(await checkWithinAvailability(client, serviceId, newStart, newEnd))) {
-        return 'outside_availability' as const;
-      }
       if (await checkOverlap(client, serviceId, newStart, newEnd, bookingId)) {
         return 'overlap' as const;
       }
@@ -133,7 +130,6 @@ export async function PATCH(
   if (result === 'not_found')            return Response.json({ error: 'not_found' }, { status: 404 });
   if (result === 'already_cancelled')    return Response.json({ error: 'already_cancelled' }, { status: 409 });
   if (result === 'invalid_times')        return Response.json({ error: 'validation_error', details: ['startAt must be before endAt'] }, { status: 422 });
-  if (result === 'outside_availability') return Response.json({ error: 'outside_availability' }, { status: 409 });
   if (result === 'overlap')              return Response.json({ error: 'overlap' }, { status: 409 });
   return Response.json(format(result));
 }

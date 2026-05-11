@@ -46,6 +46,16 @@ export interface OverrideInput {
   endTime: string
 }
 
+export function useServiceStaff(serviceId: string | null, locationId: string | null) {
+  const { user } = useAuth()
+  const tenantId = user!.tenantId
+  return useQuery<Staff[]>({
+    queryKey: ['service-staff', tenantId, serviceId, locationId],
+    queryFn: () => apiFetch(`/tenants/${tenantId}/services/${serviceId}/staff?locationId=${locationId}`),
+    enabled: !!serviceId && !!locationId,
+  })
+}
+
 export function useStaffList(includeInactive?: boolean, locationId?: string) {
   const { user } = useAuth()
   const tenantId = user!.tenantId

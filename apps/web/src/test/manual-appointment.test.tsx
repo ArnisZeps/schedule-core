@@ -7,7 +7,7 @@ import { AuthProvider } from '../../providers/AuthProvider'
 import { http, HttpResponse } from 'msw'
 import { server } from './handlers'
 import { AppointmentsPage } from '@/page-components/appointments/AppointmentsPage'
-import { TEST_TOKEN, TENANT_ID, SLOTS, LOCATIONS } from './handlers'
+import { TEST_TOKEN, TENANT_ID, SLOTS, LOCATIONS, SERVICE_STAFF } from './handlers'
 
 vi.mock('next/navigation', () => ({
   useRouter: vi.fn(),
@@ -198,11 +198,159 @@ describe('Manual appointment entry', () => {
     await waitFor(() => screen.getByLabelText(/name/i))
     await userEvent.type(screen.getByLabelText('Name'), 'Test Client')
     await userEvent.type(screen.getByLabelText('Phone'), '+1 555 123 4567')
-    await waitFor(() => expect(screen.getAllByTestId('slot-available').length).toBeGreaterThan(0))
-    await userEvent.click(screen.getAllByTestId('slot-available')[0])
+    // No slot selection — slots don't load until location is picked
     await userEvent.click(screen.getByTestId('submit-booking'))
     await waitFor(() => {
       expect(screen.getByTestId('panel-error')).toHaveTextContent(/location/i)
+    })
+  })
+})
+
+describe('M6d — Staff selection', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(FIXED_NOW)
+    localStorage.clear()
+    localStorage.setItem('sc_token', TEST_TOKEN)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('staff dropdown is visible when panel is open', async () => {
+    renderAppointments('view=week&date=2026-05-04')
+    const btn = await screen.findByTestId('new-appointment-btn')
+    await userEvent.click(btn)
+    await waitFor(() => screen.getByTestId('new-appointment-panel'))
+    expect(screen.getByTestId('staff-select')).toBeInTheDocument()
+  })
+
+  it('"Any available" is the first option in the staff dropdown', async () => {
+    renderAppointments('view=week&date=2026-05-04')
+    const btn = await screen.findByTestId('new-appointment-btn')
+    await userEvent.click(btn)
+    await waitFor(() => screen.getByTestId('staff-select'))
+    const staffSelect = screen.getByTestId('staff-select') as HTMLSelectElement
+    expect(staffSelect.options[0].text).toMatch(/any available/i)
+    expect(staffSelect.value).toBe('')
+  })
+
+  it('staff dropdown lists qualified staff from the service staff endpoint', async () => {
+    renderAppointments('view=week&date=2026-05-04')
+    const btn = await screen.findByTestId('new-appointment-btn')
+    await userEvent.click(btn)
+    await waitFor(() => expect(screen.getByText(SERVICE_STAFF[0].name)).toBeInTheDocument())
+  })
+
+  it('shows no-staff note when service has no staff at location', async () => {
+    server.use(
+      http.get(`${BASE}/tenants/${TENANT_ID}/services/:serviceId/staff`, () =>
+        HttpResponse.json([]),
+      ),
+    )
+    renderAppointments('view=week&date=2026-05-04')
+    const btn = await screen.findByTestId('new-appointment-btn')
+    await userEvent.click(btn)
+    await waitFor(() => screen.getByTestId('new-appointment-panel'))
+    await waitFor(() => expect(screen.getByTestId('no-staff-note')).toBeInTheDocument())
+  })
+
+  it('POST body includes null staffId when "Any available" is selected', async () => {
+    let capturedBody: Record<string, unknown> | null = null
+    server.use(
+      http.post(`${BASE}/tenants/${TENANT_ID}/bookings`, async ({ request }) => {
+        capturedBody = await request.json() as Record<string, unknown>
+        return HttpResponse.json(
+          { id: 'bk-new', tenantId: TENANT_ID, serviceId: capturedBody.serviceId, locationId: 'loc-1',
+            staffId: 'staff-1', staffName: 'Alice Smith', clientName: capturedBody.clientName,
+            clientPhone: capturedBody.clientPhone, clientEmail: null, startAt: capturedBody.startAt,
+            endAt: capturedBody.endAt, status: 'pending', notes: null, createdAt: new Date().toISOString() },
+          { status: 201 },
+        )
+      }),
+    )
+    renderAppointments('view=week&date=2026-05-04')
+    await userEvent.click(await screen.findByTestId('new-appointment-btn'))
+    await userEvent.type(screen.getByLabelText('Name'), 'Test Client')
+    await userEvent.type(screen.getByLabelText('Phone'), '+1 555 123 4567')
+    await waitFor(() => expect(screen.getAllByTestId('slot-available').length).toBeGreaterThan(0))
+    await userEvent.click(screen.getAllByTestId('slot-available')[0])
+    await userEvent.click(screen.getByTestId('submit-booking'))
+    await waitFor(() => expect(capturedBody).not.toBeNull())
+    expect(capturedBody!.staffId).toBeNull()
+  })
+
+  it('POST body includes staffId UUID when specific staff is selected', async () => {
+    let capturedBody: Record<string, unknown> | null = null
+    server.use(
+      http.post(`${BASE}/tenants/${TENANT_ID}/bookings`, async ({ request }) => {
+        capturedBody = await request.json() as Record<string, unknown>
+        return HttpResponse.json(
+          { id: 'bk-new', tenantId: TENANT_ID, serviceId: capturedBody.serviceId, locationId: 'loc-1',
+            staffId: 'staff-1', staffName: 'Alice Smith', clientName: capturedBody.clientName,
+            clientPhone: capturedBody.clientPhone, clientEmail: null, startAt: capturedBody.startAt,
+            endAt: capturedBody.endAt, status: 'pending', notes: null, createdAt: new Date().toISOString() },
+          { status: 201 },
+        )
+      }),
+    )
+    renderAppointments('view=week&date=2026-05-04')
+    await userEvent.click(await screen.findByTestId('new-appointment-btn'))
+    await waitFor(() => expect(screen.getByRole('option', { name: SERVICE_STAFF[0].name })).toBeInTheDocument())
+    await userEvent.selectOptions(screen.getByTestId('staff-select'), SERVICE_STAFF[0].id)
+    await userEvent.type(screen.getByLabelText('Name'), 'Test Client')
+    await userEvent.type(screen.getByLabelText('Phone'), '+1 555 123 4567')
+    await waitFor(() => expect(screen.getAllByTestId('slot-available').length).toBeGreaterThan(0))
+    await userEvent.click(screen.getAllByTestId('slot-available')[0])
+    await userEvent.click(screen.getByTestId('submit-booking'))
+    await waitFor(() => expect(capturedBody).not.toBeNull())
+    expect(capturedBody!.staffId).toBe(SERVICE_STAFF[0].id)
+  })
+
+  it('changing staff selection resets the selected slot', async () => {
+    renderAppointments('view=week&date=2026-05-04')
+    await userEvent.click(await screen.findByTestId('new-appointment-btn'))
+    await userEvent.type(screen.getByLabelText('Name'), 'Test Client')
+    await userEvent.type(screen.getByLabelText('Phone'), '+1 555 123 4567')
+    await waitFor(() => expect(screen.getAllByTestId('slot-available').length).toBeGreaterThan(0))
+    await userEvent.click(screen.getAllByTestId('slot-available')[0])
+    // Select a specific staff member — slot should reset
+    await waitFor(() => expect(screen.getByRole('option', { name: SERVICE_STAFF[0].name })).toBeInTheDocument())
+    await userEvent.selectOptions(screen.getByTestId('staff-select'), SERVICE_STAFF[0].id)
+    // Submit with no slot selected should show slot error
+    await userEvent.click(screen.getByTestId('submit-booking'))
+    await waitFor(() => expect(screen.getByTestId('panel-error')).toHaveTextContent(/slot/i))
+  })
+
+  it('slot grid fetches with staffId param when specific staff is selected', async () => {
+    let capturedUrl = ''
+    server.use(
+      http.get(`${BASE}/tenants/${TENANT_ID}/services/:serviceId/slots`, ({ request }) => {
+        capturedUrl = request.url
+        return HttpResponse.json(SLOTS)
+      }),
+    )
+    renderAppointments('view=week&date=2026-05-04')
+    await userEvent.click(await screen.findByTestId('new-appointment-btn'))
+    await waitFor(() => expect(screen.getByRole('option', { name: SERVICE_STAFF[0].name })).toBeInTheDocument())
+    await userEvent.selectOptions(screen.getByTestId('staff-select'), SERVICE_STAFF[0].id)
+    await waitFor(() => expect(capturedUrl).toContain(`staffId=${SERVICE_STAFF[0].id}`))
+  })
+
+  it('slot grid fetches with locationId (no staffId) when "Any available" is selected', async () => {
+    let capturedUrl = ''
+    server.use(
+      http.get(`${BASE}/tenants/${TENANT_ID}/services/:serviceId/slots`, ({ request }) => {
+        capturedUrl = request.url
+        return HttpResponse.json(SLOTS)
+      }),
+    )
+    renderAppointments('view=week&date=2026-05-04')
+    await userEvent.click(await screen.findByTestId('new-appointment-btn'))
+    await waitFor(() => {
+      expect(capturedUrl).toContain('locationId=')
+      expect(capturedUrl).not.toContain('staffId=')
     })
   })
 })

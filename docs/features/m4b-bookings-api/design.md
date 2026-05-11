@@ -51,6 +51,8 @@ All require `Authorization: Bearer <token>`. The JWT's `tenantId` must match `:t
   "id": "uuid",
   "tenantId": "uuid",
   "serviceId": "uuid",
+  "staffId": "uuid | null",
+  "staffName": "string | null",
   "clientName": "string",
   "clientPhone": "string",
   "clientEmail": "string | null",
@@ -72,6 +74,8 @@ All require `Authorization: Bearer <token>`. The JWT's `tenantId` must match `:t
 ```json
 {
   "serviceId": "uuid",
+  "locationId": "uuid",
+  "staffId": "uuid | null (optional — null = auto-assign)",
   "clientName": "string",
   "clientPhone": "string (min 7 chars, required)",
   "clientEmail": "string (email, optional)",
@@ -82,11 +86,17 @@ All require `Authorization: Bearer <token>`. The JWT's `tenantId` must match `:t
 }
 ```
 
-When `override: true`: skips both `checkWithinAvailability` and `checkOverlap`.
+Staff assignment rules:
+- `staffId` provided, `override: false`: validates staff is active, assigned to the service at `locationId`, and has no overlapping booking → `422` or `409` if not
+- `staffId` null, `override: false`: auto-assigns first free active+qualified staff at `locationId` (ordered by `created_at`) → `409` if all are booked
+- `staffId` provided, `override: true`: skips all checks, assigns that staff directly
+- `staffId` null, `override: true`: assigns first qualified staff regardless of conflicts
 
-**Response 201** — booking object (see response shape below).
+When `override: true`: skips `checkStaffOverlap` and conflict detection.
 
-**Errors** — `403`, `404` service not found, `409` overlap or outside-availability (only when override is absent/false), `422` validation
+**Response 201** — booking object (same shape as GET list item, includes `staffId` and `staffName`).
+
+**Errors** — `403`, `404` service not found, `409` overlap (only when override is absent/false), `422` validation or staff not eligible
 
 ---
 
@@ -169,25 +179,21 @@ WHERE service_id = $1
 
 Returns 409 `{ "error": "overlap" }` if any row found.
 
-### `checkWithinAvailability(client, serviceId, start, end)`
+### `checkStaffOverlap(client, staffId, start, end, excludeId?)`
 
-Validates the slot falls entirely within an availability window on the same day of the week.
+Same overlap logic scoped to a specific staff member instead of a service.
 
-```sql
-SELECT 1 FROM availability_rules
-WHERE service_id = $1
-  AND day_of_week = $2
-  AND start_time <= $3::time
-  AND end_time   >= $4::time
-```
+### `generateStaffSlots(client, staffId, date, durationMinutes)`
 
-`day_of_week` is extracted from `start_at` in UTC (0 = Sunday). Returns 409
-`{ "error": "outside_availability" }` if no row found.
+Generates slots for a single staff member on `date`:
+1. Fetches `staff_schedules` windows for the matching `day_of_week`
+2. Applies `staff_schedule_overrides`: `available` type adds windows, `not_available` type removes blocks
+3. Marks each slot `available: false` if a non-cancelled booking overlaps
 
-### `generateSlots(client, serviceId, date, durationMinutes)`
+### `generateAnyAvailableSlots(client, tenantId, serviceId, locationId, date, durationMinutes)`
 
-Walks the availability windows for the service on `date`'s day of week, subdivides into
-`durationMinutes` chunks, subtracts existing non-cancelled bookings, returns free slots.
+Union of slots across all active staff assigned to `serviceId` at `locationId`. A slot's `available`
+flag is `true` if at least one staff member is free at that time.
 
 ---
 
