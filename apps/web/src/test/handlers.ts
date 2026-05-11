@@ -100,8 +100,70 @@ export const STAFF_OVERRIDES = [
   { id: 'ov-2', staffId: 'staff-1', startDate: '2026-07-04', endDate: '2026-07-06', type: 'not_available', startTime: '00:00', endTime: '23:59', createdAt: '2026-05-02T00:00:00.000Z' },
 ]
 
+export const TENANT_SLUG = 'test-biz'
+
+export const PUBLIC_LOCATIONS = [
+  { id: 'pub-loc-1', name: 'Main Branch', address: '1 Main St', timezone: 'Europe/Riga' },
+  { id: 'pub-loc-2', name: 'East Branch', address: null, timezone: 'Europe/Riga' },
+]
+
+export const PUBLIC_SERVICES = [
+  { id: 'pub-svc-1', name: 'Haircut', description: 'Classic cut', durationMinutes: 60 },
+  { id: 'pub-svc-2', name: 'Shave', description: null, durationMinutes: 30 },
+]
+
+export const PUBLIC_STAFF = [
+  { id: 'pub-staff-1', name: 'Alice Smith' },
+  { id: 'pub-staff-2', name: 'Bob Jones' },
+]
+
+export const PUBLIC_SLOTS = [
+  { startAt: '2026-05-04T09:00:00.000Z', endAt: '2026-05-04T10:00:00.000Z', available: true },
+  { startAt: '2026-05-04T10:00:00.000Z', endAt: '2026-05-04T11:00:00.000Z', available: false },
+  { startAt: '2026-05-04T11:00:00.000Z', endAt: '2026-05-04T12:00:00.000Z', available: true },
+]
+
+export const PUBLIC_BOOKING_RESULT = {
+  id: 'pub-bk-1',
+  serviceId: 'pub-svc-1',
+  serviceName: 'Haircut',
+  staffId: 'pub-staff-1',
+  staffName: 'Alice Smith',
+  locationId: 'pub-loc-1',
+  locationName: 'Main Branch',
+  clientName: 'Jane Doe',
+  clientPhone: '+371 20000001',
+  clientEmail: null,
+  startAt: '2026-05-04T09:00:00.000Z',
+  endAt: '2026-05-04T10:00:00.000Z',
+  status: 'pending',
+  createdAt: '2026-05-04T08:00:00.000Z',
+}
+
 export const handlers = [
-  // Locations list
+  // ── Public booking API ────────────────────────────────────────────────────
+
+  http.get(`${BASE}/public/:tenantSlug/locations`, () => {
+    return HttpResponse.json(PUBLIC_LOCATIONS)
+  }),
+
+  http.get(`${BASE}/public/:tenantSlug/services`, () => {
+    return HttpResponse.json(PUBLIC_SERVICES)
+  }),
+
+  http.get(`${BASE}/public/:tenantSlug/services/:serviceId/staff`, () => {
+    return HttpResponse.json(PUBLIC_STAFF)
+  }),
+
+  http.get(`${BASE}/public/:tenantSlug/services/:serviceId/slots`, () => {
+    return HttpResponse.json(PUBLIC_SLOTS)
+  }),
+
+  http.post(`${BASE}/public/:tenantSlug/bookings`, () => {
+    return HttpResponse.json(PUBLIC_BOOKING_RESULT, { status: 201 })
+  }),
+
+  // ── Locations list
   http.get(`${BASE}/tenants/:tenantId/locations`, ({ request }) => {
     const url = new URL(request.url)
     const includeInactive = url.searchParams.get('includeInactive') === 'true'

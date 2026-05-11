@@ -1,5 +1,6 @@
 import { db } from '@/lib/server/db';
-import { generateAnyAvailableSlots } from '@/lib/server/availability';
+import { withTenantContext } from '@/lib/server/withTenantContext';
+import { generateStaffSlots, generateAnyAvailableSlots } from '@/lib/server/availability';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -10,41 +11,61 @@ export async function GET(
   const { tenantSlug, serviceId } = await params;
   const sp = new URL(request.url).searchParams;
   const date = sp.get('date');
-  const duration = sp.get('duration');
+  const locationId = sp.get('locationId');
+  const staffId = sp.get('staffId');
+  const durationOverride = sp.get('duration');
 
   if (!date || !DATE_RE.test(date) || isNaN(Date.parse(date))) {
     return Response.json({ error: 'invalid_param', param: 'date' }, { status: 400 });
   }
-  if (!duration || isNaN(Number(duration)) || Number(duration) <= 0) {
-    return Response.json({ error: 'invalid_param', param: 'duration' }, { status: 400 });
+  if (!staffId && !locationId) {
+    return Response.json(
+      { error: 'invalid_param', param: 'locationId', message: 'locationId is required when staffId is not provided' },
+      { status: 400 },
+    );
   }
 
-  const client = await db.connect();
+  const tenantClient = await db.connect();
+  let tenantId: string;
   try {
-    const { rows: tenantRows } = await client.query<{ id: string }>(
+    const { rows } = await tenantClient.query<{ id: string }>(
       'SELECT id FROM tenants WHERE slug = $1',
       [tenantSlug],
     );
-    if (tenantRows.length === 0) {
-      return Response.json({ error: 'not_found' }, { status: 404 });
-    }
-    const tenantId = tenantRows[0].id;
-
-    const { rows: locationRows } = await client.query<{ id: string }>(
-      'SELECT id FROM locations WHERE tenant_id = $1 AND is_active = true',
-      [tenantId],
-    );
-    if (locationRows.length !== 1) {
-      return Response.json(
-        { error: 'This business has multiple locations. Use the booking widget to select a location.' },
-        { status: 422 },
-      );
-    }
-    const locationId = locationRows[0].id;
-
-    const slots = await generateAnyAvailableSlots(client, tenantId, serviceId, locationId, date, Number(duration));
-    return Response.json(slots);
+    if (rows.length === 0) return Response.json({ error: 'not_found' }, { status: 404 });
+    tenantId = rows[0].id;
   } finally {
-    client.release();
+    tenantClient.release();
   }
+
+  const result = await withTenantContext(db, tenantId, async (client) => {
+    const { rows: svcRows } = await client.query<{ duration_minutes: number }>(
+      'SELECT duration_minutes FROM services WHERE id = $1 AND tenant_id = $2',
+      [serviceId, tenantId],
+    );
+    if (svcRows.length === 0) return null;
+
+    const durationMinutes =
+      durationOverride && !isNaN(Number(durationOverride)) && Number(durationOverride) > 0
+        ? Number(durationOverride)
+        : svcRows[0].duration_minutes;
+
+    if (staffId) {
+      const { rows: tzRows } = await client.query<{ timezone: string }>(
+        'SELECT l.timezone FROM staff s JOIN locations l ON l.id = s.location_id WHERE s.id = $1',
+        [staffId],
+      );
+      const timezone = tzRows[0]?.timezone ?? 'UTC';
+      return generateStaffSlots(client, staffId, date, durationMinutes, timezone);
+    }
+    const { rows: tzRows } = await client.query<{ timezone: string }>(
+      'SELECT timezone FROM locations WHERE id = $1',
+      [locationId],
+    );
+    const timezone = tzRows[0]?.timezone ?? 'UTC';
+    return generateAnyAvailableSlots(client, tenantId, serviceId, locationId!, date, durationMinutes, timezone);
+  });
+
+  if (result === null) return Response.json({ error: 'not_found' }, { status: 404 });
+  return Response.json(result);
 }

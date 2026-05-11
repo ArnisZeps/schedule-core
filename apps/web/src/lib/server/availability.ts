@@ -1,13 +1,31 @@
 import type { PoolClient } from '@neondatabase/serverless';
 
+// Returns the UTC timestamp corresponding to midnight (00:00:00) on dateStr in the given IANA timezone.
+// Uses noon UTC as the anchor to avoid DST edge cases at midnight.
+function localMidnightUTC(dateStr: string, timezone: string): Date {
+  const noonUTC = new Date(`${dateStr}T12:00:00Z`)
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(noonUTC)
+  const localHour = Number(parts.find(p => p.type === 'hour')!.value)
+  const localMin = Number(parts.find(p => p.type === 'minute')!.value)
+  const tzOffsetMin = localHour * 60 + localMin - 12 * 60
+  return new Date(new Date(`${dateStr}T00:00:00Z`).getTime() - tzOffsetMin * 60_000)
+}
+
 function slotsForWindows(
   windows: Array<{ start_time: string; end_time: string }>,
   blockOverrides: Array<{ start_time: string; end_time: string }>,
   bookedRows: Array<{ start_at: Date; end_at: Date }>,
   date: string,
   durationMinutes: number,
+  timezone: string,
 ): Array<{ startAt: string; endAt: string; available: boolean }> {
   const slots: Array<{ startAt: string; endAt: string; available: boolean }> = [];
+  const midnight = localMidnightUTC(date, timezone);
 
   for (const window of windows) {
     const [wStartH, wStartM] = window.start_time.split(':').map(Number);
@@ -25,8 +43,7 @@ function slotsForWindows(
       });
 
       if (!blocked) {
-        const slotStart = new Date(`${date}T00:00:00Z`);
-        slotStart.setUTCMinutes(slotStart.getUTCMinutes() + cursor);
+        const slotStart = new Date(midnight.getTime() + cursor * 60_000);
         const slotEnd = new Date(slotStart.getTime() + durationMinutes * 60_000);
 
         const booked = bookedRows.some(
@@ -83,6 +100,7 @@ export async function generateStaffSlots(
   staffId: string,
   date: string,
   durationMinutes: number,
+  timezone: string,
 ): Promise<Array<{ startAt: string; endAt: string; available: boolean }>> {
   const dayOfWeek = new Date(`${date}T00:00:00Z`).getUTCDay();
 
@@ -108,12 +126,12 @@ export async function generateStaffSlots(
   const { rows: bookedRows } = await client.query<{ start_at: Date; end_at: Date }>(
     `SELECT start_at, end_at FROM bookings
      WHERE staff_id = $1 AND status != 'cancelled'
-       AND start_at >= $2::timestamptz
-       AND start_at < ($2::date + INTERVAL '1 day')::timestamptz`,
-    [staffId, date],
+       AND start_at >= $2::date::timestamp AT TIME ZONE $3
+       AND start_at < ($2::date + interval '1 day')::timestamp AT TIME ZONE $3`,
+    [staffId, date, timezone],
   );
 
-  return slotsForWindows([...schedules, ...addOverrides], blockOverrides, bookedRows, date, durationMinutes);
+  return slotsForWindows([...schedules, ...addOverrides], blockOverrides, bookedRows, date, durationMinutes, timezone);
 }
 
 export async function generateAnyAvailableSlots(
@@ -123,6 +141,7 @@ export async function generateAnyAvailableSlots(
   locationId: string,
   date: string,
   durationMinutes: number,
+  timezone: string,
 ): Promise<Array<{ startAt: string; endAt: string; available: boolean }>> {
   const { rows: staffRows } = await client.query<{ id: string }>(
     `SELECT s.id FROM staff s
@@ -137,7 +156,7 @@ export async function generateAnyAvailableSlots(
   const merged = new Map<string, { startAt: string; endAt: string; available: boolean }>();
 
   for (const { id: staffId } of staffRows) {
-    const staffSlots = await generateStaffSlots(client, staffId, date, durationMinutes);
+    const staffSlots = await generateStaffSlots(client, staffId, date, durationMinutes, timezone);
     for (const slot of staffSlots) {
       const existing = merged.get(slot.startAt);
       if (!existing) {
