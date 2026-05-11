@@ -12,6 +12,10 @@
 - As a business owner, I want to see a conflict warning that names the overlapping appointment when I pick a taken slot so that I know exactly what I am overriding.
 - As a business owner, I want to add internal notes to the appointment so that I can capture client preferences visible only to staff.
 - As a business owner, I want the completed appointment to appear immediately in the calendar so that I can confirm it was saved.
+- As a business owner, I want to select a staff member after picking a service so that I can assign the right person to the appointment.
+- As a business owner, I want an "Any available" option so that the system assigns the first free qualified staff member automatically.
+- As a business owner, I want the slot grid to reflect the selected staff member's working hours and existing appointments so I see accurate availability.
+- As a business owner, I want to see the assigned staff member's name in the appointment detail so I know who performed it.
 
 ## Acceptance criteria
 
@@ -35,10 +39,16 @@
 - [ ] Service dropdown lists all tenant services (name + duration in minutes).
 - [ ] Up to 4 quick-access badge chips allow one-click service selection.
 - [ ] Selecting a service refreshes the slot grid for the currently selected date.
+- [ ] After a service is selected, a staff dropdown appears showing all active staff at the currently selected location who are assigned to that service, plus "Any available" as the first option.
+- [ ] If no active staff at the selected location are assigned to the service, the dropdown shows only "Any available" with an inline note "No staff assigned to this service at this location."
+- [ ] Changing the selected staff resets the selected slot and triggers a slot grid refetch.
+- [ ] Changing the selected location (multi-location tenants) resets the staff selection and triggers a staff list refetch.
 
 ### When section
 - [ ] Date row shows the selected date with a "Change" button that opens a native date input.
-- [ ] Slot grid fetches all time slots from `GET /tenants/:tenantId/services/:serviceId/slots?date=YYYY-MM-DD`.
+- [ ] When a specific staff member is selected, slot grid fetches from `GET /tenants/:tenantId/services/:serviceId/slots?date=YYYY-MM-DD&staffId=UUID`.
+- [ ] When "Any available" is selected, slot grid fetches from `GET /tenants/:tenantId/services/:serviceId/slots?date=YYYY-MM-DD&locationId=UUID`.
+- [ ] Slots reflect the selected staff member's `staff_schedules` and `staff_schedule_overrides`; `availability_rules` are no longer consulted.
 - [ ] Available slots are shown as selectable; taken slots are shown as disabled.
 - [ ] "Override availability" checkbox: when checked, taken slots become selectable.
 - [ ] Selecting a slot sets `startAt`; `endAt` is auto-calculated as `startAt + service.duration_minutes`.
@@ -46,8 +56,9 @@
 
 ### Submission
 - [ ] "Book appointment" button is disabled until name, phone, service, and a slot are all selected.
-- [ ] Submit calls `POST /tenants/:tenantId/bookings` with `serviceId`, `clientName`, `clientPhone`, optional `clientEmail`, `startAt`, `endAt`, optional `notes`, and `override: true` when the override checkbox is checked.
+- [ ] Submit calls `POST /tenants/:tenantId/bookings` with `serviceId`, `locationId`, `staffId` (UUID or null for "Any available"), `clientName`, `clientPhone`, optional `clientEmail`, `startAt`, `endAt`, optional `notes`, and `override: true` when the override checkbox is checked.
 - [ ] On 201: panel closes, bookings query invalidated, sonner toast confirms booking.
+- [ ] The booking response includes `staffId` and `staffName` of the assigned staff member.
 - [ ] On 409: inline error shown in panel; panel stays open.
 - [ ] On 422: inline field errors shown; panel stays open.
 
@@ -55,12 +66,14 @@
 - [ ] AppointmentDetailDialog shows `clientPhone` (always).
 - [ ] AppointmentDetailDialog shows `clientEmail` only when non-null.
 - [ ] AppointmentDetailDialog shows `notes` when non-null.
+- [ ] AppointmentDetailDialog shows the assigned staff member's name when `staffName` is non-null.
 
 ### Data model
 - [ ] `bookings` has `client_phone TEXT NOT NULL`.
 - [ ] `bookings.client_email` is nullable.
 - [ ] `bookings` has `notes TEXT` (nullable).
 - [ ] `services` has `duration_minutes INTEGER NOT NULL DEFAULT 30`.
+- [ ] `bookings.staff_id` UUID nullable FK → `staff(id)` ON DELETE RESTRICT. Nullable in the database to preserve pre-M6d rows; the owner booking API requires it for all new bookings.
 
 ### Quality
 - [ ] `pnpm typecheck` passes with zero errors.
@@ -68,4 +81,8 @@
 - [ ] API integration tests cover GET slots: available slots returned, taken slots marked correctly, empty array when no availability rules for the day.
 - [ ] RTL + MSW tests cover: panel opens via button, panel opens via drag, slot grid renders available and taken states, conflict warning appears, form submits and bookings query is invalidated.
 - [ ] Playwright covers: open panel via button, click-to-prefill time, submit success, conflict warning with override flow.
+- [ ] API integration tests cover: create booking with explicit `staffId` (201), null `staffId` auto-assigns first free qualified staff (201, `staffId` populated in response), `staffId` not assigned to service → 422, inactive `staffId` → 422, all qualified staff booked without override → 409, `override: true` bypasses staff conflict and schedule check, GET slots with `staffId`, GET slots with `locationId` only (any available).
+- [ ] API integration tests cover: `GET /services/:serviceId/staff?locationId=UUID` returns only active staff at the location assigned to the service.
+- [ ] RTL + MSW tests cover: staff dropdown appears after service selection, "Any available" is first option, changing staff resets slot, no-staff-at-location note shown, `staffId` included in POST body.
+- [ ] Playwright covers: select specific staff member and complete booking; select "Any available" and complete booking; verify staff name appears in appointment detail dialog.
 - [ ] No console errors on any happy-path flow.

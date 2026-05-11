@@ -1,5 +1,5 @@
 import { db } from '@/lib/server/db';
-import { generateSlots } from '@/lib/server/availability';
+import { generateAnyAvailableSlots } from '@/lib/server/availability';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -28,8 +28,21 @@ export async function GET(
     if (tenantRows.length === 0) {
       return Response.json({ error: 'not_found' }, { status: 404 });
     }
+    const tenantId = tenantRows[0].id;
 
-    const slots = await generateSlots(client, serviceId, date, Number(duration));
+    const { rows: locationRows } = await client.query<{ id: string }>(
+      'SELECT id FROM locations WHERE tenant_id = $1 AND is_active = true',
+      [tenantId],
+    );
+    if (locationRows.length !== 1) {
+      return Response.json(
+        { error: 'This business has multiple locations. Use the booking widget to select a location.' },
+        { status: 422 },
+      );
+    }
+    const locationId = locationRows[0].id;
+
+    const slots = await generateAnyAvailableSlots(client, tenantId, serviceId, locationId, date, Number(duration));
     return Response.json(slots);
   } finally {
     client.release();

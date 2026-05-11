@@ -21,6 +21,8 @@ export const BOOKINGS = [
     tenantId: TENANT_ID,
     serviceId: 'res-1',
     locationId: 'loc-1',
+    staffId: null,
+    staffName: null,
     clientName: 'Alice Smith',
     clientPhone: '+1 555 000 0001',
     clientEmail: 'alice@test.com',
@@ -35,6 +37,8 @@ export const BOOKINGS = [
     tenantId: TENANT_ID,
     serviceId: 'res-2',
     locationId: 'loc-1',
+    staffId: null,
+    staffName: null,
     clientName: 'Bob Jones',
     clientPhone: '+1 555 000 0002',
     clientEmail: null,
@@ -49,6 +53,8 @@ export const BOOKINGS = [
     tenantId: TENANT_ID,
     serviceId: 'res-1',
     locationId: 'loc-1',
+    staffId: null,
+    staffName: null,
     clientName: 'Carol White',
     clientPhone: '+1 555 000 0003',
     clientEmail: 'carol@test.com',
@@ -58,6 +64,10 @@ export const BOOKINGS = [
     notes: null,
     createdAt: '2026-05-01T00:00:00.000Z',
   },
+]
+
+export const SERVICE_STAFF = [
+  { id: 'staff-1', tenantId: TENANT_ID, name: 'Alice Smith', email: 'alice@example.com', phone: '+1 555 000 0001', isActive: true, locationId: 'loc-1', createdAt: '2026-05-01T00:00:00.000Z' },
 ]
 
 export const SERVICES = [
@@ -160,6 +170,11 @@ export const handlers = [
     return HttpResponse.json(SLOTS)
   }),
 
+  // Service staff (active staff at a location assigned to a service)
+  http.get(`${BASE}/tenants/:tenantId/services/:serviceId/staff`, () => {
+    return HttpResponse.json(SERVICE_STAFF)
+  }),
+
   // Service update
   http.patch(`${BASE}/tenants/:tenantId/services/:serviceId`, async ({ params, request }) => {
     const body = await request.json() as { name?: string; description?: string; durationMinutes?: number }
@@ -177,28 +192,6 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  // Availability rules list
-  http.get(`${BASE}/tenants/:tenantId/services/:serviceId/availability-rules`, () => {
-    return HttpResponse.json([
-      { id: 'rule-1', serviceId: 'res-1', dayOfWeek: 0, startTime: '09:00', endTime: '17:00' },
-    ])
-  }),
-
-  // Availability rule create
-  http.post(`${BASE}/tenants/:tenantId/services/:serviceId/availability-rules`, async ({ request }) => {
-    const body = await request.json() as { dayOfWeek: number; startTime: string; endTime: string }
-    return HttpResponse.json(
-      { id: 'rule-new', serviceId: 'res-1', ...body },
-      { status: 201 },
-    )
-  }),
-
-  // Availability rule delete
-  http.delete(
-    `${BASE}/tenants/:tenantId/services/:serviceId/availability-rules/:ruleId`,
-    () => new HttpResponse(null, { status: 204 }),
-  ),
-
   // Bookings list (ranged or open-ended; optionally filtered by serviceId)
   http.get(`${BASE}/tenants/:tenantId/bookings`, ({ request }) => {
     const url = new URL(request.url)
@@ -212,12 +205,15 @@ export const handlers = [
   // Booking create
   http.post(`${BASE}/tenants/:tenantId/bookings`, async ({ params, request }) => {
     const body = await request.json() as Record<string, unknown>
+    const assignedStaff = SERVICE_STAFF.find(s => s.id === body.staffId) ?? (body.staffId === null ? SERVICE_STAFF[0] : null)
     return HttpResponse.json(
       {
         id: 'bk-new',
         tenantId: params.tenantId,
         serviceId: body.serviceId,
         locationId: body.locationId ?? 'loc-1',
+        staffId: assignedStaff?.id ?? null,
+        staffName: assignedStaff?.name ?? null,
         clientName: body.clientName,
         clientPhone: body.clientPhone,
         clientEmail: body.clientEmail ?? null,

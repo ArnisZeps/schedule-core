@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { format, addMinutes } from 'date-fns'
+import { format } from 'date-fns'
 import { X, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { Service } from '@/hooks/useServices'
 import { useServiceSlots } from '@/hooks/useServiceSlots'
+import { useServiceStaff } from '@/hooks/useStaff'
 import { useCreateBooking } from '@/hooks/useCreateBooking'
 import { useLocations } from '@/hooks/useLocations'
 import { ApiError } from '@/lib/api'
@@ -32,6 +33,7 @@ export function NewAppointmentPanel({
   const [notes, setNotes] = useState('')
   const [serviceId, setServiceId] = useState(services[0]?.id ?? '')
   const [locationId, setLocationId] = useState('')
+  const [staffSelectValue, setStaffSelectValue] = useState('')
   const [date, setDate] = useState(() =>
     prefillStart ? format(prefillStart, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
   )
@@ -42,7 +44,7 @@ export function NewAppointmentPanel({
   )
   const [override, setOverride] = useState(false)
   const [error, setError] = useState('')
-  const prevServiceDateRef = useRef({ serviceId: services[0]?.id ?? '', date: prefillStart ? format(prefillStart, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd') })
+  const prevKeyRef = useRef({ serviceId: services[0]?.id ?? '', date: prefillStart ? format(prefillStart, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'), staffSelectValue: '' })
 
   const { data: locations = [] } = useLocations()
   const activeLocations = locations.filter(l => l.isActive)
@@ -54,32 +56,48 @@ export function NewAppointmentPanel({
     }
   }, [showLocationPicker, activeLocations.length]) // eslint-disable-line
 
-  const { data: slots = [], isFetching: slotsFetching } = useServiceSlots(serviceId, date)
-  const createBooking = useCreateBooking()
-
+  // Reset staff when location changes
   useEffect(() => {
-    if (prevServiceDateRef.current.serviceId !== serviceId || prevServiceDateRef.current.date !== date) {
-      prevServiceDateRef.current = { serviceId, date }
+    setStaffSelectValue('')
+    setSelectedSlot(null)
+  }, [locationId])
+
+  // Reset slot when service, date, or staff changes
+  useEffect(() => {
+    const prev = prevKeyRef.current
+    if (prev.serviceId !== serviceId || prev.date !== date || prev.staffSelectValue !== staffSelectValue) {
+      prevKeyRef.current = { serviceId, date, staffSelectValue }
       setSelectedSlot(null)
     }
-  }, [serviceId, date])
+  }, [serviceId, date, staffSelectValue])
+
+  const resolvedStaffId = staffSelectValue || null
+  const resolvedLocationId = locationId || null
+
+  const { data: staffList = [] } = useServiceStaff(serviceId || null, resolvedLocationId)
+  const { data: slots = [], isFetching: slotsFetching } = useServiceSlots(
+    serviceId,
+    date,
+    resolvedStaffId,
+    resolvedLocationId,
+  )
+  const createBooking = useCreateBooking()
 
   const selectedService = services.find(s => s.id === serviceId)
-
-  const conflictSlot =
-    selectedSlot && slots.find(s => s.startAt === selectedSlot.startAt && !s.available)
+  const conflictSlot = selectedSlot && slots.find(s => s.startAt === selectedSlot.startAt && !s.available)
 
   function handleSubmit() {
     setError('')
     if (!clientName.trim()) { setError('Client name is required'); return }
     if (!clientPhone.trim() || clientPhone.length < 7) { setError('Phone must be at least 7 characters'); return }
-    if (!selectedSlot) { setError('Please select a time slot'); return }
     if (showLocationPicker && !locationId) { setError('Please select a location'); return }
+    if (!selectedSlot) { setError('Please select a time slot'); return }
 
     createBooking.mutate(
       {
         serviceId,
         locationId: locationId || undefined,
+        staffId: resolvedStaffId,
         clientName: clientName.trim(),
         clientPhone: clientPhone.trim(),
         clientEmail: clientEmail.trim() || undefined,
@@ -95,7 +113,7 @@ export function NewAppointmentPanel({
         },
         onError: err => {
           if (err instanceof ApiError) {
-            if (err.status === 409) setError('This slot is taken or outside availability. Enable override to force.')
+            if (err.status === 409) setError('This slot is taken. Enable override to force.')
             else if (err.status === 422) setError('Please check the form fields.')
             else setError(err.message)
           } else {
@@ -192,6 +210,28 @@ export function NewAppointmentPanel({
             </select>
           </div>
         )}
+
+        {/* Staff dropdown */}
+        <div className="space-y-1">
+          <Label htmlFor="staff-select">Staff</Label>
+          <select
+            id="staff-select"
+            data-testid="staff-select"
+            value={staffSelectValue}
+            onChange={e => setStaffSelectValue(e.target.value)}
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+          >
+            <option value="">Any available</option>
+            {staffList.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+          {staffList.length === 0 && resolvedLocationId && (
+            <p className="text-xs text-muted-foreground" data-testid="no-staff-note">
+              No staff assigned to this service at this location.
+            </p>
+          )}
+        </div>
 
         {/* Date row */}
         <div className="space-y-1">

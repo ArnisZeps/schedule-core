@@ -142,6 +142,12 @@ export function AppointmentDetailDialog({
               <span>{service?.name ?? booking.serviceId}</span>
               <span>·</span>
               <span>{location?.name ?? '—'}</span>
+              {booking.staffName && (
+                <>
+                  <span>·</span>
+                  <span>{booking.staffName}</span>
+                </>
+              )}
               <span>·</span>
               <span>{format(start, 'MMM d, yyyy')}</span>
               <span>·</span>
