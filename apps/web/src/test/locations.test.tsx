@@ -108,16 +108,35 @@ describe('Locations', () => {
       })
     })
 
-    it('shows validation error when timezone is empty', async () => {
+    it('does not render a timezone input field', async () => {
+      renderPage(<LocationDetailPage />)
+      await waitFor(() => screen.getByLabelText(/name/i))
+      expect(screen.queryByLabelText(/timezone/i)).not.toBeInTheDocument()
+    })
+
+    it('POST body includes the browser timezone', async () => {
+      const spy = vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(
+        () => ({ resolvedOptions: () => ({ timeZone: 'America/New_York' }) } as Intl.DateTimeFormat),
+      )
+      let capturedBody: Record<string, unknown> | null = null
+      server.use(
+        http.post(`${BASE}/tenants/${TENANT_ID}/locations`, async ({ request }) => {
+          capturedBody = await request.json() as Record<string, unknown>
+          return HttpResponse.json(
+            { id: 'loc-new', tenantId: TENANT_ID, address: null, isActive: true, createdAt: new Date().toISOString(), ...capturedBody },
+            { status: 201 },
+          )
+        }),
+      )
       const user = userEvent.setup()
       renderPage(<LocationDetailPage />)
       await waitFor(() => screen.getByLabelText(/name/i))
       await user.type(screen.getByLabelText(/name/i), 'Branch X')
-      await user.clear(screen.getByLabelText(/timezone/i))
       await user.click(screen.getByRole('button', { name: /save/i }))
       await waitFor(() => {
-        expect(screen.getByText(/timezone is required/i)).toBeInTheDocument()
+        expect(capturedBody?.timezone).toBe('America/New_York')
       })
+      spy.mockRestore()
     })
 
     it('successful create navigates to the new location detail page', async () => {
@@ -160,11 +179,28 @@ describe('Locations', () => {
       vi.mocked(useParams).mockReturnValue({ locationId: 'loc-1' })
     })
 
-    it('renders name and timezone in editable fields', async () => {
+    it('renders name field with existing value and no timezone input', async () => {
       renderPage(<LocationDetailPage />)
       await waitFor(() => {
         expect((screen.getByLabelText(/name/i) as HTMLInputElement).value).toBe('Main Branch')
-        expect((screen.getByLabelText(/timezone/i) as HTMLInputElement).value).toBe('Europe/Riga')
+      })
+      expect(screen.queryByLabelText(/timezone/i)).not.toBeInTheDocument()
+    })
+
+    it('PATCH body preserves the stored location timezone', async () => {
+      let capturedBody: Record<string, unknown> | null = null
+      server.use(
+        http.patch(`${BASE}/tenants/${TENANT_ID}/locations/loc-1`, async ({ request }) => {
+          capturedBody = await request.json() as Record<string, unknown>
+          return HttpResponse.json({ ...LOCATIONS[0], ...capturedBody })
+        }),
+      )
+      const user = userEvent.setup()
+      renderPage(<LocationDetailPage />)
+      await waitFor(() => screen.getByLabelText(/name/i))
+      await user.click(screen.getByRole('button', { name: /save/i }))
+      await waitFor(() => {
+        expect(capturedBody?.timezone).toBe('Europe/Riga')
       })
     })
 
