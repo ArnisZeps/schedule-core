@@ -1,7 +1,7 @@
 # ADR 002 — Backend Framework: Express
 
 **Date:** 2026-04-11
-**Status:** Accepted
+**Status:** Superseded by ADR-011
 
 ## Context
 
