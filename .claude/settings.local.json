@@ -36,7 +36,11 @@
       "Bash(kill -f 22420)",
       "Bash(kill -f 22668)",
       "Bash(taskkill //PID 22420 //F)",
-      "Bash(taskkill //PID 22668 //F)"
+      "Bash(taskkill //PID 22668 //F)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\zepsa\\\\Documents\\\\Projects\\\\schedule-core\\\\docs\" -Recurse -Force)",
+      "Bash(Select-Object FullName, PSIsContainer)",
+      "Bash(Sort-Object FullName)",
+      "Bash(Format-Table -AutoSize)"
     ]
   }
 }
