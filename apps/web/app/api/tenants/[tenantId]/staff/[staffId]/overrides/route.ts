@@ -41,7 +41,7 @@ const overrideBodySchema = z
     startTime: z.string().regex(TIME),
     endTime: z.string().regex(TIME),
   })
-  .refine((d) => d.startTime < d.endTime, { message: 'startTime must be before endTime' })
+  .refine((d) => d.startDate !== d.endDate || d.startTime < d.endTime, { message: 'startTime must be before endTime' })
   .refine((d) => d.startDate <= d.endDate, { message: 'startDate must be on or before endDate' });
 
 export async function GET(

@@ -142,7 +142,7 @@ DELETE /api/tenants/:tenantId/staff/:staffId/overrides/:overrideId
 }
 ```
 
-**Errors:** `422` when `startTime >= endTime` or `startDate > endDate`.
+**Errors:** `422` when `startDate > endDate`, or when `startDate === endDate` and `startTime >= endTime`. For multi-day overrides (`startDate < endDate`) any `startTime`/`endTime` combination is valid.
 
 ---
 
@@ -213,9 +213,10 @@ interface ScheduleOverride {
 | `apps/web/src/components/staff/WeeklyScheduleCalendar.tsx` | 7-column weekday calendar; drag to paint time windows; client-side overlap check before PUT |
 | `apps/web/src/components/staff/WeekdayColumn.tsx` | Single day column with drag gesture and window blocks |
 | `apps/web/src/components/staff/ScheduleWindowPanel.tsx` | Slide-over: day picker, start/end time, create/update/delete |
-| `apps/web/src/components/staff/OverrideCalendar.tsx` | Week/day view calendar for overrides with toolbar |
+| `apps/web/src/components/staff/OverrideCalendar.tsx` | Week/day view calendar for overrides with toolbar; multi-day overrides render on every covered day |
 | `apps/web/src/components/staff/OverrideBlock.tsx` | Coloured block (green = available, red = not_available) |
 | `apps/web/src/components/staff/OverridePanel.tsx` | Slide-over: date range, type toggle, start/end time |
+| `apps/web/src/components/ui/TimeSelect.tsx` | 24-hour time picker (two `<select>` elements: hour 00–23, minute 00–55 in 5-min steps); emits HH:MM string; used in `ScheduleWindowPanel` and `OverridePanel` |
 
 ### Schedule drag protocol
 
@@ -224,6 +225,19 @@ interface ScheduleOverride {
 ### Override drag protocol
 
 `OverrideCalendar` day columns: same 15-min snap drag pattern → `mouseup` → `onTimeSelect(date, startTime, endTime)` → opens `OverridePanel` pre-filled with date and times. Type has no default — owner must select. Clicking an existing `OverrideBlock` opens `OverridePanel` in edit mode.
+
+## Override semantics
+
+A `not_available` or `available` override is interpreted as a **continuous time range** from `startDate + startTime` through `endDate + endTime`:
+
+| Date position | Blocked/added window |
+|---------------|----------------------|
+| `startDate` | `startTime → 24:00` |
+| intermediate day (`startDate < date < endDate`) | `00:00 → 24:00` (full day) |
+| `endDate` | `00:00 → endTime` |
+| single-day (`startDate === endDate`) | `startTime → endTime` (unchanged) |
+
+This means an override from Monday 09:00 to Friday 17:00 keeps Monday before 09:00 and Friday after 17:00 available, and fully blocks Tuesday–Thursday. Implemented in `apps/web/src/lib/server/availability.ts` via `clipOverrideWindow` (`apps/web/src/lib/overrideClip.ts`).
 
 ## Constraints
 

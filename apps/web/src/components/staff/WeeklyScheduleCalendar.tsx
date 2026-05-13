@@ -118,7 +118,7 @@ export function WeeklyScheduleCalendar({ staffId }: WeeklyScheduleCalendarProps)
         </div>
 
         <div className="overflow-y-auto" style={{ maxHeight: 400 }} ref={scrollRef}>
-          <div className="flex">
+          <div className="flex" style={{ paddingTop: 8 }}>
             <TimeGutter />
             {WEEK_ORDER.map(dow => (
               <WeekdayColumn

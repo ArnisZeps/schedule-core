@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import type { ScheduleWindowInput } from '@/hooks/useStaff'
 
-const HOUR_PX = 64
+const HOUR_PX = 38
 const TOTAL_HEIGHT = HOUR_PX * 24
 const SLOT_MINUTES = 15
 
@@ -97,7 +97,7 @@ export function WeekdayColumn({
         <div key={i} className="absolute left-0 right-0 border-t border-border/50" style={{ top: i * HOUR_PX }} />
       ))}
       {Array.from({ length: 24 }, (_, i) => (
-        <div key={i} className="absolute left-0 right-0 border-t border-border/20" style={{ top: i * HOUR_PX + 32 }} />
+        <div key={i} className="absolute left-0 right-0 border-t border-border/20" style={{ top: i * HOUR_PX + HOUR_PX / 2 }} />
       ))}
 
       {ghost && (

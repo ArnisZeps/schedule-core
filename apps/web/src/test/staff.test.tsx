@@ -392,12 +392,13 @@ describe('Staff', () => {
       })
     })
 
-    it('renders red block for not_available override', async () => {
+    it('renders red block for not_available override on each covered day in the week', async () => {
       renderPage(<StaffDetailPage />)
       await waitFor(() => {
-        const block = screen.getByTestId(`override-block-${STAFF_OVERRIDES[1].id}`)
-        expect(block).toBeInTheDocument()
-        expect(block).toHaveAttribute('data-override-type', 'not_available')
+        // ov-2 spans 2026-07-04 to 2026-07-06; in week Jun 29–Jul 5, Jul 4 (Sat) and Jul 5 (Sun) are covered
+        const blocks = screen.getAllByTestId(`override-block-${STAFF_OVERRIDES[1].id}`)
+        expect(blocks).toHaveLength(2)
+        blocks.forEach(b => expect(b).toHaveAttribute('data-override-type', 'not_available'))
       })
     })
 
@@ -425,16 +426,56 @@ describe('Staff', () => {
 
     it('drag on override calendar column opens panel with pre-filled date and start time', async () => {
       renderPage(<StaffDetailPage />)
-      // Thu July 2 — col testid uses ISO date; no existing override on this day
       const col = await screen.findByTestId('override-col-2026-07-03') // Friday
-      // HOUR_PX=64, TOTAL_HEIGHT=1536: clientY=576 → 09:00
-      fireEvent.mouseDown(col, { clientY: 576 })
-      fireEvent.mouseMove(document, { clientY: 640 })
-      fireEvent.mouseUp(document, { clientY: 640 })
+      // HOUR_PX=38, TOTAL_HEIGHT=912: clientY=342 → 540 min → 09:00
+      fireEvent.mouseDown(col, { clientY: 342 })
+      fireEvent.mouseMove(document, { clientY: 380 })
+      fireEvent.mouseUp(document, { clientY: 380 })
       await waitFor(() => {
         expect(screen.getByTestId('override-panel')).toBeInTheDocument()
         expect((screen.getByLabelText(/start date/i) as HTMLInputElement).value).toBe('2026-07-03')
-        expect((screen.getByLabelText(/start time/i) as HTMLInputElement).value).toBe('09:00')
+        // TimeSelect: label 'Start time' is associated with the hour <select>
+        expect((screen.getByLabelText(/start time/i) as HTMLSelectElement).value).toBe('09')
+      })
+    })
+
+    it('single-day override renders with position="single"', async () => {
+      renderPage(<StaffDetailPage />)
+      await waitFor(() => {
+        expect(screen.getByTestId(`override-block-${STAFF_OVERRIDES[0].id}`))
+          .toHaveAttribute('data-override-position', 'single')
+      })
+    })
+
+    it('multi-day override: start day renders with position="start"', async () => {
+      renderPage(<StaffDetailPage />)
+      // ov-2 startDate=Jul 4 — that column gets position=start
+      await waitFor(() => {
+        const blocks = screen.getAllByTestId(`override-block-${STAFF_OVERRIDES[1].id}`)
+        expect(blocks.some(b => b.getAttribute('data-override-position') === 'start')).toBe(true)
+      })
+    })
+
+    it('override block labels: start shows startTime, middle shows nothing, end shows endTime', async () => {
+      renderPage(<StaffDetailPage />)
+      await waitFor(() => {
+        const blocks = screen.getAllByTestId(`override-block-${STAFF_OVERRIDES[1].id}`)
+        const startBlock = blocks.find(b => b.getAttribute('data-override-position') === 'start')!
+        const middleBlock = blocks.find(b => b.getAttribute('data-override-position') === 'middle')!
+        // ov-2 startTime='00:00', endTime='23:59'
+        expect(startBlock).toHaveTextContent('00:00')
+        expect(startBlock).not.toHaveTextContent('23:59')
+        expect(middleBlock).toHaveTextContent('')
+        expect(middleBlock).not.toHaveTextContent('00:00')
+      })
+    })
+
+    it('multi-day override: intermediate day renders with position="middle"', async () => {
+      renderPage(<StaffDetailPage />)
+      // ov-2 endDate=Jul 6 (out of week); Jul 5 is between Jul 4 and Jul 6 → middle
+      await waitFor(() => {
+        const blocks = screen.getAllByTestId(`override-block-${STAFF_OVERRIDES[1].id}`)
+        expect(blocks.some(b => b.getAttribute('data-override-position') === 'middle')).toBe(true)
       })
     })
 
