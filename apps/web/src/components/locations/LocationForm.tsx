@@ -16,7 +16,7 @@ import {
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
   address: z.string(),
-  timezone: z.string().min(1, 'Timezone is required'),
+  timezone: z.string(),
 })
 
 export type LocationFormValues = z.infer<typeof schema>
@@ -29,13 +29,14 @@ interface LocationFormProps {
 }
 
 export function LocationForm({ defaultValues, onSubmit, isPending, formError }: LocationFormProps) {
+  const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
   const form = useForm<LocationFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', address: '', timezone: 'UTC', ...defaultValues },
+    defaultValues: { name: '', address: '', timezone: browserTimezone, ...defaultValues },
   })
 
   useEffect(() => {
-    if (defaultValues) form.reset({ name: '', address: '', timezone: 'UTC', ...defaultValues })
+    if (defaultValues) form.reset({ name: '', address: '', timezone: browserTimezone, ...defaultValues })
   }, [defaultValues?.name, defaultValues?.timezone, defaultValues?.address]) // eslint-disable-line
 
   return (
@@ -62,19 +63,6 @@ export function LocationForm({ defaultValues, onSubmit, isPending, formError }: 
               <FormLabel>Address</FormLabel>
               <FormControl>
                 <Input placeholder="123 Main St" {...field} value={field.value ?? ''} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="timezone"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Timezone</FormLabel>
-              <FormControl>
-                <Input placeholder="Europe/Riga" {...field} value={field.value ?? ''} />
               </FormControl>
               <FormMessage />
             </FormItem>

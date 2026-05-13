@@ -90,8 +90,8 @@ interface UpdateLocationInput { name?: string; address?: string | null; timezone
 | File | Responsibility |
 |------|----------------|
 | `apps/web/src/page-components/locations/LocationListPage.tsx` | List with is_active toggle and create entry point |
-| `apps/web/src/page-components/locations/LocationDetailPage.tsx` | Edit name/address/timezone; deactivate/reactivate; danger zone |
-| `apps/web/src/components/locations/LocationForm.tsx` | Name, address, timezone fields |
+| `apps/web/src/page-components/locations/LocationDetailPage.tsx` | Edit name/address; deactivate/reactivate; danger zone |
+| `apps/web/src/components/locations/LocationForm.tsx` | Name and address fields. Timezone is auto-detected from the browser (`Intl.DateTimeFormat().resolvedOptions().timeZone`) and submitted transparently — it is not shown to the user. |
 
 ### Single-location transparency
 
