@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod/v3'
 import { toast } from 'sonner'
@@ -11,6 +11,7 @@ import {
 } from '@/hooks/useStaff'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { TimeSelect } from '@/components/ui/TimeSelect'
 
 const inputCls =
   'h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-2'
@@ -68,7 +69,7 @@ export function OverridePanel({
     })
   }, [override?.id, prefillDate, prefillStartTime, prefillEndTime]) // eslint-disable-line
 
-  const { register, handleSubmit, formState: { errors } } = form
+  const { register, handleSubmit, control, formState: { errors } } = form
 
   async function onSubmit(values: PanelValues) {
     try {
@@ -138,13 +139,21 @@ export function OverridePanel({
 
         <div className="space-y-1">
           <Label htmlFor="ov-startTime">Start time</Label>
-          <input id="ov-startTime" type="time" {...register('startTime')} className={inputCls} />
+          <Controller
+            control={control}
+            name="startTime"
+            render={({ field }) => <TimeSelect id="ov-startTime" value={field.value} onChange={field.onChange} />}
+          />
           {errors.startTime && <p className="text-xs text-destructive">{errors.startTime.message}</p>}
         </div>
 
         <div className="space-y-1">
           <Label htmlFor="ov-endTime">End time</Label>
-          <input id="ov-endTime" type="time" {...register('endTime')} className={inputCls} />
+          <Controller
+            control={control}
+            name="endTime"
+            render={({ field }) => <TimeSelect id="ov-endTime" value={field.value} onChange={field.onChange} />}
+          />
           {errors.endTime && <p className="text-xs text-destructive">{errors.endTime.message}</p>}
         </div>
 

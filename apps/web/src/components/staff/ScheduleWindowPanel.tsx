@@ -1,9 +1,10 @@
 import { useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod/v3'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { TimeSelect } from '@/components/ui/TimeSelect'
 import type { LocalWindow } from './WeekdayColumn'
 
 const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -45,7 +46,7 @@ export function ScheduleWindowPanel({
 }: ScheduleWindowPanelProps) {
   const isEdit = !!win
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
+  const { register, handleSubmit, reset, control, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       dayOfWeek: win?.dayOfWeek ?? dayOfWeek ?? ('' as unknown as number),
@@ -101,13 +102,21 @@ export function ScheduleWindowPanel({
 
         <div className="space-y-1">
           <Label htmlFor="sw-startTime">Start time</Label>
-          <input id="sw-startTime" type="time" {...register('startTime')} className={inputCls} />
+          <Controller
+            control={control}
+            name="startTime"
+            render={({ field }) => <TimeSelect id="sw-startTime" value={field.value} onChange={field.onChange} />}
+          />
           {errors.startTime && <p className="text-xs text-destructive">{errors.startTime.message}</p>}
         </div>
 
         <div className="space-y-1">
           <Label htmlFor="sw-endTime">End time</Label>
-          <input id="sw-endTime" type="time" {...register('endTime')} className={inputCls} />
+          <Controller
+            control={control}
+            name="endTime"
+            render={({ field }) => <TimeSelect id="sw-endTime" value={field.value} onChange={field.onChange} />}
+          />
           {errors.endTime && <p className="text-xs text-destructive">{errors.endTime.message}</p>}
         </div>
 

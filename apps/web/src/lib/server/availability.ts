@@ -1,4 +1,5 @@
 import type { PoolClient } from '@neondatabase/serverless';
+import { clipOverrideWindow } from '@/lib/overrideClip';
 
 // Returns the UTC timestamp corresponding to midnight (00:00:00) on dateStr in the given IANA timezone.
 // Uses noon UTC as the anchor to avoid DST edge cases at midnight.
@@ -26,13 +27,13 @@ function slotsForWindows(
 ): Array<{ startAt: string; endAt: string; available: boolean }> {
   const slots: Array<{ startAt: string; endAt: string; available: boolean }> = [];
   const midnight = localMidnightUTC(date, timezone);
-
+  
   for (const window of windows) {
     const [wStartH, wStartM] = window.start_time.split(':').map(Number);
     const [wEndH, wEndM] = window.end_time.split(':').map(Number);
     const windowStartMin = wStartH * 60 + wStartM;
     const windowEndMin = wEndH * 60 + wEndM;
-
+    console.log(`Processing window ${window.start_time} - ${window.end_time} (in minutes: ${windowStartMin} - ${windowEndMin})`);
     let cursor = windowStartMin;
     while (cursor + durationMinutes <= windowEndMin) {
       const slotEndCursor = cursor + durationMinutes;
@@ -41,7 +42,7 @@ function slotsForWindows(
         const [eH, eM] = b.end_time.split(':').map(Number);
         return (bH * 60 + bM) < slotEndCursor && (eH * 60 + eM) > cursor;
       });
-
+      
       if (!blocked) {
         const slotStart = new Date(midnight.getTime() + cursor * 60_000);
         const slotEnd = new Date(slotStart.getTime() + durationMinutes * 60_000);
@@ -109,19 +110,31 @@ export async function generateStaffSlots(
     [staffId, dayOfWeek],
   );
 
-  const { rows: addOverrides } = await client.query<{ start_time: string; end_time: string }>(
-    `SELECT start_time, end_time FROM staff_schedule_overrides
+  type OverrideRow = { start_time: string; end_time: string; start_date: string; end_date: string };
+
+  const { rows: addOverrideRows } = await client.query<OverrideRow>(
+    `SELECT start_time, end_time, start_date::text AS start_date, end_date::text AS end_date
+     FROM staff_schedule_overrides
      WHERE staff_id = $1 AND type = 'available' AND start_date <= $2::date AND end_date >= $2::date`,
     [staffId, date],
   );
+  const addOverrides = addOverrideRows.map(r => {
+    const c = clipOverrideWindow({ startDate: r.start_date, endDate: r.end_date, startTime: r.start_time, endTime: r.end_time }, date);
+    return { start_time: c.startTime, end_time: c.endTime };
+  });
 
   if (schedules.length === 0 && addOverrides.length === 0) return [];
 
-  const { rows: blockOverrides } = await client.query<{ start_time: string; end_time: string }>(
-    `SELECT start_time, end_time FROM staff_schedule_overrides
+  const { rows: blockOverrideRows } = await client.query<OverrideRow>(
+    `SELECT start_time, end_time, start_date::text AS start_date, end_date::text AS end_date
+     FROM staff_schedule_overrides
      WHERE staff_id = $1 AND type = 'not_available' AND start_date <= $2::date AND end_date >= $2::date`,
     [staffId, date],
   );
+  const blockOverrides = blockOverrideRows.map(r => {
+    const c = clipOverrideWindow({ startDate: r.start_date, endDate: r.end_date, startTime: r.start_time, endTime: r.end_time }, date);
+    return { start_time: c.startTime, end_time: c.endTime };
+  });
 
   const { rows: bookedRows } = await client.query<{ start_at: Date; end_at: Date }>(
     `SELECT start_at, end_at FROM bookings
@@ -130,7 +143,7 @@ export async function generateStaffSlots(
        AND start_at < ($2::date + interval '1 day')::timestamp AT TIME ZONE $3`,
     [staffId, date, timezone],
   );
-
+  
   return slotsForWindows([...schedules, ...addOverrides], blockOverrides, bookedRows, date, durationMinutes, timezone);
 }
 

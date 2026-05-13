@@ -1,4 +1,4 @@
-const HOUR_PX = 64
+const HOUR_PX = 38
 const TOTAL_HEIGHT = HOUR_PX * 24
 
 export function TimeGutter() {

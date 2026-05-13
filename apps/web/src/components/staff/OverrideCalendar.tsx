@@ -12,11 +12,11 @@ import {
 import { useStaffOverrides, type ScheduleOverride } from '@/hooks/useStaff'
 import { Button } from '@/components/ui/button'
 import { TimeGutter } from '@/components/calendar/TimeGutter'
-import { OverrideBlock } from './OverrideBlock'
+import { OverrideBlock, type OverridePosition } from './OverrideBlock'
 import { OverridePanel } from './OverridePanel'
 import { LoadingState } from '@/components/ui/LoadingState'
 
-const HOUR_PX = 64
+const HOUR_PX = 38
 const TOTAL_HEIGHT = HOUR_PX * 24
 const SLOT_MINUTES = 15
 
@@ -57,8 +57,17 @@ export function OverrideCalendar({ staffId }: OverrideCalendarProps) {
 
   const { data: overrides = [], isLoading } = useStaffOverrides(staffId, from, to)
 
-  function overridesForDay(dateIso: string): ScheduleOverride[] {
-    return overrides.filter(o => o.startDate === dateIso)
+  function getPosition(o: ScheduleOverride, dateIso: string): OverridePosition {
+    if (o.startDate === o.endDate) return 'single'
+    if (dateIso === o.startDate) return 'start'
+    if (dateIso === o.endDate) return 'end'
+    return 'middle'
+  }
+
+  function overridesForDay(dateIso: string): Array<{ override: ScheduleOverride; position: OverridePosition }> {
+    return overrides
+      .filter(o => o.startDate <= dateIso && dateIso <= o.endDate)
+      .map(o => ({ override: o, position: getPosition(o, dateIso) }))
   }
 
   function openBlankPanel() {
@@ -132,7 +141,7 @@ export function OverrideCalendar({ staffId }: OverrideCalendarProps) {
           </div>
         ) : (
           <div className="overflow-y-auto" style={{ maxHeight: 400 }}>
-            <div className="flex">
+            <div className="flex" style={{ paddingTop: 8 }}>
               <TimeGutter />
               {days.map(day => {
                 const dateIso = format(day, 'yyyy-MM-dd')
@@ -169,7 +178,7 @@ export function OverrideCalendar({ staffId }: OverrideCalendarProps) {
 
 interface OverrideColumnProps {
   date: string
-  overrides: ScheduleOverride[]
+  overrides: Array<{ override: ScheduleOverride; position: OverridePosition }>
   onTimeSelect: (date: string, startTime: string, endTime: string) => void
   onOverrideClick: (override: ScheduleOverride) => void
 }
@@ -225,7 +234,7 @@ function OverrideColumn({ date, overrides, onTimeSelect, onOverrideClick }: Over
         <div key={i} className="absolute left-0 right-0 border-t border-border/50" style={{ top: i * HOUR_PX }} />
       ))}
       {Array.from({ length: 24 }, (_, i) => (
-        <div key={i} className="absolute left-0 right-0 border-t border-border/20" style={{ top: i * HOUR_PX + 32 }} />
+        <div key={i} className="absolute left-0 right-0 border-t border-border/20" style={{ top: i * HOUR_PX + HOUR_PX / 2 }} />
       ))}
 
       {ghost && (
@@ -235,8 +244,8 @@ function OverrideColumn({ date, overrides, onTimeSelect, onOverrideClick }: Over
         />
       )}
 
-      {overrides.map(o => (
-        <OverrideBlock key={o.id} override={o} onClick={onOverrideClick} />
+      {overrides.map(({ override: o, position }) => (
+        <OverrideBlock key={o.id} override={o} position={position} onClick={onOverrideClick} />
       ))}
     </div>
   )
