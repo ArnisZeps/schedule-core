@@ -17,6 +17,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { UnauthenticatedOnly } from '@/components/UnauthenticatedOnly'
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email address'),
@@ -50,6 +51,7 @@ export function LoginPage() {
   }
 
   return (
+    <UnauthenticatedOnly redirectTo="/services">
     <div className="min-h-screen flex items-center justify-center bg-muted/30">
       <Card className="w-full max-w-sm">
         <CardHeader>
@@ -101,5 +103,6 @@ export function LoginPage() {
         </CardContent>
       </Card>
     </div>
+    </UnauthenticatedOnly>
   )
 }
