@@ -142,7 +142,7 @@ export function OverrideCalendar({ staffId }: OverrideCalendarProps) {
         ) : (
           <div className="overflow-y-auto" style={{ maxHeight: 400 }}>
             <div className="flex" style={{ paddingTop: 8 }}>
-              <TimeGutter />
+              <TimeGutter hourPx={38} />
               {days.map(day => {
                 const dateIso = format(day, 'yyyy-MM-dd')
                 const dayOverrides = overridesForDay(dateIso)
