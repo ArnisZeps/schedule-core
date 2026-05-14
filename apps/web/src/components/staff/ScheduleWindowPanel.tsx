@@ -28,8 +28,8 @@ interface ScheduleWindowPanelProps {
   prefillEnd?: string
   isPending?: boolean
   onCreate: (dayOfWeek: number, startTime: string, endTime: string) => void
-  onUpdate: (key: number, startTime: string, endTime: string) => void
-  onDelete: (key: number) => void
+  onUpdate: (startTime: string, endTime: string) => void
+  onDelete: () => void
   onClose: () => void
 }
 
@@ -65,7 +65,7 @@ export function ScheduleWindowPanel({
 
   function onSubmit(values: FormValues) {
     if (isEdit && win) {
-      onUpdate(win._key, values.startTime, values.endTime)
+      onUpdate(values.startTime, values.endTime)
     } else {
       onCreate(values.dayOfWeek, values.startTime, values.endTime)
     }
@@ -129,7 +129,7 @@ export function ScheduleWindowPanel({
               type="button"
               variant="destructive"
               disabled={isPending}
-              onClick={() => onDelete(win._key)}
+              onClick={() => onDelete()}
             >
               Delete
             </Button>
