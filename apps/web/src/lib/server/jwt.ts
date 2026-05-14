@@ -16,7 +16,8 @@ export function assertJwtSecret(): string {
 }
 
 export function signToken(payload: Pick<TokenPayload, 'sub' | 'tenantId'>): string {
-  return jwt.sign(payload, assertJwtSecret(), { expiresIn: '7d', algorithm: 'HS256' });
+  const expiresIn = (process.env.JWT_EXPIRY ?? '30d') as jwt.SignOptions['expiresIn'];
+  return jwt.sign(payload, assertJwtSecret(), { expiresIn, algorithm: 'HS256' });
 }
 
 export function verifyToken(token: string): TokenPayload {

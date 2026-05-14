@@ -54,10 +54,10 @@ Creates a `tenants` row and first `users` row in a single transaction. Email sto
 ### JWT payload
 
 ```json
-{ "sub": "userId", "tenantId": "uuid", "iat": "unix", "exp": "iat + 7 days" }
+{ "sub": "userId", "tenantId": "uuid", "iat": "unix", "exp": "iat + 30 days" }
 ```
 
-HS256 signed. Non-revocable for 7-day TTL. Process exits at startup if `JWT_SECRET` is missing.
+HS256 signed. Non-revocable for 30-day TTL (configurable via `JWT_EXPIRY` env var). Process exits at startup if `JWT_SECRET` is missing.
 
 ---
 
@@ -80,7 +80,10 @@ HS256 signed. Non-revocable for 7-day TTL. Process exits at startup if `JWT_SECR
 |-------|------|--------|
 | `/login` | `apps/web/app/(auth)/login/page.tsx` | Public |
 
-Dashboard routes live under `apps/web/app/(dashboard)/`. The layout at `apps/web/app/(dashboard)/layout.tsx` reads `localStorage` token on mount and redirects to `/login` if absent.
+Auth routing is bidirectional:
+
+- **Unauthenticated → dashboard**: `apps/web/app/(dashboard)/layout.tsx` guards all dashboard routes. Returns `null` until hydrated; redirects to `/login` via `router.replace` whenever `user` is null after hydration. Children are unmounted the instant `user` becomes null.
+- **Authenticated → public pages**: `apps/web/src/components/UnauthenticatedOnly.tsx` wraps the content of `/` (marketing page) and `/login`. It returns `null` until hydrated and `null` when `user` is non-null (redirecting to `/services`), so a logged-in user never sees public-page content.
 
 ### Interfaces
 
@@ -115,6 +118,6 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T>
 ## Constraints
 
 - JWT in `localStorage` — XSS risk accepted for MVP. Cookie-based auth is a post-MVP hardening task.
-- No token refresh or revocation. Users re-login after 7-day expiry.
+- No token refresh or revocation. Users re-login after 30-day expiry (configurable via `JWT_EXPIRY`).
 - `users` table has no RLS — platform-level. Login looks up by email without tenant context.
 - Multiple users per tenant are schema-supported but not exposed via UI (post-MVP).

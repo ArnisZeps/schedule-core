@@ -3,22 +3,24 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppLayout } from '@/components/AppLayout'
-import { decodeToken } from '@/context/AuthContext'
+import { useAuth } from '@/hooks/useAuth'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
-  const [authenticated, setAuthenticated] = useState(false)
+  const { user } = useAuth()
+  const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
-    const token = localStorage.getItem('sc_token')
-    if (!token || !decodeToken(token)) {
-      router.replace('/login')
-    } else {
-      setAuthenticated(true)
-    }
-  }, [router])
+    setHydrated(true)
+  }, [])
 
-  if (!authenticated) return null
+  useEffect(() => {
+    if (hydrated && !user) {
+      router.replace('/login')
+    }
+  }, [hydrated, user, router])
+
+  if (!hydrated || !user) return null
 
   return <AppLayout>{children}</AppLayout>
 }
