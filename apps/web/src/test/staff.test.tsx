@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, screen, waitFor, within, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, within, fireEvent, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRouter, useParams } from 'next/navigation'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -9,7 +9,7 @@ import { http, HttpResponse } from 'msw'
 import { StaffListPage } from '@/page-components/staff/StaffListPage'
 import { StaffCreatePage } from '@/page-components/staff/StaffCreatePage'
 import { StaffDetailPage } from '@/page-components/staff/StaffDetailPage'
-import { TEST_TOKEN, TENANT_ID, STAFF, STAFF_OVERRIDES, LOCATIONS } from './handlers'
+import { TEST_TOKEN, TENANT_ID, STAFF, STAFF_SCHEDULES, STAFF_OVERRIDES, LOCATIONS } from './handlers'
 
 vi.mock('next/navigation', () => ({
   useRouter: vi.fn(),
@@ -44,6 +44,16 @@ function renderPage(component: React.ReactElement) {
       <AuthProvider>{component}</AuthProvider>
     </QueryClientProvider>,
   )
+}
+
+function renderPageWithClient(component: React.ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } } })
+  render(
+    <QueryClientProvider client={client}>
+      <AuthProvider>{component}</AuthProvider>
+    </QueryClientProvider>,
+  )
+  return client
 }
 
 describe('Staff', () => {
@@ -365,6 +375,107 @@ describe('Staff', () => {
           ]),
         })
       })
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // Schedule update resilience (fix/schedule-update)
+  // ---------------------------------------------------------------------------
+
+  describe('Schedule update resilience', () => {
+    beforeEach(() => {
+      vi.mocked(useParams).mockReturnValue({ staffId: 'staff-1' })
+    })
+
+    afterEach(() => server.resetHandlers())
+
+    it('fires a second PUT even when a refetch reassigns all _key values while the panel is open (AC1 race condition)', async () => {
+      const user = userEvent.setup()
+      let putCount = 0
+
+      server.use(
+        http.put(`${BASE}/tenants/${TENANT_ID}/staff/staff-1/schedules`, async ({ request }) => {
+          putCount++
+          const body = await request.json() as { windows: unknown[] }
+          return HttpResponse.json(body.windows)
+        }),
+      )
+
+      const qc = renderPageWithClient(<StaffDetailPage />)
+
+      // First update
+      await user.click(await screen.findByTestId('schedule-block'))
+      await screen.findByTestId('schedule-window-panel')
+      await user.click(screen.getByRole('button', { name: /update/i }))
+      await waitFor(() => expect(putCount).toBe(1))
+
+      // Open panel for second update
+      await user.click(await screen.findByTestId('schedule-block'))
+      await screen.findByTestId('schedule-window-panel')
+
+      // Simulate the race condition: directly update the cache with a new reference while
+      // the panel is still open. React Query's structural sharing considers objects with
+      // different `id` fields as changed, so it creates a new `fetched` reference,
+      // triggering useEffect which calls setWindows with brand-new _key values.
+      await act(async () => {
+        qc.setQueryData(
+          ['staff-schedules', TENANT_ID, 'staff-1'],
+          STAFF_SCHEDULES.map(s => ({ ...s, id: `${s.id}-v2` })),
+        )
+      })
+
+      // Second update — with the bug handlePanelUpdate silently no-ops (stale _key not in windows)
+      await user.click(screen.getByRole('button', { name: /update/i }))
+      await waitFor(() => expect(putCount).toBe(2))
+    })
+
+    it('fires PUT for a second different window when keys were reassigned after the first update (AC2)', async () => {
+      const user = userEvent.setup()
+      const putBodies: { windows: { dayOfWeek: number }[] }[] = []
+
+      server.use(
+        http.put(`${BASE}/tenants/${TENANT_ID}/staff/staff-1/schedules`, async ({ request }) => {
+          putBodies.push(await request.json() as { windows: { dayOfWeek: number }[] })
+          return HttpResponse.json(putBodies[putBodies.length - 1].windows)
+        }),
+        http.get(`${BASE}/tenants/${TENANT_ID}/staff/staff-1/schedules`, () =>
+          HttpResponse.json([
+            ...STAFF_SCHEDULES,
+            { id: 'sched-2', dayOfWeek: 2, startTime: '10:00', endTime: '16:00' },
+          ]),
+        ),
+      )
+
+      const qc = renderPageWithClient(<StaffDetailPage />)
+
+      const blocks = await screen.findAllByTestId('schedule-block')
+      expect(blocks).toHaveLength(2)
+
+      // Update first window (Mon)
+      await user.click(blocks[0])
+      await screen.findByTestId('schedule-window-panel')
+      await user.click(screen.getByRole('button', { name: /update/i }))
+      await waitFor(() => expect(putBodies).toHaveLength(1))
+
+      // Open second window panel (Tue)
+      const blocks2 = await screen.findAllByTestId('schedule-block')
+      await user.click(blocks2[1])
+      await screen.findByTestId('schedule-window-panel')
+
+      // Force key reassignment via setQueryData while panel is open
+      await act(async () => {
+        qc.setQueryData(
+          ['staff-schedules', TENANT_ID, 'staff-1'],
+          [
+            ...STAFF_SCHEDULES.map(s => ({ ...s, id: `${s.id}-v2` })),
+            { id: 'sched-2-v2', dayOfWeek: 2, startTime: '10:00', endTime: '16:00' },
+          ],
+        )
+      })
+
+      // Second update — must fire PUT despite key reassignment
+      await user.click(screen.getByRole('button', { name: /update/i }))
+      await waitFor(() => expect(putBodies).toHaveLength(2))
     })
   })
 

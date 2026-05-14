@@ -76,21 +76,32 @@ export function WeeklyScheduleCalendar({ staffId }: WeeklyScheduleCalendarProps)
     autoSave(updated)
   }
 
-  function handlePanelUpdate(key: number, startTime: string, endTime: string) {
-    const target = windows.find(w => w._key === key)
-    if (!target) return
-    if (hasOverlap(windows, target.dayOfWeek, startTime, endTime, key)) {
+  function handlePanelUpdate(startTime: string, endTime: string) {
+    const win = panelState?.window
+    if (!win) return
+    const target = windows.find(
+      w => w.dayOfWeek === win.dayOfWeek && w.startTime === win.startTime && w.endTime === win.endTime
+    )
+    if (!target) {
+      toast.error('Could not find schedule window to update')
+      return
+    }
+    if (hasOverlap(windows, target.dayOfWeek, startTime, endTime, target._key)) {
       toast.error('Time window overlaps an existing one')
       return
     }
-    const updated = windows.map(w => w._key === key ? { ...w, startTime, endTime } : w)
+    const updated = windows.map(w => w === target ? { ...w, startTime, endTime } : w)
     setWindows(updated)
     setPanelState(null)
     autoSave(updated)
   }
 
-  function handlePanelDelete(key: number) {
-    const updated = windows.filter(w => w._key !== key)
+  function handlePanelDelete() {
+    const win = panelState?.window
+    if (!win) return
+    const updated = windows.filter(
+      w => !(w.dayOfWeek === win.dayOfWeek && w.startTime === win.startTime && w.endTime === win.endTime)
+    )
     setWindows(updated)
     setPanelState(null)
     autoSave(updated)

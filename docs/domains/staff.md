@@ -222,6 +222,12 @@ interface ScheduleOverride {
 
 `WeekdayColumn`: `mousedown` on column → start drag; `mousemove` → ghost block; `mouseup` → snap to 15-min grid → `onTimeSelect(startTime, endTime)`. `WeeklyScheduleCalendar` opens `ScheduleWindowPanel` with times pre-filled. Each panel action (create/update/delete) calls `PUT /schedules` with the full updated window list — no separate Save button. Clicking an existing block opens `ScheduleWindowPanel` in edit mode.
 
+### Schedule window lookup
+
+`WeeklyScheduleCalendar` assigns each `LocalWindow` an ephemeral numeric `_key` (module-level counter) used only as the React `key` prop. `PUT /schedules` is a full DELETE + re-INSERT, so the server-assigned `id` changes on every save.
+
+When `ScheduleWindowPanel` opens, `panelState.window` captures a snapshot of the target window (`dayOfWeek`, `startTime`, `endTime`). Update and delete operations look up the live window by matching this triple against `windows` state — not by `_key` or `id`. Uniqueness of the triple is guaranteed by the client-side overlap check, so the lookup is always unambiguous.
+
 ### Override drag protocol
 
 `OverrideCalendar` day columns: same 15-min snap drag pattern → `mouseup` → `onTimeSelect(date, startTime, endTime)` → opens `OverridePanel` pre-filled with date and times. Type has no default — owner must select. Clicking an existing `OverrideBlock` opens `OverridePanel` in edit mode.
