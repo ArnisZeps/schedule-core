@@ -1,19 +1,12 @@
 import { db } from '@/lib/server/db';
 import { withTenantContext } from '@/lib/server/withTenantContext';
-import { generateStaffSlots, generateAnyAvailableSlots } from '@/lib/server/availability';
+import { generateAvailableDatesInWindow } from '@/lib/server/availability';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const MAX_WINDOW_DAYS = 14;
+const MAX_WINDOW_DAYS = 31;
 
 function parseDateStr(str: string): Date {
-  return new Date(str + 'T00:00:00');
-}
-
-function toDateStr(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  return new Date(str + 'T00:00:00Z');
 }
 
 function daysBetween(a: Date, b: Date): number {
@@ -65,16 +58,12 @@ export async function GET(
     tenantClient.release();
   }
 
-  const dates: string[] = [];
-
-  await withTenantContext(db, tenantId, async (client) => {
+  const dates = await withTenantContext(db, tenantId, async (client) => {
     const { rows: svcRows } = await client.query<{ duration_minutes: number }>(
       'SELECT duration_minutes FROM services WHERE id = $1 AND tenant_id = $2',
       [serviceId, tenantId],
     );
-    if (svcRows.length === 0) return;
-
-    const durationMinutes = svcRows[0].duration_minutes;
+    if (svcRows.length === 0) return null;
 
     const { rows: tzRows } = await client.query<{ timezone: string }>(
       'SELECT timezone FROM locations WHERE id = $1',
@@ -82,23 +71,18 @@ export async function GET(
     );
     const timezone = tzRows[0]?.timezone ?? 'UTC';
 
-    for (let i = 0; i < windowDays; i++) {
-      const d = new Date(start);
-      d.setDate(start.getDate() + i);
-      const dateStr = toDateStr(d);
-
-      let slots;
-      if (staffId) {
-        slots = await generateStaffSlots(client, staffId, dateStr, durationMinutes, timezone);
-      } else {
-        slots = await generateAnyAvailableSlots(client, tenantId, serviceId, locationId, dateStr, durationMinutes, timezone);
-      }
-
-      if (slots.some((s) => s.available)) {
-        dates.push(dateStr);
-      }
-    }
+    return generateAvailableDatesInWindow(client, {
+      tenantId,
+      serviceId,
+      locationId,
+      staffId: staffId ?? null,
+      startDate,
+      endDate,
+      durationMinutes: svcRows[0].duration_minutes,
+      timezone,
+    });
   });
 
+  if (dates === null) return Response.json({ error: 'not_found' }, { status: 404 });
   return Response.json(dates);
 }

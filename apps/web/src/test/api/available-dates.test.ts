@@ -68,8 +68,8 @@ describe('GET /public/:tenantSlug/services/:serviceId/available-dates', () => {
     expect(res.status).toBe(400)
   })
 
-  it('returns 400 when window exceeds 14 days', async () => {
-    const res = await get({ locationId, startDate: MON, endDate: '2026-05-20' })
+  it('returns 400 when window exceeds 31 days', async () => {
+    const res = await get({ locationId, startDate: MON, endDate: '2026-06-05' })
     expect(res.status).toBe(400)
   })
 

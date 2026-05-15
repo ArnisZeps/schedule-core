@@ -104,7 +104,7 @@ export function BookingWidget({ tenantSlug, tenantName, initialLocations, initia
     setSelectedSlot(null)
   }
 
-  function handleDateSelect(date: string) {
+  function handleDateSelect(date: string | null) {
     setSelectedDate(date)
     setSelectedSlot(null)
   }

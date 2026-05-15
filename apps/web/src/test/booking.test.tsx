@@ -9,7 +9,7 @@ import {
 } from './handlers'
 import { ServiceSection } from '@/page-components/booking/ServiceSection'
 import { StaffSection } from '@/page-components/booking/StaffSection'
-import { DateStrip } from '@/page-components/booking/DateStrip'
+import { BookingCalendar } from '@/page-components/booking/BookingCalendar'
 import { TimeSlotGrid } from '@/page-components/booking/TimeSlotGrid'
 import { DetailsSection } from '@/page-components/booking/DetailsSection'
 import { FloatingNav } from '@/page-components/booking/FloatingNav'
@@ -139,157 +139,121 @@ describe('StaffSection', () => {
   })
 })
 
-// ── DateStrip ─────────────────────────────────────────────────────────────────
+// ── BookingCalendar ───────────────────────────────────────────────────────────
 
-describe('DateStrip', () => {
+describe('BookingCalendar', () => {
+  const mayMonth = new Date(2026, 4, 1) // May 1, 2026
+  const minMonth = new Date(2026, 4, 1)
+  const maxMonth = new Date(2026, 7, 1) // Aug 1, 2026
+  const availableDates = new Set(['2026-05-04', '2026-05-05', '2026-05-06', '2026-05-07'])
+
+  function getDayButton(dayNum: number): HTMLElement {
+    return screen.getAllByRole('button').find(
+      b => b.textContent?.trim() === String(dayNum),
+    )!
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-05-04T08:00:00.000Z'))
+  })
+
   afterEach(() => {
     vi.useRealTimers()
   })
 
-  it('shows a loading skeleton when availableDates is null', () => {
+  it('shows skeleton overlay when availableDates is null', () => {
     render(
-      <DateStrip
+      <BookingCalendar
+        availableDates={null}
         selectedDate={null}
         onSelect={vi.fn()}
-        windowStart={0}
-        onPrev={vi.fn()}
-        onNext={vi.fn()}
-        availableDates={null}
+        month={mayMonth}
+        onMonthChange={vi.fn()}
+        minMonth={minMonth}
+        maxMonth={maxMonth}
       />,
     )
-    expect(screen.getByTestId('date-strip-skeleton')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /previous/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /next/i })).toBeInTheDocument()
+    expect(screen.getByTestId('calendar-skeleton')).toBeInTheDocument()
   })
 
-  it('calls onSelect with ISO date string when a day is clicked', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(new Date('2026-05-15T10:00:00.000Z'))
+  it('available day is not disabled', () => {
+    render(
+      <BookingCalendar
+        availableDates={availableDates}
+        selectedDate={null}
+        onSelect={vi.fn()}
+        month={mayMonth}
+        onMonthChange={vi.fn()}
+        minMonth={minMonth}
+        maxMonth={maxMonth}
+      />,
+    )
+    expect(getDayButton(5)).not.toBeDisabled() // May 5 — in set, future
+  })
+
+  it('unavailable day in month is disabled', () => {
+    render(
+      <BookingCalendar
+        availableDates={availableDates}
+        selectedDate={null}
+        onSelect={vi.fn()}
+        month={mayMonth}
+        onMonthChange={vi.fn()}
+        minMonth={minMonth}
+        maxMonth={maxMonth}
+      />,
+    )
+    expect(getDayButton(9)).toBeDisabled() // May 9 — not in available set
+  })
+
+  it('past day is disabled', () => {
+    render(
+      <BookingCalendar
+        availableDates={availableDates}
+        selectedDate={null}
+        onSelect={vi.fn()}
+        month={mayMonth}
+        onMonthChange={vi.fn()}
+        minMonth={minMonth}
+        maxMonth={maxMonth}
+      />,
+    )
+    expect(getDayButton(3)).toBeDisabled() // May 3 — before today (May 4)
+  })
+
+  it('clicking an available day calls onSelect with YYYY-MM-DD string', async () => {
     const onSelect = vi.fn()
     const user = userEvent.setup()
-    const available = new Set(['2026-05-15', '2026-05-16', '2026-05-17', '2026-05-18', '2026-05-19', '2026-05-20', '2026-05-21'])
     render(
-      <DateStrip
+      <BookingCalendar
+        availableDates={availableDates}
         selectedDate={null}
         onSelect={onSelect}
-        windowStart={0}
-        onPrev={vi.fn()}
-        onNext={vi.fn()}
-        availableDates={available}
+        month={mayMonth}
+        onMonthChange={vi.fn()}
+        minMonth={minMonth}
+        maxMonth={maxMonth}
       />,
     )
-    const dayButtons = screen.getAllByRole('button').filter(
-      (btn) => !btn.textContent?.match(/^[<>]/),
-    )
-    await user.click(dayButtons[0])
-    expect(onSelect).toHaveBeenCalledWith(expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/))
+    await user.click(getDayButton(5)) // May 5
+    expect(onSelect).toHaveBeenCalledWith('2026-05-05')
   })
 
-  it('calls onNext when next button is clicked', async () => {
-    const onNext = vi.fn()
-    const user = userEvent.setup()
+  it('previous month button is aria-disabled when on minMonth', () => {
     render(
-      <DateStrip
+      <BookingCalendar
+        availableDates={availableDates}
         selectedDate={null}
         onSelect={vi.fn()}
-        windowStart={0}
-        onPrev={vi.fn()}
-        onNext={onNext}
-        availableDates={null}
+        month={minMonth}
+        onMonthChange={vi.fn()}
+        minMonth={minMonth}
+        maxMonth={maxMonth}
       />,
     )
-    await user.click(screen.getByRole('button', { name: /next/i }))
-    expect(onNext).toHaveBeenCalled()
-  })
-
-  it('calls onPrev when previous button is clicked', async () => {
-    const onPrev = vi.fn()
-    const user = userEvent.setup()
-    render(
-      <DateStrip
-        selectedDate={null}
-        onSelect={vi.fn()}
-        windowStart={7}
-        onPrev={onPrev}
-        onNext={vi.fn()}
-        availableDates={null}
-      />,
-    )
-    await user.click(screen.getByRole('button', { name: /previous/i }))
-    expect(onPrev).toHaveBeenCalled()
-  })
-
-  it('today button uses border-2 class instead of ring-1', () => {
-    vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(new Date('2026-05-15T10:00:00.000Z'))
-    const available = new Set(['2026-05-15', '2026-05-16', '2026-05-17'])
-    render(
-      <DateStrip
-        selectedDate={null}
-        onSelect={vi.fn()}
-        windowStart={0}
-        onPrev={vi.fn()}
-        onNext={vi.fn()}
-        availableDates={available}
-      />,
-    )
-    const todayBtn = screen.getByRole('button', { name: /fri 15/i })
-    expect(todayBtn.className).toContain('border-2')
-    expect(todayBtn.className).not.toContain('ring-1')
-  })
-
-  it('each day button has flex-1 class', () => {
-    vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(new Date('2026-05-15T10:00:00.000Z'))
-    const available = new Set(['2026-05-15', '2026-05-16', '2026-05-17', '2026-05-18', '2026-05-19', '2026-05-20', '2026-05-21'])
-    render(
-      <DateStrip
-        selectedDate={null}
-        onSelect={vi.fn()}
-        windowStart={0}
-        onPrev={vi.fn()}
-        onNext={vi.fn()}
-        availableDates={available}
-      />,
-    )
-    const dayBtns = screen.getAllByRole('button').filter((b) => !b.textContent?.match(/^[<>]/))
-    expect(dayBtns.every((b) => b.className.includes('flex-1'))).toBe(true)
-  })
-
-  it('hides days absent from availableDates set', () => {
-    vi.useFakeTimers({ toFake: ['Date'] })
-    vi.setSystemTime(new Date('2026-05-15T10:00:00.000Z'))
-    const available = new Set(['2026-05-15', '2026-05-17'])
-    render(
-      <DateStrip
-        selectedDate={null}
-        onSelect={vi.fn()}
-        windowStart={0}
-        onPrev={vi.fn()}
-        onNext={vi.fn()}
-        availableDates={available}
-      />,
-    )
-    expect(screen.getByRole('button', { name: /fri 15/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /sun 17/i })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /sat 16/i })).not.toBeInTheDocument()
-  })
-
-  it('shows no-available-dates message when availableDates is an empty set', () => {
-    render(
-      <DateStrip
-        selectedDate={null}
-        onSelect={vi.fn()}
-        windowStart={0}
-        onPrev={vi.fn()}
-        onNext={vi.fn()}
-        availableDates={new Set()}
-      />,
-    )
-    expect(screen.getByText(/no available dates/i)).toBeInTheDocument()
-    // Nav arrows still rendered
-    expect(screen.getByRole('button', { name: /previous/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /next/i })).toBeInTheDocument()
+    const prevBtn = screen.getByRole('button', { name: 'Go to the Previous Month' })
+    expect(prevBtn).toHaveAttribute('aria-disabled', 'true')
   })
 })
 
@@ -515,9 +479,16 @@ describe('BookingWidget — single-location happy path', () => {
     // Select "Any available" staff
     await user.click(await screen.findByText(/any available/i))
 
-    // Select first available date in DateStrip
-    const dayButtons = await screen.findAllByRole('button', { name: /mon|tue|wed|thu|fri|sat|sun/i })
-    await user.click(dayButtons[0])
+    // Wait for available dates to load, then click the first enabled calendar day
+    let firstAvailDay: HTMLElement
+    await waitFor(() => {
+      const availDays = screen.getAllByRole('button').filter(
+        b => /^\d{1,2}$/.test(b.textContent?.trim() ?? '') && !b.hasAttribute('disabled'),
+      )
+      expect(availDays.length).toBeGreaterThan(0)
+      firstAvailDay = availDays[0]
+    })
+    await user.click(firstAvailDay!)
 
     // Select first available slot
     const availableSlots = await screen.findAllByRole('button', {
@@ -563,8 +534,15 @@ describe('BookingWidget — 409 slot conflict', () => {
     await user.click(await screen.findByText('Haircut'))
     await user.click(await screen.findByText(/any available/i))
 
-    const dayButtons = await screen.findAllByRole('button', { name: /mon|tue|wed|thu|fri|sat|sun/i })
-    await user.click(dayButtons[0])
+    let firstAvailDay: HTMLElement
+    await waitFor(() => {
+      const availDays = screen.getAllByRole('button').filter(
+        b => /^\d{1,2}$/.test(b.textContent?.trim() ?? '') && !b.hasAttribute('disabled'),
+      )
+      expect(availDays.length).toBeGreaterThan(0)
+      firstAvailDay = availDays[0]
+    })
+    await user.click(firstAvailDay!)
 
     const availableSlots = await screen.findAllByRole('button', { name: /\d+:\d+\s*(am|pm)/i })
     const enabledSlot = availableSlots.find((b) => !b.hasAttribute('disabled'))!

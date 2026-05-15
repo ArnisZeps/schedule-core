@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { DateStrip } from './DateStrip'
+import { useState, useMemo } from 'react'
+import { BookingCalendar } from './BookingCalendar'
 import { TimeSlotGrid } from './TimeSlotGrid'
 import { usePublicSlots, usePublicAvailableDates } from '@/hooks/usePublicBooking'
 import type { PublicSlot } from '@/hooks/usePublicBooking'
@@ -15,17 +15,28 @@ interface Props {
   staffSelected: boolean
   selectedDate: string | null
   selectedSlot: PublicSlot | null
-  onDateSelect: (date: string) => void
+  onDateSelect: (date: string | null) => void
   onSlotSelect: (slot: PublicSlot) => void
 }
-
-const MAX_OFFSET = 60
 
 function toDateStr(d: Date): string {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
+}
+
+function firstOfMonth(date: Date): Date {
+  const d = new Date(date)
+  d.setDate(1)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+function lastOfMonth(date: Date): Date {
+  const d = new Date(date.getFullYear(), date.getMonth() + 1, 0)
+  d.setHours(0, 0, 0, 0)
+  return d
 }
 
 export function DateTimeSection({
@@ -40,13 +51,30 @@ export function DateTimeSection({
   onDateSelect,
   onSlotSelect,
 }: Props) {
-  const [windowStart, setWindowStart] = useState(0)
+  const [month, setMonth] = useState<Date>(() => {
+    const d = new Date()
+    d.setDate(1)
+    d.setHours(0, 0, 0, 0)
+    return d
+  })
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const windowStartDate = new Date(today)
-  windowStartDate.setDate(today.getDate() + windowStart)
-  const startDateStr = toDateStr(windowStartDate)
+  const { minMonth, maxMonth } = useMemo(() => {
+    const now = new Date()
+    const min = firstOfMonth(now)
+    const max = new Date(now.getFullYear(), now.getMonth() + 3, 1)
+    max.setHours(0, 0, 0, 0)
+    return { minMonth: min, maxMonth: max }
+  }, [])
+
+  const today = useMemo(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d
+  }, [])
+
+  // startDate = max(today, first of month)
+  const startDate = toDateStr(month >= today ? firstOfMonth(month) : today)
+  const endDate = toDateStr(lastOfMonth(month))
 
   const { data: slots = [], isLoading } = usePublicSlots(
     tenantSlug,
@@ -61,11 +89,17 @@ export function DateTimeSection({
     serviceId,
     locationId,
     staffId,
-    startDateStr,
+    startDate,
+    endDate,
     staffSelected,
   )
 
   const availableDates = isDatesLoading ? null : new Set(availableDatesArr ?? [])
+
+  function handleMonthChange(newMonth: Date) {
+    setMonth(newMonth)
+    onDateSelect(null)
+  }
 
   return (
     <section id="section-datetime" className="space-y-3">
@@ -73,23 +107,26 @@ export function DateTimeSection({
       {!staffSelected ? (
         <p className="text-sm text-muted-foreground">Select a staff member first.</p>
       ) : (
-        <div className="space-y-4">
-          <DateStrip
+        <div className="flex flex-col gap-6 sm:flex-row">
+          <BookingCalendar
+            availableDates={availableDates}
             selectedDate={selectedDate}
             onSelect={onDateSelect}
-            windowStart={windowStart}
-            onPrev={() => setWindowStart((w) => Math.max(0, w - 7))}
-            onNext={() => setWindowStart((w) => Math.min(MAX_OFFSET - 7, w + 7))}
-            availableDates={availableDates}
+            month={month}
+            onMonthChange={handleMonthChange}
+            minMonth={minMonth}
+            maxMonth={maxMonth}
           />
           {selectedDate && (
-            <TimeSlotGrid
-              slots={slots}
-              selectedSlot={selectedSlot}
-              onSelect={onSlotSelect}
-              isLoading={isLoading}
-              timezone={timezone}
-            />
+            <div className="flex-1 pt-2">
+              <TimeSlotGrid
+                slots={slots}
+                selectedSlot={selectedSlot}
+                onSelect={onSlotSelect}
+                isLoading={isLoading}
+                timezone={timezone}
+              />
+            </div>
           )}
         </div>
       )}

@@ -87,14 +87,16 @@ Delegates to `generateStaffSlots` (staffId provided) or `generateAnyAvailableSlo
 | endDate | yes | YYYY-MM-DD — last date of window |
 | staffId | no | Specific staff member; absent = "any available" |
 
-Window capped at 14 days server-side. Returns only dates that have at least one slot with `available: true`.
+Window capped at 31 days server-side. Returns only dates that have at least one slot with `available: true`.
 
 **Response 200**
 ```json
 ["2026-05-15", "2026-05-20", "2026-05-21"]
 ```
 
-**Errors:** `400` missing params or window > 14 days, `404` tenant or service not found
+Delegates to `generateAvailableDatesInWindow` from `apps/web/src/lib/server/availability.ts`. Issues at most 4 DB queries for the entire window regardless of window size or staff count (staff list, schedules, overrides, bookings — all batch-fetched), then computes slot availability in memory.
+
+**Errors:** `400` missing params or window > 31 days, `404` tenant or service not found
 
 ---
 
@@ -191,8 +193,8 @@ When `bookingResult` is set, `<BookingConfirmation>` replaces all content.
 | `apps/web/src/page-components/booking/LocationSection.tsx` | Card grid of active locations |
 | `apps/web/src/page-components/booking/ServiceSection.tsx` | Card grid of all tenant services; skeleton loader when `isLoading` |
 | `apps/web/src/page-components/booking/StaffSection.tsx` | "Any available" card + staff member cards; skeleton loader when `isLoading && prerequisiteMet` |
-| `apps/web/src/page-components/booking/DateTimeSection.tsx` | Owns `windowStart` state; calls `usePublicAvailableDates`; composes `DateStrip` and `TimeSlotGrid` |
-| `apps/web/src/page-components/booking/DateStrip.tsx` | Controlled: receives `windowStart`, `onPrev`, `onNext`, `availableDates`; hides days absent from `availableDates`; today uses `border-2` highlight; day buttons use `flex-1` for even distribution |
+| `apps/web/src/page-components/booking/DateTimeSection.tsx` | Owns `month: Date` state (first of current month); calls `usePublicAvailableDates` with month boundaries; composes `BookingCalendar` and `TimeSlotGrid`; clears `selectedDate` on month change |
+| `apps/web/src/page-components/booking/BookingCalendar.tsx` | Thin wrapper around shadcn `Calendar` (react-day-picker). Receives `availableDates`, `selectedDate`, `month`, callbacks, `minMonth`, `maxMonth`; disables unavailable and past days; shows skeleton overlay while loading |
 | `apps/web/src/page-components/booking/TimeSlotGrid.tsx` | Slot buttons in 3–4 column grid; unavailable slots dimmed; skeleton loader; empty state |
 | `apps/web/src/page-components/booking/DetailsSection.tsx` | Name/phone/email form (RHF + zod); submit with loading state |
 | `apps/web/src/page-components/booking/BookingConfirmation.tsx` | Success screen with booking summary and "Book another" reset |
@@ -215,9 +217,10 @@ function usePublicAvailableDates(
   serviceId: string | null,
   locationId: string | null,
   staffId: string | null,     // null = "any available"
-  startDate: string | null,   // YYYY-MM-DD, first day of the current 7-day window
+  startDate: string | null,   // YYYY-MM-DD — max(today, first of displayed month)
+  endDate: string | null,     // YYYY-MM-DD — last day of displayed month
   staffSelected: boolean,
-): UseQueryResult<string[]>             // enabled when staffSelected + serviceId + locationId + startDate set
+): UseQueryResult<string[]>             // enabled when staffSelected + serviceId + locationId + startDate + endDate set
 function usePublicSlots(
   tenantSlug: string,
   serviceId: string | null,
@@ -254,13 +257,14 @@ Slot times are displayed in the location's IANA timezone via `Intl.DateTimeForma
 
 `"Any available"` is a UI concept added locally in `StaffSection` — not returned by the staff endpoint.
 
-### DateStrip behaviour
+### BookingCalendar behaviour
 
-- `windowStart` state lives in `DateTimeSection`; `DateStrip` is fully controlled via props.
-- `availableDates: Set<string> | null` — when `null` (query in-flight), a skeleton strip is shown. When non-null, only dates in the set are rendered.
-- When the filtered set is empty, DateStrip shows "No available dates in this period" with nav arrows still active.
-- Today's date uses `border-2 border-primary/60` (not CSS `ring`, which gets clipped by overflow containers).
-- Each day button has `flex-1` so all visible buttons distribute evenly across the full strip width.
+- `month: Date` state (first day of displayed month) lives in `DateTimeSection`; `BookingCalendar` is fully controlled via props.
+- `availableDates: Set<string> | null` — when `null` (query in-flight), all day buttons are disabled and a skeleton grid overlay is rendered on top of the calendar. When non-null, days in the set are enabled; all others are disabled (greyed out, not clickable).
+- Past dates (before today) are always disabled regardless of availability.
+- Month navigation: back arrow disabled when on `minMonth` (current month); forward arrow disabled at `maxMonth` (3 months from today).
+- On month change, `selectedDate` is cleared via `onDateSelect(null)` and a new `usePublicAvailableDates` fetch fires for the new month's window.
+- `startDate` passed to the hook = max(today, first of `month`); `endDate` = last day of `month`.
 
 ### SSR pre-fetch
 
@@ -275,4 +279,4 @@ Multi-location tenants: `initialStaffByService` is `{}` (location unknown at SSR
 - `clientPhone` required (min 7 chars). `clientEmail` optional.
 - No client accounts — public flow, no auth required.
 - Single-location tenants: `LocationSection` not rendered; `selectedLocationId` pre-set; location pill omitted from `FloatingNav`.
-- `available-dates` window capped at 14 days per request; `DateTimeSection` always requests exactly 7 days.
+- `available-dates` window capped at 31 days per request; `DateTimeSection` requests one full calendar month at a time.
