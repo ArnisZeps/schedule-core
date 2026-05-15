@@ -123,6 +123,22 @@ export const PUBLIC_SLOTS = [
   { startAt: '2026-05-04T11:00:00.000Z', endAt: '2026-05-04T12:00:00.000Z', available: true },
 ]
 
+export const PUBLIC_AVAILABLE_DATES = [
+  '2026-05-04',
+  '2026-05-05',
+  '2026-05-06',
+  '2026-05-07',
+]
+
+function datesInWindow(startDateStr: string, count = 4): string[] {
+  const start = new Date(startDateStr + 'T00:00:00')
+  return Array.from({ length: count }, (_, i) => {
+    const d = new Date(start)
+    d.setDate(start.getDate() + i)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  })
+}
+
 export const PUBLIC_BOOKING_RESULT = {
   id: 'pub-bk-1',
   serviceId: 'pub-svc-1',
@@ -161,6 +177,11 @@ export const handlers = [
 
   http.post(`${BASE}/public/:tenantSlug/bookings`, () => {
     return HttpResponse.json(PUBLIC_BOOKING_RESULT, { status: 201 })
+  }),
+
+  http.get(`${BASE}/public/:tenantSlug/services/:serviceId/available-dates`, ({ request }) => {
+    const startDate = new URL(request.url).searchParams.get('startDate')
+    return HttpResponse.json(startDate ? datesInWindow(startDate) : PUBLIC_AVAILABLE_DATES)
   }),
 
   // ── Locations list

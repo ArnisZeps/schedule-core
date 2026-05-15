@@ -75,10 +75,11 @@ export function usePublicLocations(tenantSlug: string) {
   })
 }
 
-export function usePublicServices(tenantSlug: string) {
+export function usePublicServices(tenantSlug: string, initialData?: PublicService[]) {
   return useQuery<PublicService[]>({
     queryKey: ['publicServices', tenantSlug],
     queryFn: () => publicFetch<PublicService[]>(`/public/${tenantSlug}/services`),
+    initialData,
   })
 }
 
@@ -86,6 +87,7 @@ export function usePublicStaff(
   tenantSlug: string,
   serviceId: string | null,
   locationId: string | null,
+  initialData?: PublicStaffMember[],
 ) {
   return useQuery<PublicStaffMember[]>({
     queryKey: ['publicStaff', tenantSlug, serviceId, locationId],
@@ -94,7 +96,39 @@ export function usePublicStaff(
         `/public/${tenantSlug}/services/${serviceId}/staff?locationId=${locationId}`,
       ),
     enabled: serviceId != null && locationId != null,
+    initialData,
   })
+}
+
+export function usePublicAvailableDates(
+  tenantSlug: string,
+  serviceId: string | null,
+  locationId: string | null,
+  staffId: string | null,
+  startDate: string | null,
+  staffSelected: boolean,
+) {
+  return useQuery<string[]>({
+    queryKey: ['publicAvailableDates', tenantSlug, serviceId, locationId, staffId, startDate],
+    queryFn: () => {
+      const endDate = addDaysToDateStr(startDate!, 6)
+      const params = new URLSearchParams({ locationId: locationId!, startDate: startDate!, endDate })
+      if (staffId) params.set('staffId', staffId)
+      return publicFetch<string[]>(
+        `/public/${tenantSlug}/services/${serviceId}/available-dates?${params}`,
+      )
+    },
+    enabled: staffSelected && serviceId != null && locationId != null && startDate != null,
+  })
+}
+
+function addDaysToDateStr(dateStr: string, n: number): string {
+  const d = new Date(dateStr + 'T00:00:00')
+  d.setDate(d.getDate() + n)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
 }
 
 export function usePublicSlots(
