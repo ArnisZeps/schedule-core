@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const DAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -21,28 +21,34 @@ function toDateStr(d: Date) {
 interface Props {
   selectedDate: string | null
   onSelect: (date: string) => void
+  windowStart: number
+  onPrev: () => void
+  onNext: () => void
+  availableDates: Set<string> | null
 }
 
-export function DateStrip({ selectedDate, onSelect }: Props) {
+export function DateStrip({ selectedDate, onSelect, windowStart, onPrev, onNext, availableDates }: Props) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const todayStr = toDateStr(today)
   const maxOffset = 60
 
-  const [windowStart, setWindowStart] = useState(0)
+  const canPrev = windowStart > 0
+  const canNext = windowStart + 7 < maxOffset
 
-  const days = Array.from({ length: 7 }, (_, i) => {
+  const allDays = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(today, windowStart + i)
     return { date: d, str: toDateStr(d) }
   })
 
-  const canPrev = windowStart > 0
-  const canNext = windowStart + 7 < maxOffset
+  const visibleDays = availableDates
+    ? allDays.filter(({ str }) => availableDates.has(str))
+    : []
 
   return (
     <div className="flex items-center gap-1">
       <button
-        onClick={() => setWindowStart((w) => Math.max(0, w - 7))}
+        onClick={onPrev}
         disabled={!canPrev}
         className="rounded-lg px-2 py-1 text-sm hover:bg-accent disabled:opacity-30"
         aria-label="Previous week"
@@ -50,32 +56,46 @@ export function DateStrip({ selectedDate, onSelect }: Props) {
         &lt;
       </button>
 
-      <div className="flex flex-1 gap-1 overflow-x-auto">
-        {days.map(({ date, str }) => {
-          const isToday = str === todayStr
-          const isSelected = str === selectedDate
-          const dayName = DAY_ABBR[date.getDay()]
-          const dayNum = date.getDate()
-          return (
-            <button
-              key={str}
-              onClick={() => onSelect(str)}
-              aria-label={`${dayName} ${dayNum}`}
-              className={cn(
-                'flex min-w-[2.75rem] flex-col items-center gap-0.5 rounded-xl border p-2 text-xs transition-colors hover:bg-accent',
-                isToday && 'ring-1 ring-primary/40',
-                isSelected && 'border-primary bg-accent font-semibold',
-              )}
-            >
-              <span className="text-muted-foreground">{dayName}</span>
-              <span>{dayNum}</span>
-            </button>
-          )
-        })}
+      <div className="flex flex-1 gap-1">
+        {availableDates === null ? (
+          <div data-testid="date-strip-skeleton" className="flex flex-1 gap-1">
+            {Array.from({ length: 7 }, (_, i) => (
+              <Skeleton key={i} className="flex-1 h-12 rounded-xl" />
+            ))}
+          </div>
+        ) : visibleDays.length === 0 ? (
+          <p className="flex-1 text-center text-sm text-muted-foreground py-2">
+            No available dates in this period
+          </p>
+        ) : (
+          visibleDays.map(({ date, str }) => {
+            const isToday = str === todayStr
+            const isSelected = str === selectedDate
+            const dayName = DAY_ABBR[date.getDay()]
+            const dayNum = date.getDate()
+            return (
+              <button
+                key={str}
+                onClick={() => onSelect(str)}
+                aria-label={`${dayName} ${dayNum}`}
+                className={cn(
+                  'flex flex-1 min-w-[2.25rem] flex-col items-center gap-0.5 rounded-xl border p-2 text-xs transition-colors hover:bg-accent',
+                  isToday && !isSelected && 'border-2 border-primary/60',
+                  isToday && isSelected && 'border-2 border-primary',
+                  isSelected && 'bg-accent font-semibold',
+                  !isToday && isSelected && 'border-primary',
+                )}
+              >
+                <span className="text-muted-foreground">{dayName}</span>
+                <span>{dayNum}</span>
+              </button>
+            )
+          })
+        )}
       </div>
 
       <button
-        onClick={() => setWindowStart((w) => Math.min(maxOffset - 7, w + 7))}
+        onClick={onNext}
         disabled={!canNext}
         className="rounded-lg px-2 py-1 text-sm hover:bg-accent disabled:opacity-30"
         aria-label="Next week"

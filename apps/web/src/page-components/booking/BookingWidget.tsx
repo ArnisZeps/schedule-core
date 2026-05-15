@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { usePublicServices, usePublicStaff, useCreatePublicBooking } from '@/hooks/usePublicBooking'
-import type { PublicLocation, PublicSlot, PublicBookingResult } from '@/hooks/usePublicBooking'
+import type { PublicLocation, PublicService, PublicStaffMember, PublicSlot, PublicBookingResult } from '@/hooks/usePublicBooking'
 import { LocationSection } from './LocationSection'
 import { ServiceSection } from './ServiceSection'
 import { StaffSection } from './StaffSection'
@@ -16,6 +16,8 @@ interface Props {
   tenantSlug: string
   tenantName: string
   initialLocations: PublicLocation[]
+  initialServices: PublicService[]
+  initialStaffByService: Record<string, PublicStaffMember[]>
 }
 
 const SECTION_IDS = {
@@ -25,7 +27,7 @@ const SECTION_IDS = {
   datetime: 'section-datetime',
 }
 
-export function BookingWidget({ tenantSlug, tenantName, initialLocations }: Props) {
+export function BookingWidget({ tenantSlug, tenantName, initialLocations, initialServices, initialStaffByService }: Props) {
   const isMultiLocation = initialLocations.length > 1
 
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(
@@ -39,12 +41,18 @@ export function BookingWidget({ tenantSlug, tenantName, initialLocations }: Prop
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [activeSection, setActiveSection] = useState<string | null>(null)
 
-  const { data: services = [], isLoading: servicesLoading } = usePublicServices(tenantSlug)
+  const staffInitialData = selectedServiceId ? initialStaffByService[selectedServiceId] : undefined
+
+  const { data: services = [], isLoading: servicesLoading } = usePublicServices(
+    tenantSlug,
+    initialServices.length > 0 ? initialServices : undefined,
+  )
   const selectedService = services.find((s) => s.id === selectedServiceId) ?? null
   const { data: staff = [], isLoading: staffLoading } = usePublicStaff(
     tenantSlug,
     selectedServiceId,
     selectedLocationId,
+    staffInitialData,
   )
   const { mutateAsync: createBooking, isPending } = useCreatePublicBooking(tenantSlug)
 
@@ -56,8 +64,8 @@ export function BookingWidget({ tenantSlug, tenantName, initialLocations }: Prop
   useEffect(() => {
     observerRef.current?.disconnect()
     const ids = [
-      ...(isMultiLocation ? [SECTION_IDS.location] : []),
       SECTION_IDS.service,
+      ...(isMultiLocation ? [SECTION_IDS.location] : []),
       SECTION_IDS.staff,
       SECTION_IDS.datetime,
     ]
@@ -77,8 +85,8 @@ export function BookingWidget({ tenantSlug, tenantName, initialLocations }: Prop
   }, [isMultiLocation])
 
   const navSections = [
-    ...(isMultiLocation ? [{ id: SECTION_IDS.location, label: 'Location' }] : []),
     { id: SECTION_IDS.service, label: 'Service' },
+    ...(isMultiLocation ? [{ id: SECTION_IDS.location, label: 'Location' }] : []),
     { id: SECTION_IDS.staff, label: 'Staff' },
     { id: SECTION_IDS.datetime, label: 'Time' },
   ]
@@ -154,20 +162,6 @@ export function BookingWidget({ tenantSlug, tenantName, initialLocations }: Prop
       <h1 className="mb-8 text-2xl font-bold">{tenantName}</h1>
 
       <div className="space-y-10">
-        {isMultiLocation && (
-          <LocationSection
-            locations={initialLocations}
-            selectedId={selectedLocationId}
-            onSelect={(id) => {
-              setSelectedLocationId(id)
-              setSelectedServiceId(null)
-              setSelectedStaffId(null)
-              setSelectedDate(null)
-              setSelectedSlot(null)
-            }}
-          />
-        )}
-
         <ServiceSection
           services={services}
           isLoading={servicesLoading}
@@ -175,12 +169,30 @@ export function BookingWidget({ tenantSlug, tenantName, initialLocations }: Prop
           onSelect={handleServiceSelect}
         />
 
+        {isMultiLocation && (
+          <LocationSection
+            locations={initialLocations}
+            selectedId={selectedLocationId}
+            onSelect={(id) => {
+              setSelectedLocationId(id)
+              setSelectedStaffId(null)
+              setSelectedDate(null)
+              setSelectedSlot(null)
+            }}
+          />
+        )}
+
         <StaffSection
           staff={staff}
           isLoading={staffLoading}
           selectedId={selectedStaffId}
           onSelect={handleStaffSelect}
-          prerequisiteMet={selectedServiceId != null}
+          prerequisiteMet={selectedServiceId != null && selectedLocationId != null}
+          placeholderText={
+            isMultiLocation && selectedServiceId != null
+              ? 'Select a location first.'
+              : 'Select a service first.'
+          }
         />
 
         <DateTimeSection

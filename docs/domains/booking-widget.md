@@ -16,6 +16,7 @@ No auth required. All queries use explicit `WHERE tenant_id = $n` — no RLS con
 | `apps/web/app/api/public/[tenantSlug]/services/route.ts` | All services for tenant |
 | `apps/web/app/api/public/[tenantSlug]/services/[serviceId]/staff/route.ts` | Active staff for service at location |
 | `apps/web/app/api/public/[tenantSlug]/services/[serviceId]/slots/route.ts` | Available slots |
+| `apps/web/app/api/public/[tenantSlug]/services/[serviceId]/available-dates/route.ts` | Dates with at least one available slot in a window |
 | `apps/web/app/api/public/[tenantSlug]/bookings/route.ts` | Create booking |
 
 ---
@@ -77,6 +78,26 @@ Delegates to `generateStaffSlots` (staffId provided) or `generateAnyAvailableSlo
 
 ---
 
+### `GET /api/public/:tenantSlug/services/:serviceId/available-dates`
+
+| Param | Required | Description |
+|-------|----------|-------------|
+| locationId | yes | Location to scope staff availability |
+| startDate | yes | YYYY-MM-DD — first date of window |
+| endDate | yes | YYYY-MM-DD — last date of window |
+| staffId | no | Specific staff member; absent = "any available" |
+
+Window capped at 14 days server-side. Returns only dates that have at least one slot with `available: true`.
+
+**Response 200**
+```json
+["2026-05-15", "2026-05-20", "2026-05-21"]
+```
+
+**Errors:** `400` missing params or window > 14 days, `404` tenant or service not found
+
+---
+
 ### `POST /api/public/:tenantSlug/bookings`
 
 No `override` flag — public clients cannot bypass conflict checks.
@@ -127,10 +148,11 @@ No `override` flag — public clients cannot bypass conflict checks.
 
 **Server Component fetch sequence:**
 1. Resolve tenant by slug → call `notFound()` if absent
-2. Fetch active locations (`WHERE tenant_id = ? AND is_active = true`, no RLS)
-3. Pass `tenantName`, `tenantSlug`, `initialLocations` to `<BookingWidget>` (Client Component)
+2. Fetch active locations and all services in parallel
+3. For single-location tenants: also fetch all staff-by-service at the known location
+4. Pass `tenantName`, `tenantSlug`, `initialLocations`, `initialServices`, `initialStaffByService` to `<BookingWidget>`
 
-All subsequent data (services, staff, slots) is fetched client-side via React Query inside `BookingWidget`.
+`initialServices` and `initialStaffByService` are passed to React Query as `initialData`, eliminating client-side fetch waterfalls on page load.
 
 ### Booking state
 
@@ -165,12 +187,12 @@ When `bookingResult` is set, `<BookingConfirmation>` replaces all content.
 | File | Responsibility |
 |------|----------------|
 | `apps/web/app/(public)/layout.tsx` | Minimal public layout — no auth, no dashboard chrome |
-| `apps/web/src/page-components/booking/BookingWidget.tsx` | Client Component; owns all booking state |
+| `apps/web/src/page-components/booking/BookingWidget.tsx` | Client Component; owns all booking state; accepts `initialServices` and `initialStaffByService` |
 | `apps/web/src/page-components/booking/LocationSection.tsx` | Card grid of active locations |
-| `apps/web/src/page-components/booking/ServiceSection.tsx` | Card grid of all tenant services |
-| `apps/web/src/page-components/booking/StaffSection.tsx` | "Any available" card + staff member cards |
-| `apps/web/src/page-components/booking/DateTimeSection.tsx` | Composes `DateStrip` and `TimeSlotGrid` |
-| `apps/web/src/page-components/booking/DateStrip.tsx` | 7-day window; prev/next shifts by 7 days; 60-day horizon; today highlighted |
+| `apps/web/src/page-components/booking/ServiceSection.tsx` | Card grid of all tenant services; skeleton loader when `isLoading` |
+| `apps/web/src/page-components/booking/StaffSection.tsx` | "Any available" card + staff member cards; skeleton loader when `isLoading && prerequisiteMet` |
+| `apps/web/src/page-components/booking/DateTimeSection.tsx` | Owns `windowStart` state; calls `usePublicAvailableDates`; composes `DateStrip` and `TimeSlotGrid` |
+| `apps/web/src/page-components/booking/DateStrip.tsx` | Controlled: receives `windowStart`, `onPrev`, `onNext`, `availableDates`; hides days absent from `availableDates`; today uses `border-2` highlight; day buttons use `flex-1` for even distribution |
 | `apps/web/src/page-components/booking/TimeSlotGrid.tsx` | Slot buttons in 3–4 column grid; unavailable slots dimmed; skeleton loader; empty state |
 | `apps/web/src/page-components/booking/DetailsSection.tsx` | Name/phone/email form (RHF + zod); submit with loading state |
 | `apps/web/src/page-components/booking/BookingConfirmation.tsx` | Success screen with booking summary and "Book another" reset |
@@ -181,12 +203,21 @@ When `bookingResult` is set, `<BookingConfirmation>` replaces all content.
 ```ts
 // apps/web/src/hooks/usePublicBooking.ts
 function usePublicLocations(tenantSlug: string): UseQueryResult<PublicLocation[]>
-function usePublicServices(tenantSlug: string): UseQueryResult<PublicService[]>
+function usePublicServices(tenantSlug: string, initialData?: PublicService[]): UseQueryResult<PublicService[]>
 function usePublicStaff(
   tenantSlug: string,
   serviceId: string | null,
-  locationId: string | null
+  locationId: string | null,
+  initialData?: PublicStaffMember[],
 ): UseQueryResult<PublicStaffMember[]>   // disabled when serviceId or locationId is null
+function usePublicAvailableDates(
+  tenantSlug: string,
+  serviceId: string | null,
+  locationId: string | null,
+  staffId: string | null,     // null = "any available"
+  startDate: string | null,   // YYYY-MM-DD, first day of the current 7-day window
+  staffSelected: boolean,
+): UseQueryResult<string[]>             // enabled when staffSelected + serviceId + locationId + startDate set
 function usePublicSlots(
   tenantSlug: string,
   serviceId: string | null,
@@ -223,6 +254,20 @@ Slot times are displayed in the location's IANA timezone via `Intl.DateTimeForma
 
 `"Any available"` is a UI concept added locally in `StaffSection` — not returned by the staff endpoint.
 
+### DateStrip behaviour
+
+- `windowStart` state lives in `DateTimeSection`; `DateStrip` is fully controlled via props.
+- `availableDates: Set<string> | null` — when `null` (query in-flight), a skeleton strip is shown. When non-null, only dates in the set are rendered.
+- When the filtered set is empty, DateStrip shows "No available dates in this period" with nav arrows still active.
+- Today's date uses `border-2 border-primary/60` (not CSS `ring`, which gets clipped by overflow containers).
+- Each day button has `flex-1` so all visible buttons distribute evenly across the full strip width.
+
+### SSR pre-fetch
+
+`page.tsx` fetches locations + services in parallel. For single-location tenants it also fetches all staff-by-service in a single query. These are passed to `BookingWidget` as `initialServices: PublicService[]` and `initialStaffByService: Record<string, PublicStaffMember[]>`, then forwarded to React Query as `initialData`.
+
+Multi-location tenants: `initialStaffByService` is `{}` (location unknown at SSR time); staff fetches client-side after service + location selection.
+
 ## Constraints
 
 - No `override` flag — public clients cannot bypass conflict checks.
@@ -230,3 +275,4 @@ Slot times are displayed in the location's IANA timezone via `Intl.DateTimeForma
 - `clientPhone` required (min 7 chars). `clientEmail` optional.
 - No client accounts — public flow, no auth required.
 - Single-location tenants: `LocationSection` not rendered; `selectedLocationId` pre-set; location pill omitted from `FloatingNav`.
+- `available-dates` window capped at 14 days per request; `DateTimeSection` always requests exactly 7 days.

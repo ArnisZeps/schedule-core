@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -38,6 +38,11 @@ describe('ServiceSection', () => {
     )
     expect(screen.getByText('Haircut')).toBeInTheDocument()
     expect(screen.getByText('Shave')).toBeInTheDocument()
+  })
+
+  it('shows a skeleton when isLoading is true', () => {
+    render(<ServiceSection services={[]} isLoading selectedId={null} onSelect={vi.fn()} />)
+    expect(screen.getByTestId('service-skeleton')).toBeInTheDocument()
   })
 
   it('calls onSelect with the service id when a card is clicked', async () => {
@@ -127,22 +132,52 @@ describe('StaffSection', () => {
     )
     expect(screen.getByText(/select a service first/i)).toBeInTheDocument()
   })
+
+  it('shows a skeleton when isLoading is true and prerequisite is met', () => {
+    render(<StaffSection staff={[]} isLoading selectedId={null} onSelect={vi.fn()} prerequisiteMet />)
+    expect(screen.getByTestId('staff-skeleton')).toBeInTheDocument()
+  })
 })
 
 // ── DateStrip ─────────────────────────────────────────────────────────────────
 
 describe('DateStrip', () => {
-  it('renders 7 day buttons', () => {
-    render(<DateStrip selectedDate={null} onSelect={vi.fn()} />)
-    // Each button has a day abbreviation; 7 days visible at a time
-    const buttons = screen.getAllByRole('button', { name: /mon|tue|wed|thu|fri|sat|sun/i })
-    expect(buttons.length).toBeGreaterThanOrEqual(7)
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('shows a loading skeleton when availableDates is null', () => {
+    render(
+      <DateStrip
+        selectedDate={null}
+        onSelect={vi.fn()}
+        windowStart={0}
+        onPrev={vi.fn()}
+        onNext={vi.fn()}
+        availableDates={null}
+      />,
+    )
+    expect(screen.getByTestId('date-strip-skeleton')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /previous/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /next/i })).toBeInTheDocument()
   })
 
   it('calls onSelect with ISO date string when a day is clicked', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-05-15T10:00:00.000Z'))
     const onSelect = vi.fn()
     const user = userEvent.setup()
-    render(<DateStrip selectedDate={null} onSelect={onSelect} />)
+    const available = new Set(['2026-05-15', '2026-05-16', '2026-05-17', '2026-05-18', '2026-05-19', '2026-05-20', '2026-05-21'])
+    render(
+      <DateStrip
+        selectedDate={null}
+        onSelect={onSelect}
+        windowStart={0}
+        onPrev={vi.fn()}
+        onNext={vi.fn()}
+        availableDates={available}
+      />,
+    )
     const dayButtons = screen.getAllByRole('button').filter(
       (btn) => !btn.textContent?.match(/^[<>]/),
     )
@@ -150,14 +185,111 @@ describe('DateStrip', () => {
     expect(onSelect).toHaveBeenCalledWith(expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/))
   })
 
-  it('navigates forward by 7 days when next button is clicked', async () => {
+  it('calls onNext when next button is clicked', async () => {
+    const onNext = vi.fn()
     const user = userEvent.setup()
-    render(<DateStrip selectedDate={null} onSelect={vi.fn()} />)
-    const nextBtn = screen.getByRole('button', { name: /next/i })
-    const before = screen.getAllByRole('button').filter((b) => !b.textContent?.match(/^[<>]/)).map(b => b.textContent)
-    await user.click(nextBtn)
-    const after = screen.getAllByRole('button').filter((b) => !b.textContent?.match(/^[<>]/)).map(b => b.textContent)
-    expect(before).not.toEqual(after)
+    render(
+      <DateStrip
+        selectedDate={null}
+        onSelect={vi.fn()}
+        windowStart={0}
+        onPrev={vi.fn()}
+        onNext={onNext}
+        availableDates={null}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: /next/i }))
+    expect(onNext).toHaveBeenCalled()
+  })
+
+  it('calls onPrev when previous button is clicked', async () => {
+    const onPrev = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <DateStrip
+        selectedDate={null}
+        onSelect={vi.fn()}
+        windowStart={7}
+        onPrev={onPrev}
+        onNext={vi.fn()}
+        availableDates={null}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: /previous/i }))
+    expect(onPrev).toHaveBeenCalled()
+  })
+
+  it('today button uses border-2 class instead of ring-1', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-05-15T10:00:00.000Z'))
+    const available = new Set(['2026-05-15', '2026-05-16', '2026-05-17'])
+    render(
+      <DateStrip
+        selectedDate={null}
+        onSelect={vi.fn()}
+        windowStart={0}
+        onPrev={vi.fn()}
+        onNext={vi.fn()}
+        availableDates={available}
+      />,
+    )
+    const todayBtn = screen.getByRole('button', { name: /fri 15/i })
+    expect(todayBtn.className).toContain('border-2')
+    expect(todayBtn.className).not.toContain('ring-1')
+  })
+
+  it('each day button has flex-1 class', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-05-15T10:00:00.000Z'))
+    const available = new Set(['2026-05-15', '2026-05-16', '2026-05-17', '2026-05-18', '2026-05-19', '2026-05-20', '2026-05-21'])
+    render(
+      <DateStrip
+        selectedDate={null}
+        onSelect={vi.fn()}
+        windowStart={0}
+        onPrev={vi.fn()}
+        onNext={vi.fn()}
+        availableDates={available}
+      />,
+    )
+    const dayBtns = screen.getAllByRole('button').filter((b) => !b.textContent?.match(/^[<>]/))
+    expect(dayBtns.every((b) => b.className.includes('flex-1'))).toBe(true)
+  })
+
+  it('hides days absent from availableDates set', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-05-15T10:00:00.000Z'))
+    const available = new Set(['2026-05-15', '2026-05-17'])
+    render(
+      <DateStrip
+        selectedDate={null}
+        onSelect={vi.fn()}
+        windowStart={0}
+        onPrev={vi.fn()}
+        onNext={vi.fn()}
+        availableDates={available}
+      />,
+    )
+    expect(screen.getByRole('button', { name: /fri 15/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /sun 17/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /sat 16/i })).not.toBeInTheDocument()
+  })
+
+  it('shows no-available-dates message when availableDates is an empty set', () => {
+    render(
+      <DateStrip
+        selectedDate={null}
+        onSelect={vi.fn()}
+        windowStart={0}
+        onPrev={vi.fn()}
+        onNext={vi.fn()}
+        availableDates={new Set()}
+      />,
+    )
+    expect(screen.getByText(/no available dates/i)).toBeInTheDocument()
+    // Nav arrows still rendered
+    expect(screen.getByRole('button', { name: /previous/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /next/i })).toBeInTheDocument()
   })
 })
 
@@ -343,6 +475,8 @@ describe('BookingWidget — single-location happy path', () => {
         tenantName="Test Biz"
         tenantSlug={TENANT_SLUG}
         initialLocations={SINGLE_LOCATION}
+        initialServices={[]}
+        initialStaffByService={{}}
       />,
     )
     expect(await screen.findByText('Haircut')).toBeInTheDocument()
@@ -355,6 +489,8 @@ describe('BookingWidget — single-location happy path', () => {
         tenantName="Test Biz"
         tenantSlug={TENANT_SLUG}
         initialLocations={SINGLE_LOCATION}
+        initialServices={[]}
+        initialStaffByService={{}}
       />,
     )
     await screen.findByText('Haircut')
@@ -368,6 +504,8 @@ describe('BookingWidget — single-location happy path', () => {
         tenantName="Test Biz"
         tenantSlug={TENANT_SLUG}
         initialLocations={SINGLE_LOCATION}
+        initialServices={[]}
+        initialStaffByService={{}}
       />,
     )
 
@@ -417,6 +555,8 @@ describe('BookingWidget — 409 slot conflict', () => {
         tenantName="Test Biz"
         tenantSlug={TENANT_SLUG}
         initialLocations={SINGLE_LOCATION}
+        initialServices={[]}
+        initialStaffByService={{}}
       />,
     )
 
@@ -437,5 +577,50 @@ describe('BookingWidget — 409 slot conflict', () => {
     expect(await screen.findByText(/just taken/i)).toBeInTheDocument()
     // After 409, the confirmation screen should NOT appear
     expect(screen.queryByText(/booking confirmed/i)).not.toBeInTheDocument()
+  })
+})
+
+// ── BookingWidget — SSR pre-fetch ─────────────────────────────────────────────
+
+describe('BookingWidget — initialServices pre-fetch', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-05-04T08:00:00.000Z'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('renders service cards immediately without waiting for a fetch', () => {
+    wrap(
+      <BookingWidget
+        tenantName="Test Biz"
+        tenantSlug={TENANT_SLUG}
+        initialLocations={SINGLE_LOCATION}
+        initialServices={PUBLIC_SERVICES}
+        initialStaffByService={{}}
+      />,
+    )
+    // Synchronous — no await
+    expect(screen.getByText('Haircut')).toBeInTheDocument()
+    expect(screen.getByText('Shave')).toBeInTheDocument()
+  })
+
+  it('renders staff cards immediately after service selection when initialStaffByService has data', async () => {
+    const user = userEvent.setup({ delay: null })
+    wrap(
+      <BookingWidget
+        tenantName="Test Biz"
+        tenantSlug={TENANT_SLUG}
+        initialLocations={SINGLE_LOCATION}
+        initialServices={PUBLIC_SERVICES}
+        initialStaffByService={{ 'pub-svc-1': PUBLIC_STAFF }}
+      />,
+    )
+    await user.click(screen.getByText('Haircut'))
+    // Staff visible immediately — no findBy
+    expect(screen.getByText('Alice Smith')).toBeInTheDocument()
+    expect(screen.getByText('Bob Jones')).toBeInTheDocument()
   })
 })

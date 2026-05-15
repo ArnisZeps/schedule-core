@@ -1,6 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
+import { Skeleton } from '@/components/ui/skeleton'
 import type { PublicService } from '@/hooks/usePublicBooking'
 
 interface Props {
@@ -11,7 +12,17 @@ interface Props {
 }
 
 export function ServiceSection({ services, isLoading, selectedId, onSelect }: Props) {
-  if (isLoading) return <section id="section-service" className="space-y-3"><h2 className="text-lg font-semibold">Service</h2></section>
+  if (isLoading) {
+    return (
+      <section id="section-service" className="space-y-3">
+        <h2 className="text-lg font-semibold">Service</h2>
+        <div data-testid="service-skeleton" className="grid gap-3 sm:grid-cols-2">
+          <Skeleton className="h-20 rounded-xl" />
+          <Skeleton className="h-20 rounded-xl" />
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section id="section-service" className="space-y-3">

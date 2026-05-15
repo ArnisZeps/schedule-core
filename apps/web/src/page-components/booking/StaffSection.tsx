@@ -1,6 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
+import { Skeleton } from '@/components/ui/skeleton'
 import type { PublicStaffMember } from '@/hooks/usePublicBooking'
 
 interface Props {
@@ -9,15 +10,21 @@ interface Props {
   selectedId: string | 'any' | null
   onSelect: (id: string | 'any') => void
   prerequisiteMet: boolean
+  placeholderText?: string
 }
 
-export function StaffSection({ staff, isLoading, selectedId, onSelect, prerequisiteMet }: Props) {
+export function StaffSection({ staff, isLoading, selectedId, onSelect, prerequisiteMet, placeholderText = 'Select a service first.' }: Props) {
   return (
     <section id="section-staff" className="space-y-3">
       <h2 className="text-lg font-semibold">Staff</h2>
       {!prerequisiteMet ? (
-        <p className="text-sm text-muted-foreground">Select a service first.</p>
-      ) : isLoading ? null : (
+        <p className="text-sm text-muted-foreground">{placeholderText}</p>
+      ) : isLoading ? (
+        <div data-testid="staff-skeleton" className="grid gap-3 sm:grid-cols-2">
+          <Skeleton className="h-20 rounded-xl" />
+          <Skeleton className="h-20 rounded-xl" />
+        </div>
+      ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           <button
             onClick={() => onSelect('any')}
