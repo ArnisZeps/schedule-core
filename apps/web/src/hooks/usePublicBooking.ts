@@ -106,29 +106,20 @@ export function usePublicAvailableDates(
   locationId: string | null,
   staffId: string | null,
   startDate: string | null,
+  endDate: string | null,
   staffSelected: boolean,
 ) {
   return useQuery<string[]>({
-    queryKey: ['publicAvailableDates', tenantSlug, serviceId, locationId, staffId, startDate],
+    queryKey: ['publicAvailableDates', tenantSlug, serviceId, locationId, staffId, startDate, endDate],
     queryFn: () => {
-      const endDate = addDaysToDateStr(startDate!, 6)
-      const params = new URLSearchParams({ locationId: locationId!, startDate: startDate!, endDate })
+      const params = new URLSearchParams({ locationId: locationId!, startDate: startDate!, endDate: endDate! })
       if (staffId) params.set('staffId', staffId)
       return publicFetch<string[]>(
         `/public/${tenantSlug}/services/${serviceId}/available-dates?${params}`,
       )
     },
-    enabled: staffSelected && serviceId != null && locationId != null && startDate != null,
+    enabled: staffSelected && serviceId != null && locationId != null && startDate != null && endDate != null,
   })
-}
-
-function addDaysToDateStr(dateStr: string, n: number): string {
-  const d = new Date(dateStr + 'T00:00:00')
-  d.setDate(d.getDate() + n)
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
 }
 
 export function usePublicSlots(
