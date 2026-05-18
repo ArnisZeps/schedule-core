@@ -219,7 +219,12 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  // Auth
+  // Auth signup
+  http.post(`${BASE}/auth/signup`, async () => {
+    return HttpResponse.json({ token: TEST_TOKEN }, { status: 201 })
+  }),
+
+  // Auth login
   http.post(`${BASE}/auth/login`, async ({ request }) => {
     const body = await request.json() as { email: string; password: string }
     if (body.email === 'owner@test.com' && body.password === 'password') {

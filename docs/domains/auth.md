@@ -79,11 +79,12 @@ HS256 signed. Non-revocable for 30-day TTL (configurable via `JWT_EXPIRY` env va
 | Route | File | Access |
 |-------|------|--------|
 | `/login` | `apps/web/app/(auth)/login/page.tsx` | Public |
+| `/register` | `apps/web/app/(auth)/register/page.tsx` | Public |
 
 Auth routing is bidirectional:
 
 - **Unauthenticated → dashboard**: `apps/web/app/(dashboard)/layout.tsx` guards all dashboard routes. Returns `null` until hydrated; redirects to `/login` via `router.replace` whenever `user` is null after hydration. Children are unmounted the instant `user` becomes null.
-- **Authenticated → public pages**: `apps/web/src/components/UnauthenticatedOnly.tsx` wraps the content of `/` (marketing page) and `/login`. It returns `null` until hydrated and `null` when `user` is non-null (redirecting to `/services`), so a logged-in user never sees public-page content.
+- **Authenticated → public pages**: `apps/web/src/components/UnauthenticatedOnly.tsx` wraps the content of `/` (marketing page), `/login`, and `/register`. It returns `null` until hydrated and `null` when `user` is non-null (redirecting to `/services`), so a logged-in user never sees public-page content.
 
 ### Interfaces
 
@@ -113,7 +114,8 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T>
 | File | Responsibility |
 |------|----------------|
 | `apps/web/src/context/AuthContext.tsx` | Reads/writes JWT in `localStorage`; decodes payload client-side (no sig verify — API enforces). Exposes `user`, `token`, `login`, `logout`. |
-| `apps/web/src/page-components/LoginPage.tsx` | Email + password form → `POST /api/auth/login` → `login(token)` → redirect to `/appointments`. |
+| `apps/web/src/page-components/LoginPage.tsx` | Email + password form → `POST /api/auth/login` → `login(token)` → redirect to `/services`. Links to `/register`. |
+| `apps/web/src/page-components/RegisterPage.tsx` | Business name, slug (auto-derived from name, editable), email, password form → `POST /api/auth/signup` → `login(token)` → redirect to `/services`. Slug derivation: trim → lowercase → replace non-alphanumeric with hyphens → collapse → trim. Uses `fetch` directly (not `apiFetch`) to inspect `error`/`details` fields on 409/422. Links to `/login`. |
 
 ## Constraints
 
