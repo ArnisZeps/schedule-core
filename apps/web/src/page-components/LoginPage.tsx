@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod/v3'
@@ -98,6 +99,12 @@ export function LoginPage() {
               >
                 {form.formState.isSubmitting ? 'Signing in…' : 'Log in'}
               </Button>
+              <p className="text-center text-sm text-muted-foreground">
+                Don&apos;t have an account?{' '}
+                <Link href="/register" className="underline underline-offset-4">
+                  Register
+                </Link>
+              </p>
             </form>
           </Form>
         </CardContent>

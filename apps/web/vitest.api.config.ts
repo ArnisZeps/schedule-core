@@ -30,6 +30,7 @@ export default defineConfig({
     globals: true,
     env: {
       DATABASE_URL: env.TEST_DATABASE_URL ?? env.DATABASE_URL ?? '',
+      APP_DATABASE_URL: env.TEST_DATABASE_URL ?? env.DATABASE_URL ?? '',
       JWT_SECRET: env.JWT_SECRET ?? 'test-secret',
     },
   },
