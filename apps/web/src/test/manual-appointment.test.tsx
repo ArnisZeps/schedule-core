@@ -3,7 +3,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AuthProvider } from '../../providers/AuthProvider'
+import { UserProvider } from '@/components/UserProvider'
 import { http, HttpResponse } from 'msw'
 import { server } from './handlers'
 import { AppointmentsPage } from '@/page-components/appointments/AppointmentsPage'
@@ -38,7 +38,7 @@ function renderAppointments(search = 'view=week&date=2026-05-04') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <AuthProvider><AppointmentsPage /></AuthProvider>
+      <UserProvider user={{ userId: 'user-1', tenantId: 'tenant-1' }}><AppointmentsPage /></UserProvider>
     </QueryClientProvider>,
   )
 }
@@ -48,7 +48,6 @@ describe('Manual appointment entry', () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(FIXED_NOW)
     localStorage.clear()
-    localStorage.setItem('sc_token', TEST_TOKEN)
   })
 
   afterEach(() => {
@@ -211,7 +210,6 @@ describe('M6d — Staff selection', () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(FIXED_NOW)
     localStorage.clear()
-    localStorage.setItem('sc_token', TEST_TOKEN)
   })
 
   afterEach(() => {

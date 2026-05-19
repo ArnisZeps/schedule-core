@@ -1,26 +1,15 @@
-'use client'
-
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { headers } from 'next/headers'
 import { AppLayout } from '@/components/AppLayout'
-import { useAuth } from '@/hooks/useAuth'
+import { UserProvider } from '@/components/UserProvider'
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter()
-  const { user } = useAuth()
-  const [hydrated, setHydrated] = useState(false)
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const h = await headers()
+  const userId = h.get('x-user-id')!
+  const tenantId = h.get('x-tenant-id')!
 
-  useEffect(() => {
-    setHydrated(true)
-  }, [])
-
-  useEffect(() => {
-    if (hydrated && !user) {
-      router.replace('/login')
-    }
-  }, [hydrated, user, router])
-
-  if (!hydrated || !user) return null
-
-  return <AppLayout>{children}</AppLayout>
+  return (
+    <UserProvider user={{ userId, tenantId }}>
+      <AppLayout>{children}</AppLayout>
+    </UserProvider>
+  )
 }

@@ -10,12 +10,13 @@ export interface Service {
   durationMinutes: number
 }
 
-export function useServices() {
+export function useServices(initialData?: Service[]) {
   const { user } = useAuth()
   const tenantId = user!.tenantId
   return useQuery<Service[]>({
     queryKey: ['services', tenantId],
     queryFn: () => apiFetch(`/tenants/${tenantId}/services`),
+    ...(initialData ? { initialData, initialDataUpdatedAt: Date.now(), staleTime: 5 * 60 * 1000 } : {}),
   })
 }
 

@@ -3,7 +3,7 @@ import { render, screen, waitFor, within, fireEvent } from '@testing-library/rea
 import userEvent from '@testing-library/user-event'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AuthProvider } from '../../providers/AuthProvider'
+import { UserProvider } from '@/components/UserProvider'
 import { server } from './handlers'
 import { http, HttpResponse } from 'msw'
 import { AppointmentsPage } from '@/page-components/appointments/AppointmentsPage'
@@ -38,7 +38,7 @@ function renderAppointments(search = 'view=week&date=2026-05-04') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <AuthProvider><AppointmentsPage /></AuthProvider>
+      <UserProvider user={{ userId: 'user-1', tenantId: 'tenant-1' }}><AppointmentsPage /></UserProvider>
     </QueryClientProvider>,
   )
 }
@@ -49,7 +49,6 @@ describe('Appointments Calendar', () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(FIXED_NOW)
     localStorage.clear()
-    localStorage.setItem('sc_token', TEST_TOKEN)
   })
 
   afterEach(() => {

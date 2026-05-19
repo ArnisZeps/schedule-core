@@ -6,10 +6,11 @@ export interface AuthPayload {
 }
 
 export function withAuth(request: Request): AuthPayload | null {
-  const header = request.headers.get('authorization');
-  if (!header?.startsWith('Bearer ')) return null;
+  const cookieHeader = request.headers.get('cookie');
+  const match = cookieHeader?.match(/(?:^|;)\s*sc_token=([^;]+)/);
+  const token = match?.[1]?.trim();
+  if (!token) return null;
   try {
-    const token = header.slice(7);
     const payload = verifyToken(token);
     return { userId: payload.sub, tenantId: payload.tenantId };
   } catch {

@@ -219,18 +219,23 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  // Auth signup
+  // Auth signup — sets HttpOnly cookie server-side; body no longer contains token
   http.post(`${BASE}/auth/signup`, async () => {
-    return HttpResponse.json({ token: TEST_TOKEN }, { status: 201 })
+    return HttpResponse.json({ ok: true }, { status: 201 })
   }),
 
-  // Auth login
+  // Auth login — sets HttpOnly cookie server-side; body no longer contains token
   http.post(`${BASE}/auth/login`, async ({ request }) => {
     const body = await request.json() as { email: string; password: string }
     if (body.email === 'owner@test.com' && body.password === 'password') {
-      return HttpResponse.json({ token: TEST_TOKEN })
+      return HttpResponse.json({ ok: true })
     }
     return HttpResponse.json({ message: 'Invalid credentials' }, { status: 401 })
+  }),
+
+  // Auth logout — clears sc_token cookie
+  http.post(`${BASE}/auth/logout`, () => {
+    return new HttpResponse(null, { status: 204 })
   }),
 
   // Services list

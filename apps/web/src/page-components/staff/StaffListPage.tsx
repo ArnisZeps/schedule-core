@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Users } from 'lucide-react'
-import { useStaffList } from '@/hooks/useStaff'
+import { useStaffList, type Staff } from '@/hooks/useStaff'
 import { useLocations } from '@/hooks/useLocations'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -22,13 +22,17 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { LoadingState } from '@/components/ui/LoadingState'
 import { EmptyState } from '@/components/ui/EmptyState'
 
-export function StaffListPage() {
+export function StaffListPage({ initialStaff }: { initialStaff?: Staff[] } = {}) {
   const [includeInactive, setIncludeInactive] = useState(false)
   const [locationFilter, setLocationFilter] = useState('')
   const { data: locations = [] } = useLocations()
   const activeLocations = locations.filter(l => l.isActive)
   const showLocationFilter = activeLocations.length > 1
-  const { data: staff, isLoading } = useStaffList(includeInactive, locationFilter || undefined)
+  const { data: staff, isLoading } = useStaffList(
+    includeInactive,
+    locationFilter || undefined,
+    !includeInactive && !locationFilter ? initialStaff : undefined,
+  )
 
   return (
     <PageShell>

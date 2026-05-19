@@ -8,7 +8,7 @@ Table: `locations` — see [data-model.md](../db/data-model.md).
 
 ## API
 
-All routes require `Authorization: Bearer <token>`. RLS context is set via `SET LOCAL app.current_tenant_id` inside each transaction.
+All routes require the `sc_token` HttpOnly cookie (read by `withAuth.ts`). RLS context is set via `SET LOCAL app.current_tenant_id` inside each transaction.
 
 | File | Responsibility |
 |------|----------------|
@@ -61,15 +61,17 @@ DELETE /api/tenants/:tenantId/locations/:locationId
 
 | Route | File |
 |-------|------|
-| `/locations` | `apps/web/app/(dashboard)/locations/page.tsx` |
+| `/locations` | `apps/web/app/(dashboard)/locations/page.tsx` — async Server Component; pre-fetches active locations and passes as `initialLocations` to `LocationListPage` |
 | `/locations/new` | `apps/web/app/(dashboard)/locations/new/page.tsx` |
 | `/locations/:locationId` | `apps/web/app/(dashboard)/locations/[locationId]/page.tsx` |
+
+`locations/page.tsx` reads `x-tenant-id` from headers injected by middleware, queries active locations via `withTenantContext`, and passes the result as `initialData` to React Query in `LocationListPage`. This eliminates the loading skeleton on first render. When the user toggles "Show deactivated", `useLocations(true)` issues a separate network fetch (no SSR initial data for that variant).
 
 ### Hooks
 
 ```ts
 // apps/web/src/hooks/useLocations.ts
-function useLocations(includeInactive?: boolean): UseQueryResult<Location[]>
+function useLocations(includeInactive?: boolean, initialData?: Location[]): UseQueryResult<Location[]>
 function useLocation(locationId: string): UseQueryResult<Location>
 function useCreateLocation(): UseMutationResult<Location, ApiError, CreateLocationInput>
 function useUpdateLocation(): UseMutationResult<Location, ApiError, { locationId: string } & UpdateLocationInput>

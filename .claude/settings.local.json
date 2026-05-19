@@ -41,7 +41,9 @@
       "Bash(Select-Object FullName, PSIsContainer)",
       "Bash(Sort-Object FullName)",
       "Bash(Format-Table -AutoSize)",
-      "Bash(npx vitest *)"
+      "Bash(npx vitest *)",
+      "Bash(ls node_modules/jose)",
+      "Bash(ls node_modules/.pnpm/jose*/node_modules/jose)"
     ]
   }
 }

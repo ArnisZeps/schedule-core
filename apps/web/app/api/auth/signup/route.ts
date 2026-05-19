@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { db } from '@/lib/server/db';
 import { hashPassword } from '@/lib/server/password';
-import { signToken } from '@/lib/server/jwt';
+import { signToken, getTokenMaxAge } from '@/lib/server/jwt';
 
 const RESERVED_SLUGS = new Set([
   'api', 'auth', 'admin', 'login', 'logout', 'signup', 'dashboard',
@@ -68,7 +68,15 @@ export async function POST(request: Request) {
 
     await client.query('COMMIT');
     const token = signToken({ sub: userId, tenantId });
-    return Response.json({ token }, { status: 201 });
+    const maxAge = getTokenMaxAge();
+    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 201,
+      headers: {
+        'Content-Type': 'application/json',
+        'Set-Cookie': `sc_token=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAge}${secure}`,
+      },
+    });
   } finally {
     client.release();
   }

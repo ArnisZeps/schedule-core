@@ -3,8 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRouter } from 'next/navigation'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AuthProvider } from '../../providers/AuthProvider'
-import { server, TEST_TOKEN } from './handlers'
+import { server } from './handlers'
 import { http, HttpResponse } from 'msw'
 import { RegisterPage } from '@/page-components/RegisterPage'
 
@@ -31,13 +30,12 @@ function renderRegister() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <AuthProvider><RegisterPage /></AuthProvider>
+      <RegisterPage />
     </QueryClientProvider>,
   )
 }
 
 describe('Register page', () => {
-  beforeEach(() => localStorage.clear())
 
   it('renders all four fields', () => {
     renderRegister()
@@ -85,7 +83,7 @@ describe('Register page', () => {
     server.use(
       http.post('/api/auth/signup', async () => {
         await signupPaused
-        return HttpResponse.json({ token: TEST_TOKEN }, { status: 201 })
+        return HttpResponse.json({ ok: true }, { status: 201 })
       }),
     )
 
@@ -162,15 +160,6 @@ describe('Register page', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/this url is reserved/i)).toBeInTheDocument()
-    })
-  })
-
-  it('redirects authenticated user to /services', async () => {
-    localStorage.setItem('sc_token', TEST_TOKEN)
-    renderRegister()
-
-    await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/services')
     })
   })
 

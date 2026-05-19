@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRouter, useParams } from 'next/navigation'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AuthProvider } from '../../providers/AuthProvider'
+import { UserProvider } from '@/components/UserProvider'
 import { server } from './handlers'
 import { http, HttpResponse } from 'msw'
 import { LocationListPage } from '@/page-components/locations/LocationListPage'
@@ -30,14 +30,13 @@ beforeEach(() => {
   mockPush = vi.fn()
   vi.mocked(useRouter).mockReturnValue({ push: mockPush, replace: vi.fn(), back: vi.fn() } as any)
   localStorage.clear()
-  localStorage.setItem('sc_token', TEST_TOKEN)
 })
 
 function renderPage(component: React.ReactElement) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <AuthProvider>{component}</AuthProvider>
+      <UserProvider user={{ userId: 'user-1', tenantId: 'tenant-1' }}>{component}</UserProvider>
     </QueryClientProvider>,
   )
 }
