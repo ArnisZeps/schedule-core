@@ -22,7 +22,7 @@ import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import type { Booking } from '@/hooks/useBookings'
-import { useCancelBooking, useRescheduleBooking } from '@/hooks/useBookings'
+import { useCancelBooking, useConfirmBooking, useRescheduleBooking } from '@/hooks/useBookings'
 import type { Service } from '@/hooks/useServices'
 import type { Location } from '@/hooks/useLocations'
 import { ApiError } from '@/lib/api'
@@ -66,12 +66,25 @@ export function AppointmentDetailDialog({
   const [newEnd, setNewEnd] = useState(toDatetimeLocal(booking.endAt))
 
   const cancelBooking = useCancelBooking()
+  const confirmBooking = useConfirmBooking()
   const rescheduleBooking = useRescheduleBooking()
 
   const service = services.find(s => s.id === booking.serviceId)
   const location = locations?.find(l => l.id === booking.locationId)
   const start = new Date(booking.startAt)
   const end = new Date(booking.endAt)
+
+  function handleConfirm() {
+    confirmBooking.mutate(booking.id, {
+      onSuccess: () => {
+        onClose()
+        toast.success('Appointment confirmed')
+      },
+      onError: err => {
+        setCancelError(err instanceof ApiError ? err.message : 'Failed to confirm')
+      },
+    })
+  }
 
   function handleConfirmCancel() {
     setCancelError('')
@@ -165,15 +178,27 @@ export function AppointmentDetailDialog({
             <p className="text-sm text-destructive">{cancelError}</p>
           )}
 
-          {booking.status !== 'cancelled' && (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setCancelAlertOpen(true)}
-            >
-              Cancel appointment
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {booking.status === 'pending' && (
+              <Button
+                size="sm"
+                onClick={handleConfirm}
+                disabled={confirmBooking.isPending}
+              >
+                Confirm appointment
+              </Button>
+            )}
+
+            {booking.status !== 'cancelled' && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setCancelAlertOpen(true)}
+              >
+                Cancel appointment
+              </Button>
+            )}
+          </div>
 
           {/* Reschedule section */}
           <div className="border-t pt-4 space-y-3">

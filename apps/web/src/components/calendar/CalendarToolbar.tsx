@@ -12,13 +12,16 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import type { Service } from '@/hooks/useServices'
+import type { Staff } from '@/hooks/useStaff'
 
 interface CalendarToolbarProps {
   services: Service[]
+  staffList?: Staff[]
+  selectedStaffId?: string
   onNewAppointment?: () => void
 }
 
-export function CalendarToolbar({ services, onNewAppointment }: CalendarToolbarProps) {
+export function CalendarToolbar({ services, staffList = [], selectedStaffId, onNewAppointment }: CalendarToolbarProps) {
   const searchParams = useSearchParams()
   const router = useRouter()
   const isMobile = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches
@@ -99,6 +102,23 @@ export function CalendarToolbar({ services, onNewAppointment }: CalendarToolbarP
           <SelectContent>
             <SelectItem value="all">All services</SelectItem>
             {services.map(s => (
+              <SelectItem key={s.id} value={s.id}>
+                {s.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={selectedStaffId ?? 'all'}
+          onValueChange={val => setParam('staffId', val === 'all' ? null : val)}
+        >
+          <SelectTrigger className="flex-1 md:w-44 md:flex-none" aria-label="Staff">
+            <SelectValue placeholder="All staff" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All staff</SelectItem>
+            {staffList.map(s => (
               <SelectItem key={s.id} value={s.id}>
                 {s.name}
               </SelectItem>

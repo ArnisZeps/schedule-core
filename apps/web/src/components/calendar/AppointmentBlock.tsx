@@ -28,10 +28,13 @@ export function AppointmentBlock({ booking, colIndex, colCount, onClick }: Appoi
   const width = `calc(${(1 / colCount) * 100}% - 2px)`
   const showTimeRange = durationMinutes >= 30
 
+  const isPast = new Date(booking.endAt) < new Date() && booking.status !== 'cancelled'
+
   return (
     <button
       data-booking-id={booking.id}
-      className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-xs font-medium cursor-pointer hover:opacity-90 transition-opacity ${STATUS_CLASSES[booking.status]}`}
+      data-testid={`booking-block-${booking.id}`}
+      className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-xs font-medium cursor-pointer hover:opacity-90 transition-opacity ${STATUS_CLASSES[booking.status]}${isPast ? ' opacity-50' : ''}`}
       style={{ top, height, left, width }}
       onMouseDown={e => e.stopPropagation()}
       onClick={() => onClick(booking)}
