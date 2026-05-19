@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
 
-const AUTH_PAGES = new Set(['/login', '/register'])
+const AUTH_PAGES = new Set(['/', '/login', '/register'])
 
 async function resolveUser(token: string | undefined) {
   if (!token) return null
@@ -40,6 +40,7 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/(services|locations|staff|appointments)(.*)',
+    '/',
     '/login',
     '/register',
   ],
