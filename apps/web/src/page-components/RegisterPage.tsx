@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod/v3'
-import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,7 +17,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { UnauthenticatedOnly } from '@/components/UnauthenticatedOnly'
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? '/api'
 
@@ -42,7 +40,6 @@ function deriveSlug(name: string): string {
 }
 
 export function RegisterPage() {
-  const { login } = useAuth()
   const router = useRouter()
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false)
 
@@ -59,8 +56,6 @@ export function RegisterPage() {
     })
 
     if (res.ok) {
-      const { token } = await res.json()
-      login(token)
       router.replace('/services')
       return
     }
@@ -85,106 +80,104 @@ export function RegisterPage() {
   }
 
   return (
-    <UnauthenticatedOnly redirectTo="/services">
-      <div className="min-h-screen flex items-center justify-center bg-muted/30">
-        <Card className="w-full max-w-sm">
-          <CardHeader>
-            <CardTitle className="text-xl">Create your account</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="businessName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Business name</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Acme Barber Shop"
-                          {...field}
-                          onChange={(e) => {
-                            field.onChange(e)
-                            if (!slugManuallyEdited) {
-                              form.setValue('slug', deriveSlug(e.target.value))
-                            }
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="slug"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Slug</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="acme-barber-shop"
-                          {...field}
-                          onChange={(e) => {
-                            setSlugManuallyEdited(true)
-                            field.onChange(e)
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input type="email" placeholder="you@example.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <Input type="password" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {form.formState.errors.root && (
-                  <p className="text-sm text-destructive">
-                    {form.formState.errors.root.message}
-                  </p>
+    <div className="min-h-screen flex items-center justify-center bg-muted/30">
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle className="text-xl">Create your account</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="businessName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Business name</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Acme Barber Shop"
+                        {...field}
+                        onChange={(e) => {
+                          field.onChange(e)
+                          if (!slugManuallyEdited) {
+                            form.setValue('slug', deriveSlug(e.target.value))
+                          }
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={form.formState.isSubmitting}
-                >
-                  {form.formState.isSubmitting ? 'Creating account…' : 'Create account'}
-                </Button>
-                <p className="text-center text-sm text-muted-foreground">
-                  Already have an account?{' '}
-                  <Link href="/login" className="underline underline-offset-4">
-                    Log in
-                  </Link>
+              />
+              <FormField
+                control={form.control}
+                name="slug"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Slug</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="acme-barber-shop"
+                        {...field}
+                        onChange={(e) => {
+                          setSlugManuallyEdited(true)
+                          field.onChange(e)
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="you@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {form.formState.errors.root && (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.root.message}
                 </p>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      </div>
-    </UnauthenticatedOnly>
+              )}
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={form.formState.isSubmitting}
+              >
+                {form.formState.isSubmitting ? 'Creating account…' : 'Create account'}
+              </Button>
+              <p className="text-center text-sm text-muted-foreground">
+                Already have an account?{' '}
+                <Link href="/login" className="underline underline-offset-4">
+                  Log in
+                </Link>
+              </p>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </div>
   )
 }

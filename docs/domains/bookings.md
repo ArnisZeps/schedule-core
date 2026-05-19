@@ -8,7 +8,7 @@ Table: `bookings` — see [data-model.md](../db/data-model.md).
 
 ## API — Owner routes
 
-All owner routes require `Authorization: Bearer <token>`. `req.auth.tenantId` must match `:tenantId` → 403. Queries run inside `withTenantContext`.
+All owner routes require the `sc_token` HttpOnly cookie (read by `withAuth.ts`). `req.auth.tenantId` must match `:tenantId` → 403. Queries run inside `withTenantContext`.
 
 | File | Responsibility |
 |------|----------------|
@@ -176,7 +176,9 @@ Union of slots across all active staff assigned to `serviceId` at `locationId`. 
 
 | Route | File |
 |-------|------|
-| `/appointments` | `apps/web/app/(dashboard)/appointments/page.tsx` |
+| `/appointments` | `apps/web/app/(dashboard)/appointments/page.tsx` — async Server Component; pre-fetches bookings, services, staff, and locations for the initial view |
+
+`appointments/page.tsx` reads `x-tenant-id` from headers injected by middleware and the `view`/`date` search params to compute the date range. It runs four parallel queries inside a single `withTenantContext` transaction and passes the results as `initialBookings`, `initialServices`, `initialStaff`, `initialLocations` to `AppointmentsPage`. The WeekView renders immediately on first load with no loading skeleton.
 
 ### Hooks
 
@@ -191,7 +193,7 @@ interface Booking {
   notes: string | null; createdAt: string
 }
 
-function useBookings(params: { from: string; to: string; serviceId?: string }): UseQueryResult<Booking[]>
+function useBookings(params: { from: string; to: string; serviceId?: string; initialData?: Booking[] }): UseQueryResult<Booking[]>
 function useUpcomingBookings(params: { serviceId?: string }): UseQueryResult<Booking[]>
 function useCancelBooking(): UseMutationResult<Booking, ApiError, string>
 function useRescheduleBooking(): UseMutationResult<Booking, ApiError, { id: string; startAt: string; endAt: string }>
@@ -220,7 +222,7 @@ All mutations call `queryClient.invalidateQueries({ queryKey: ['bookings'] })` o
 
 | File | Responsibility |
 |------|----------------|
-| `apps/web/src/page-components/AppointmentsPage.tsx` | Reads URL search params (`view`, `date`, `serviceId`); fetches bookings + services; composes toolbar and active view; owns panel open state |
+| `apps/web/src/page-components/appointments/AppointmentsPage.tsx` | Client Component. Accepts optional `initialBookings`, `initialServices`, `initialStaff`, `initialLocations` props (passed from Server Component page on first load). Reads URL search params; composes toolbar and active view; owns panel open state. |
 | `apps/web/src/components/calendar/CalendarToolbar.tsx` | Prev/next/today; week/day/list toggle; service filter; "New appointment" button |
 | `apps/web/src/components/calendar/WeekView.tsx` | 7-column CSS Grid; renders TimeGutter + DayColumns |
 | `apps/web/src/components/calendar/DayView.tsx` | Single-column; renders TimeGutter + one DayColumn |

@@ -8,7 +8,7 @@ Tables: `staff`, `staff_services`, `staff_schedules`, `staff_schedule_overrides`
 
 ## API
 
-All routes require `Authorization: Bearer <token>`. RLS context is set via `SET LOCAL app.current_tenant_id` inside each transaction.
+All routes require the `sc_token` HttpOnly cookie (read by `withAuth.ts`). RLS context is set via `SET LOCAL app.current_tenant_id` inside each transaction.
 
 ### Staff CRUD
 
@@ -152,9 +152,11 @@ DELETE /api/tenants/:tenantId/staff/:staffId/overrides/:overrideId
 
 | Route | File |
 |-------|------|
-| `/staff` | `apps/web/app/(dashboard)/staff/page.tsx` |
+| `/staff` | `apps/web/app/(dashboard)/staff/page.tsx` — async Server Component; pre-fetches active staff and passes as `initialStaff` to `StaffListPage` |
 | `/staff/new` | `apps/web/app/(dashboard)/staff/new/page.tsx` |
 | `/staff/:staffId` | `apps/web/app/(dashboard)/staff/[staffId]/page.tsx` |
+
+`staff/page.tsx` reads `x-tenant-id` from headers injected by middleware, queries active staff via `withTenantContext`, and passes the result as `initialData` to React Query in `StaffListPage`. Toggling the inactive filter or location filter fetches fresh data from the API.
 
 ### Hooks
 
@@ -162,7 +164,7 @@ DELETE /api/tenants/:tenantId/staff/:staffId/overrides/:overrideId
 // apps/web/src/hooks/useStaff.ts
 
 // Staff CRUD
-function useStaffList(includeInactive?: boolean): UseQueryResult<Staff[]>
+function useStaffList(includeInactive?: boolean, locationId?: string, initialData?: Staff[]): UseQueryResult<Staff[]>
 function useStaff(staffId: string): UseQueryResult<Staff>
 function useCreateStaff(): UseMutationResult<Staff, ApiError, CreateStaffInput>
 function useUpdateStaff(): UseMutationResult<Staff, ApiError, { staffId: string } & UpdateStaffInput>

@@ -25,7 +25,7 @@ export interface UpdateLocationInput {
   isActive?: boolean
 }
 
-export function useLocations(includeInactive?: boolean) {
+export function useLocations(includeInactive?: boolean, initialData?: Location[]) {
   const { user } = useAuth()
   const tenantId = user!.tenantId
   return useQuery<Location[]>({
@@ -34,6 +34,7 @@ export function useLocations(includeInactive?: boolean) {
       const qs = includeInactive ? '?includeInactive=true' : ''
       return apiFetch(`/tenants/${tenantId}/locations${qs}`)
     },
+    ...(initialData ? { initialData, initialDataUpdatedAt: Date.now(), staleTime: 5 * 60 * 1000 } : {}),
   })
 }
 

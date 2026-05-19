@@ -16,7 +16,7 @@ import {
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { logout, user } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const initials = user?.email?.charAt(0).toUpperCase() ?? 'U'
+  const initials = 'U'
 
   return (
     <div className="flex h-screen overflow-hidden">

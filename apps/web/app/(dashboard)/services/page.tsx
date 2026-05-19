@@ -1,7 +1,32 @@
-'use client'
-
+import { headers } from 'next/headers'
+import { db } from '@/lib/server/db'
+import { withTenantContext } from '@/lib/server/withTenantContext'
 import { ServiceListPage } from '@/page-components/services/ServiceListPage'
 
-export default function Page() {
-  return <ServiceListPage />
+type ServiceRow = {
+  id: string
+  tenant_id: string
+  name: string
+  description: string | null
+  duration_minutes: number
+}
+
+export default async function Page() {
+  const h = await headers()
+  const tenantId = h.get('x-tenant-id')!
+
+  const services = await withTenantContext(db, tenantId, async (client) => {
+    const { rows } = await client.query<ServiceRow>(
+      'SELECT id, tenant_id, name, description, duration_minutes FROM services ORDER BY created_at',
+    )
+    return rows.map(r => ({
+      id: r.id,
+      tenantId: r.tenant_id,
+      name: r.name,
+      description: r.description ?? undefined,
+      durationMinutes: r.duration_minutes,
+    }))
+  })
+
+  return <ServiceListPage initialServices={services} />
 }

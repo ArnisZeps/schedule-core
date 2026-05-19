@@ -19,15 +19,16 @@ export interface Booking {
   createdAt: string
 }
 
-export function useBookings(params: { from: string; to: string; serviceId?: string }) {
+export function useBookings(params: { from: string; to: string; serviceId?: string; initialData?: Booking[] }) {
   const { user } = useAuth()
   const tenantId = user!.tenantId
-  const { from, to, serviceId } = params
+  const { from, to, serviceId, initialData } = params
   const search = new URLSearchParams({ from, to })
   if (serviceId) search.set('serviceId', serviceId)
   return useQuery<Booking[]>({
     queryKey: ['bookings', tenantId, { from, to, serviceId }],
     queryFn: () => apiFetch(`/tenants/${tenantId}/bookings?${search}`),
+    ...(initialData ? { initialData, initialDataUpdatedAt: Date.now(), staleTime: 30_000 } : {}),
   })
 }
 

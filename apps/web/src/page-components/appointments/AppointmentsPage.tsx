@@ -3,10 +3,10 @@
 import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { format, parseISO, startOfWeek, endOfWeek, addDays } from 'date-fns'
-import { useServices } from '@/hooks/useServices'
+import { useServices, type Service } from '@/hooks/useServices'
 import { useBookings, type Booking } from '@/hooks/useBookings'
-import { useLocations } from '@/hooks/useLocations'
-import { useStaffList } from '@/hooks/useStaff'
+import { useLocations, type Location } from '@/hooks/useLocations'
+import { useStaffList, type Staff } from '@/hooks/useStaff'
 import { CalendarToolbar } from '@/components/calendar/CalendarToolbar'
 import { WeekView } from '@/components/calendar/WeekView'
 import { DayView } from '@/components/calendar/DayView'
@@ -16,7 +16,19 @@ import { NewAppointmentPanel } from '@/components/calendar/NewAppointmentPanel'
 import { LoadingState } from '@/components/ui/LoadingState'
 import { ErrorState } from '@/components/ui/ErrorState'
 
-export function AppointmentsPage() {
+interface AppointmentsPageProps {
+  initialBookings?: Booking[]
+  initialServices?: Service[]
+  initialStaff?: Staff[]
+  initialLocations?: Location[]
+}
+
+export function AppointmentsPage({
+  initialBookings,
+  initialServices,
+  initialStaff,
+  initialLocations,
+}: AppointmentsPageProps = {}) {
   const params = useSearchParams()
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [panelOpen, setPanelOpen] = useState(false)
@@ -29,9 +41,9 @@ export function AppointmentsPage() {
   const serviceId = params.get('serviceId') || undefined
   const staffId = params.get('staffId') || undefined
 
-  const { data: services = [] } = useServices()
-  const { data: locations = [] } = useLocations(true)
-  const { data: staffList = [] } = useStaffList()
+  const { data: services = [] } = useServices(initialServices)
+  const { data: locations = [] } = useLocations(true, initialLocations)
+  const { data: staffList = [] } = useStaffList(undefined, undefined, initialStaff)
 
   const date = parseISO(dateStr)
   const from =
@@ -48,7 +60,7 @@ export function AppointmentsPage() {
     isLoading: bookingsLoading,
     isError: bookingsError,
     refetch,
-  } = useBookings({ from, to, serviceId })
+  } = useBookings({ from, to, serviceId, initialData: initialBookings })
 
   const bookings = staffId ? rawBookings.filter(b => b.staffId === staffId) : rawBookings
 

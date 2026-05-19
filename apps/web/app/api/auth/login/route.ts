@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { db } from '@/lib/server/db';
 import { verifyPassword } from '@/lib/server/password';
-import { signToken } from '@/lib/server/jwt';
+import { signToken, getTokenMaxAge } from '@/lib/server/jwt';
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -29,7 +29,15 @@ export async function POST(request: Request) {
 
     const { id: userId, tenant_id: tenantId } = rows[0];
     const token = signToken({ sub: userId, tenantId });
-    return Response.json({ token }, { status: 200 });
+    const maxAge = getTokenMaxAge();
+    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Set-Cookie': `sc_token=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAge}${secure}`,
+      },
+    });
   } finally {
     client.release();
   }

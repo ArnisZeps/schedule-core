@@ -3,7 +3,6 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRouter } from 'next/navigation'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AuthProvider } from '../../providers/AuthProvider'
 import { server } from './handlers'
 import { http, HttpResponse } from 'msw'
 import { LoginPage } from '@/page-components/LoginPage'
@@ -33,13 +32,12 @@ function renderLogin() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <AuthProvider><LoginPage /></AuthProvider>
+      <LoginPage />
     </QueryClientProvider>,
   )
 }
 
 describe('Login page', () => {
-  beforeEach(() => localStorage.clear())
 
   it('happy path: valid credentials redirect to /services', async () => {
     const user = userEvent.setup()

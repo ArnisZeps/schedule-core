@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { PackageOpen, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useServices, useDeleteService } from '@/hooks/useServices'
+import { useServices, useDeleteService, type Service } from '@/hooks/useServices'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -37,8 +37,8 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { LoadingState } from '@/components/ui/LoadingState'
 import { EmptyState } from '@/components/ui/EmptyState'
 
-export function ServiceListPage() {
-  const { data: services, isLoading } = useServices()
+export function ServiceListPage({ initialServices }: { initialServices?: Service[] } = {}) {
+  const { data: services, isLoading } = useServices(initialServices)
   const deleteMutation = useDeleteService()
   const router = useRouter()
   const [deleteId, setDeleteId] = useState<string | null>(null)

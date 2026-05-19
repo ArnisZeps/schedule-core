@@ -1,11 +1,13 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+// The dashboard auth guard is implemented in Next.js middleware (Edge runtime) and cannot be
+// tested with React Testing Library. The middleware redirects unauthenticated requests to /login
+// before the page renders. The UserProvider renders the authenticated dashboard for valid users.
+
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { useRouter } from 'next/navigation'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AuthProvider } from '../../providers/AuthProvider'
-import DashboardLayout from '../../app/(dashboard)/layout'
+import { UserProvider } from '@/components/UserProvider'
 import { ServiceListPage } from '@/page-components/services/ServiceListPage'
-import { TEST_TOKEN } from './handlers'
 
 vi.mock('next/navigation', () => ({
   useRouter: vi.fn(),
@@ -19,41 +21,23 @@ vi.mock('next/link', () => ({
     <a href={String(href)} {...props as object}>{children}</a>,
 }))
 
-let mockPush: ReturnType<typeof vi.fn>
-let mockReplace: ReturnType<typeof vi.fn>
-
 beforeEach(() => {
-  mockPush = vi.fn()
-  mockReplace = vi.fn()
-  vi.mocked(useRouter).mockReturnValue({ push: mockPush, replace: mockReplace, back: vi.fn() } as any)
+  vi.mocked(useRouter).mockReturnValue({ push: vi.fn(), replace: vi.fn(), back: vi.fn() } as any)
 })
 
 function renderDashboard() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <AuthProvider>
-        <DashboardLayout>
-          <ServiceListPage />
-        </DashboardLayout>
-      </AuthProvider>
+      <UserProvider user={{ userId: 'user-1', tenantId: 'tenant-1' }}>
+        <ServiceListPage />
+      </UserProvider>
     </QueryClientProvider>,
   )
 }
 
 describe('Auth guard', () => {
-  beforeEach(() => localStorage.clear())
-
-  it('redirects unauthenticated user from /services to /login', async () => {
-    renderDashboard()
-
-    await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/login')
-    })
-  })
-
-  it('allows authenticated user to access /services', async () => {
-    localStorage.setItem('sc_token', TEST_TOKEN)
+  it('renders dashboard page when UserProvider supplies a valid user', async () => {
     renderDashboard()
 
     await waitFor(() => {

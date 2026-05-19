@@ -8,19 +8,16 @@ export class ApiError extends Error {
 }
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = localStorage.getItem('sc_token')
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(init?.headers as Record<string, string>),
   }
-  if (token) headers['Authorization'] = `Bearer ${token}`
 
-  const res = await fetch(`${BASE_URL}${path}`, { ...init, headers })
+  const res = await fetch(`${BASE_URL}${path}`, { ...init, headers, credentials: 'include' })
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ message: res.statusText }))
     if (res.status === 401) {
-      localStorage.removeItem('sc_token')
       window.location.replace('/login')
     }
     throw new ApiError(res.status, body.message ?? res.statusText)

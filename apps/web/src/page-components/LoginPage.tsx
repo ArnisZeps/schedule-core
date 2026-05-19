@@ -6,7 +6,6 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod/v3'
 import { apiFetch, ApiError } from '@/lib/api'
-import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,7 +17,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { UnauthenticatedOnly } from '@/components/UnauthenticatedOnly'
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email address'),
@@ -28,7 +26,6 @@ const loginSchema = z.object({
 type LoginValues = z.infer<typeof loginSchema>
 
 export function LoginPage() {
-  const { login } = useAuth()
   const router = useRouter()
 
   const form = useForm<LoginValues>({
@@ -38,11 +35,10 @@ export function LoginPage() {
 
   async function onSubmit(values: LoginValues) {
     try {
-      const { token } = await apiFetch<{ token: string }>('/auth/login', {
+      await apiFetch<{ ok: true }>('/auth/login', {
         method: 'POST',
         body: JSON.stringify(values),
       })
-      login(token, values.email)
       router.replace('/services')
     } catch (err) {
       form.setError('root', {
@@ -52,7 +48,6 @@ export function LoginPage() {
   }
 
   return (
-    <UnauthenticatedOnly redirectTo="/services">
     <div className="min-h-screen flex items-center justify-center bg-muted/30">
       <Card className="w-full max-w-sm">
         <CardHeader>
@@ -110,6 +105,5 @@ export function LoginPage() {
         </CardContent>
       </Card>
     </div>
-    </UnauthenticatedOnly>
   )
 }

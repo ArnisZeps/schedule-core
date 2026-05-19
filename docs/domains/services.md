@@ -8,7 +8,7 @@ Table: `services` — see [data-model.md](../db/data-model.md).
 
 ## API
 
-All routes require `Authorization: Bearer <token>`. Authorization rule: `req.auth.tenantId === :tenantId` → 403. Service not found or belonging to another tenant → 404.
+All routes require the `sc_token` HttpOnly cookie (read by `withAuth.ts`). Authorization rule: `req.auth.tenantId === :tenantId` → 403. Service not found or belonging to another tenant → 404.
 
 | File | Responsibility |
 |------|----------------|
@@ -85,15 +85,17 @@ All fields optional; at least one must be present. Pass `null` for `description`
 
 | Route | File |
 |-------|------|
-| `/services` | `apps/web/app/(dashboard)/services/page.tsx` |
+| `/services` | `apps/web/app/(dashboard)/services/page.tsx` — async Server Component; pre-fetches service list and passes as `initialServices` to `ServiceListPage` |
 | `/services/new` | `apps/web/app/(dashboard)/services/new/page.tsx` |
 | `/services/:serviceId` | `apps/web/app/(dashboard)/services/[serviceId]/page.tsx` |
+
+`services/page.tsx` reads `x-tenant-id` from headers injected by middleware, queries the DB via `withTenantContext`, and passes the result as `initialData` to React Query in `ServiceListPage`. This eliminates the loading skeleton on first render.
 
 ### Hooks
 
 ```ts
 // apps/web/src/hooks/useServices.ts
-function useServices(): UseQueryResult<Service[]>
+function useServices(initialData?: Service[]): UseQueryResult<Service[]>
 function useCreateService(): UseMutationResult<Service, ApiError, CreateServiceInput>
 function useUpdateService(): UseMutationResult<Service, ApiError, { serviceId: string } & UpdateServiceInput>
 function useDeleteService(): UseMutationResult<void, ApiError, { serviceId: string }>
