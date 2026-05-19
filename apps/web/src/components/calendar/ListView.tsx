@@ -29,15 +29,15 @@ const STATUS_LABEL: Record<Booking['status'], string> = {
 
 interface ListViewProps {
   serviceId?: string
+  staffId?: string
   services: Service[]
   onBookingClick: (booking: Booking) => void
 }
 
-export function ListView({ serviceId, services, onBookingClick }: ListViewProps) {
-  const { data: bookings, isLoading, isError, refetch } = useUpcomingBookings({ serviceId })
+export function ListView({ serviceId, staffId, services, onBookingClick }: ListViewProps) {
+  const { data: allBookings, isLoading, isError, refetch } = useUpcomingBookings({ serviceId })
+  const bookings = staffId ? allBookings?.filter(b => b.staffId === staffId) : allBookings
 
-  console.log(bookings)
-  
   if (isLoading) return <LoadingState />
   if (isError) return <ErrorState message="Failed to load appointments" onRetry={refetch} />
 

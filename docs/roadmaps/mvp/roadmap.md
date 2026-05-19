@@ -1,5 +1,6 @@
 **Date:** 2026-04-15
-**Status:** Approved for MVP
+**Completed:** 2026-05-19
+**Status:** MVP Complete — project has moved beyond MVP
 
 ## Goal
 
@@ -28,7 +29,7 @@ Stack: pnpm monorepo, Next.js App Router (`apps/web`, including API layer as Rou
 - [x] **M6e - Next.js migration**: Migrate `apps/web` from Vite+React SPA to Next.js App Router. Delivers the marketing home page (SSR, Google-indexable) as the immediate SEO win. Establishes the `(public)` route group that M7 builds on. Dashboard behaviour is unchanged — all existing routes run as Client Components. See ADR-010.
 - [x] **M6f - API consolidation**: Move all Express API endpoints (`apps/api`) into Next.js Route Handlers under `apps/web/app/api/`. Eliminates the separate Express process, removes CORS configuration, and co-locates API code with the UI that consumes it. Foundation for M7 (public booking API lives alongside the booking page). See ADR-011.
 - [x] **M7 - Booking web widget**: Build the client-facing booking UI — optional location selection (shown only for multi-location businesses), service selection, staff selection (specific person or "any available"), date/time picker showing available slots based on selected staff, client details form, confirmation screen. Calls the public endpoint from M4b. No client account creation required. Routed at `/book/:tenantSlug` in the `(public)` route group (Server Component, SSR). M8 and M9 handle distribution.
-- [ ] **M8 - Registration page**: Public sign-up page for new business owners to create an account. Routed at `/register` in the `(public)` route group. Form collects business name, slug (auto-derived from business name but editable), email, and password. Calls the existing M3 auth API. On success, redirects to the dashboard. Includes link to the login page.
+- [x] **M8 - Registration page**: Public sign-up page for new business owners to create an account. Routed at `/register` in the `(public)` route group. Form collects business name, slug (auto-derived from business name but editable), email, and password. Calls the existing M3 auth API. On success, redirects to the dashboard. Includes link to the login page.
 
 ## Postponed (not a part of MVP)
 - [ ] **M9 - Hosted booking page**: Give M7's UI a proper public URL on a dedicated per-tenant subdomain (e.g. `acme.schedulecore.com`). This is where the domain/routing strategy gets decided and implemented.

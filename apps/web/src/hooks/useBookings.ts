@@ -58,6 +58,20 @@ export function useCancelBooking() {
   })
 }
 
+export function useConfirmBooking() {
+  const { user } = useAuth()
+  const qc = useQueryClient()
+  const tenantId = user!.tenantId
+  return useMutation<Booking, ApiError, string>({
+    mutationFn: (bookingId: string) =>
+      apiFetch<Booking>(`/tenants/${tenantId}/bookings/${bookingId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'confirmed' }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['bookings'] }),
+  })
+}
+
 export function useRescheduleBooking() {
   const { user } = useAuth()
   const qc = useQueryClient()

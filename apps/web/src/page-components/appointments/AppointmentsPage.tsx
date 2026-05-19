@@ -6,6 +6,7 @@ import { format, parseISO, startOfWeek, endOfWeek, addDays } from 'date-fns'
 import { useServices } from '@/hooks/useServices'
 import { useBookings, type Booking } from '@/hooks/useBookings'
 import { useLocations } from '@/hooks/useLocations'
+import { useStaffList } from '@/hooks/useStaff'
 import { CalendarToolbar } from '@/components/calendar/CalendarToolbar'
 import { WeekView } from '@/components/calendar/WeekView'
 import { DayView } from '@/components/calendar/DayView'
@@ -26,9 +27,11 @@ export function AppointmentsPage() {
   const view = (params.get('view') || (isMobile ? 'day' : 'week')) as 'week' | 'day' | 'list'
   const dateStr = params.get('date') || format(new Date(), 'yyyy-MM-dd')
   const serviceId = params.get('serviceId') || undefined
+  const staffId = params.get('staffId') || undefined
 
   const { data: services = [] } = useServices()
   const { data: locations = [] } = useLocations(true)
+  const { data: staffList = [] } = useStaffList()
 
   const date = parseISO(dateStr)
   const from =
@@ -41,11 +44,13 @@ export function AppointmentsPage() {
       : addDays(date, 1).toISOString()
 
   const {
-    data: bookings = [],
+    data: rawBookings = [],
     isLoading: bookingsLoading,
     isError: bookingsError,
     refetch,
   } = useBookings({ from, to, serviceId })
+
+  const bookings = staffId ? rawBookings.filter(b => b.staffId === staffId) : rawBookings
 
   function handleTimeSelect(startAt: Date, endAt: Date) {
     setPrefillStart(startAt)
@@ -70,11 +75,17 @@ export function AppointmentsPage() {
       className="-m-6 flex flex-col overflow-hidden relative"
       style={{ height: 'calc(100vh - 3.5rem)' }}
     >
-      <CalendarToolbar services={services} onNewAppointment={handleNewAppointment} />
+      <CalendarToolbar
+        services={services}
+        staffList={staffList}
+        selectedStaffId={staffId}
+        onNewAppointment={handleNewAppointment}
+      />
 
       {view === 'list' ? (
         <ListView
           serviceId={serviceId}
+          staffId={staffId}
           services={services}
           onBookingClick={setSelectedBooking}
         />
