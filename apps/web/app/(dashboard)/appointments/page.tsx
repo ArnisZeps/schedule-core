@@ -43,7 +43,7 @@ export default async function Page({
   })
 
   return (
-    <Suspense fallback={<>Loading...</>}>
+    <Suspense fallback={null}>
       <AppointmentsPage
         initialServices={services.map(r => ({
           id: r.id,
