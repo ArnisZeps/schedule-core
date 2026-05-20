@@ -194,6 +194,7 @@ interface Booking {
 }
 
 function useBookings(params: { from: string; to: string; serviceId?: string; initialData?: Booking[] }): UseQueryResult<Booking[]>
+function useBookingsPrefetch(params: { view: 'week' | 'day' | 'list'; from: string; to: string; serviceId?: string }): void
 function useUpcomingBookings(params: { serviceId?: string }): UseQueryResult<Booking[]>
 function useCancelBooking(): UseMutationResult<Booking, ApiError, string>
 function useRescheduleBooking(): UseMutationResult<Booking, ApiError, { id: string; startAt: string; endAt: string }>

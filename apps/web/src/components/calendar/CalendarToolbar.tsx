@@ -19,9 +19,10 @@ interface CalendarToolbarProps {
   staffList?: Staff[]
   selectedStaffId?: string
   onNewAppointment?: () => void
+  startNavigation?: (fn: () => void) => void
 }
 
-export function CalendarToolbar({ services, staffList = [], selectedStaffId, onNewAppointment }: CalendarToolbarProps) {
+export function CalendarToolbar({ services, staffList = [], selectedStaffId, onNewAppointment, startNavigation }: CalendarToolbarProps) {
   const searchParams = useSearchParams()
   const router = useRouter()
   const isMobile = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches
@@ -33,7 +34,9 @@ export function CalendarToolbar({ services, staffList = [], selectedStaffId, onN
     const next = new URLSearchParams(searchParams.toString())
     if (value === null) next.delete(key)
     else next.set(key, value)
-    router.push(`/appointments?${next.toString()}`)
+    const url = `/appointments?${next.toString()}`
+    if (startNavigation) startNavigation(() => router.push(url))
+    else router.push(url)
   }
 
   function navigate(direction: 'prev' | 'next' | 'today') {

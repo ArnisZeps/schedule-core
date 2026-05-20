@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { headers } from 'next/headers'
-import { format, parseISO, startOfWeek, endOfWeek, addDays } from 'date-fns'
+import { startOfWeek, endOfWeek, addDays } from 'date-fns'
 import { db } from '@/lib/server/db'
 import { withTenantContext } from '@/lib/server/withTenantContext'
 import { AppointmentsPage } from '@/page-components/appointments/AppointmentsPage'
@@ -11,23 +11,13 @@ type LocationRow = { id: string; tenant_id: string; name: string; address: strin
 type StaffRow = { id: string; tenant_id: string; name: string; email: string | null; phone: string | null; is_active: boolean; location_id: string; created_at: Date }
 type BookingRow = { id: string; tenant_id: string; service_id: string; location_id: string; staff_id: string | null; staff_name: string | null; client_name: string; client_phone: string; client_email: string | null; start_at: Date; end_at: Date; status: string; notes: string | null; created_at: Date }
 
-export default async function Page({
-  searchParams,
-}: {
-  searchParams: Promise<{ view?: string; date?: string }>
-}) {
-  const [h, sp] = await Promise.all([headers(), searchParams])
+export default async function Page() {
+  const h = await headers()
   const tenantId = h.get('x-tenant-id')!
 
-  const view = sp.view || 'week'
-  const dateStr = sp.date || format(new Date(), 'yyyy-MM-dd')
-  const date = parseISO(dateStr)
-  const from = view === 'week'
-    ? startOfWeek(date, { weekStartsOn: 1 }).toISOString()
-    : date.toISOString()
-  const to = view === 'week'
-    ? addDays(endOfWeek(date, { weekStartsOn: 1 }), 1).toISOString()
-    : addDays(date, 1).toISOString()
+  const today = new Date()
+  const from = startOfWeek(today, { weekStartsOn: 1 }).toISOString()
+  const to = addDays(endOfWeek(today, { weekStartsOn: 1 }), 1).toISOString()
 
   const [services, locations, staffList, bookings] = await withTenantContext(db, tenantId, async (client) => {
     const [svcRes, locRes, staffRes, bkRes] = await Promise.all([

@@ -12,9 +12,10 @@ interface WeekViewProps {
   bookings: Booking[]
   onBookingClick: (booking: Booking) => void
   onTimeSelect?: (startAt: Date, endAt: Date) => void
+  className?: string
 }
 
-export function WeekView({ dateStr, bookings, onBookingClick, onTimeSelect }: WeekViewProps) {
+export function WeekView({ dateStr, bookings, onBookingClick, onTimeSelect, className }: WeekViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const weekStart = startOfWeek(parseISO(dateStr), { weekStartsOn: 1 })
@@ -35,7 +36,7 @@ export function WeekView({ dateStr, bookings, onBookingClick, onTimeSelect }: We
   }
 
   return (
-    <div className="flex-1 overflow-y-auto min-w-0" ref={scrollRef}>
+    <div className={`flex-1 overflow-y-auto min-w-0 transition-opacity duration-150${className ? ` ${className}` : ''}`} ref={scrollRef}>
       {/* Sticky day headers */}
       <div className="flex sticky top-0 bg-background z-10 border-b min-w-[640px]">
         <div className="w-16 flex-shrink-0" />
