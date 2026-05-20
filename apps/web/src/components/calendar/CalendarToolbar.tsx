@@ -1,7 +1,5 @@
 'use client'
 
-import { useSearchParams, useRouter } from 'next/navigation'
-import { addDays, subDays, parseISO, format } from 'date-fns'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -17,45 +15,39 @@ import type { Staff } from '@/hooks/useStaff'
 interface CalendarToolbarProps {
   services: Service[]
   staffList?: Staff[]
+  view: 'week' | 'day' | 'list'
+  dateStr: string
+  serviceId?: string
   selectedStaffId?: string
+  onNavigate: (direction: 'prev' | 'next' | 'today') => void
+  onViewChange: (view: 'week' | 'day' | 'list') => void
+  onServiceChange: (serviceId: string | undefined) => void
+  onStaffChange: (staffId: string | undefined) => void
   onNewAppointment?: () => void
 }
 
-export function CalendarToolbar({ services, staffList = [], selectedStaffId, onNewAppointment }: CalendarToolbarProps) {
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  const isMobile = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches
-  const view = (searchParams.get('view') || (isMobile ? 'day' : 'week')) as 'week' | 'day' | 'list'
-  const dateStr = searchParams.get('date') || format(new Date(), 'yyyy-MM-dd')
-  const serviceId = searchParams.get('serviceId') || undefined
-
-  function setParam(key: string, value: string | null) {
-    const next = new URLSearchParams(searchParams.toString())
-    if (value === null) next.delete(key)
-    else next.set(key, value)
-    router.push(`/appointments?${next.toString()}`)
-  }
-
-  function navigate(direction: 'prev' | 'next' | 'today') {
-    if (direction === 'today') {
-      setParam('date', format(new Date(), 'yyyy-MM-dd'))
-      return
-    }
-    const current = parseISO(dateStr)
-    const days = view === 'day' ? 1 : 7
-    const next = direction === 'next' ? addDays(current, days) : subDays(current, days)
-    setParam('date', format(next, 'yyyy-MM-dd'))
-  }
-
+export function CalendarToolbar({
+  services,
+  staffList = [],
+  view,
+  dateStr: _dateStr,
+  serviceId,
+  selectedStaffId,
+  onNavigate,
+  onViewChange,
+  onServiceChange,
+  onStaffChange,
+  onNewAppointment,
+}: CalendarToolbarProps) {
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2 md:px-6 md:py-3 border-b bg-background flex-shrink-0">
-      <Button variant="outline" size="sm" onClick={() => navigate('today')}>
+      <Button variant="outline" size="sm" onClick={() => onNavigate('today')}>
         Today
       </Button>
       <Button
         variant="ghost"
         size="icon-sm"
-        onClick={() => navigate('prev')}
+        onClick={() => onNavigate('prev')}
         aria-label="Prev"
       >
         <ChevronLeft className="size-4" />
@@ -63,7 +55,7 @@ export function CalendarToolbar({ services, staffList = [], selectedStaffId, onN
       <Button
         variant="ghost"
         size="icon-sm"
-        onClick={() => navigate('next')}
+        onClick={() => onNavigate('next')}
         aria-label="Next"
       >
         <ChevronRight className="size-4" />
@@ -85,7 +77,7 @@ export function CalendarToolbar({ services, staffList = [], selectedStaffId, onN
               variant={view === v ? 'secondary' : 'ghost'}
               size="sm"
               className="rounded-none"
-              onClick={() => setParam('view', v)}
+              onClick={() => onViewChange(v)}
             >
               {v.charAt(0).toUpperCase() + v.slice(1)}
             </Button>
@@ -94,7 +86,7 @@ export function CalendarToolbar({ services, staffList = [], selectedStaffId, onN
 
         <Select
           value={serviceId ?? 'all'}
-          onValueChange={val => setParam('serviceId', val === 'all' ? null : val)}
+          onValueChange={val => onServiceChange(val === 'all' ? undefined : val)}
         >
           <SelectTrigger className="flex-1 md:w-44 md:flex-none" aria-label="Service">
             <SelectValue placeholder="All services" />
@@ -111,7 +103,7 @@ export function CalendarToolbar({ services, staffList = [], selectedStaffId, onN
 
         <Select
           value={selectedStaffId ?? 'all'}
-          onValueChange={val => setParam('staffId', val === 'all' ? null : val)}
+          onValueChange={val => onStaffChange(val === 'all' ? undefined : val)}
         >
           <SelectTrigger className="flex-1 md:w-44 md:flex-none" aria-label="Staff">
             <SelectValue placeholder="All staff" />

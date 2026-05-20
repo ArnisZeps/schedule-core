@@ -94,7 +94,8 @@ describe('Appointments Calendar', () => {
       renderAppointments('view=week&date=2026-05-11')
       await waitFor(() => screen.getByRole('button', { name: /today/i }))
       await user.click(screen.getByRole('button', { name: /today/i }))
-      expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('date=2026-05-04'))
+      // today = 2026-05-04 is the default; URL sync omits date param when on today's week
+      expect(mockReplace).toHaveBeenLastCalledWith('/appointments', { scroll: false })
     })
 
     it('clicking Next advances by 7 days in week view', async () => {
@@ -102,7 +103,7 @@ describe('Appointments Calendar', () => {
       renderAppointments('view=week&date=2026-05-04')
       await waitFor(() => screen.getByRole('button', { name: /next/i }))
       await user.click(screen.getByRole('button', { name: /next/i }))
-      expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('date=2026-05-11'))
+      expect(mockReplace).toHaveBeenLastCalledWith(expect.stringContaining('date=2026-05-11'), { scroll: false })
     })
 
     it('clicking Prev regresses by 7 days in week view', async () => {
@@ -110,7 +111,7 @@ describe('Appointments Calendar', () => {
       renderAppointments('view=week&date=2026-05-04')
       await waitFor(() => screen.getByRole('button', { name: /prev/i }))
       await user.click(screen.getByRole('button', { name: /prev/i }))
-      expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('date=2026-04-27'))
+      expect(mockReplace).toHaveBeenLastCalledWith(expect.stringContaining('date=2026-04-27'), { scroll: false })
     })
   })
 
@@ -120,7 +121,7 @@ describe('Appointments Calendar', () => {
       renderAppointments('view=week&date=2026-05-04')
       await waitFor(() => screen.getByRole('button', { name: /^day$/i }))
       await user.click(screen.getByRole('button', { name: /^day$/i }))
-      expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('view=day'))
+      expect(mockReplace).toHaveBeenLastCalledWith(expect.stringContaining('view=day'), { scroll: false })
     })
 
     it('day view renders single-column day header', async () => {
@@ -135,7 +136,7 @@ describe('Appointments Calendar', () => {
       renderAppointments('view=week&date=2026-05-04')
       await waitFor(() => screen.getByRole('button', { name: /^list$/i }))
       await user.click(screen.getByRole('button', { name: /^list$/i }))
-      expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('view=list'))
+      expect(mockReplace).toHaveBeenLastCalledWith(expect.stringContaining('view=list'), { scroll: false })
     })
 
     it('list view renders table with required column headers', async () => {

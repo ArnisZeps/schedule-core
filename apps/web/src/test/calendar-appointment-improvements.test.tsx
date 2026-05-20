@@ -156,14 +156,14 @@ describe('Calendar appointment improvements', () => {
       })
     })
 
-    it('selecting a staff member pushes URL with staffId', async () => {
+    it('selecting a staff member updates URL with staffId', async () => {
       const user = userEvent.setup()
       renderAppointments('view=week&date=2026-05-04')
       await waitFor(() => screen.getByRole('combobox', { name: /staff/i }))
       await user.click(screen.getByRole('combobox', { name: /staff/i }))
       await waitFor(() => screen.getByRole('option', { name: /alice smith/i }))
       await user.click(screen.getByRole('option', { name: /alice smith/i }))
-      expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('staffId=staff-1'))
+      expect(mockReplace).toHaveBeenLastCalledWith(expect.stringContaining('staffId=staff-1'), { scroll: false })
     })
 
     it('selecting All staff removes staffId from URL', async () => {
@@ -173,8 +173,9 @@ describe('Calendar appointment improvements', () => {
       await user.click(screen.getByRole('combobox', { name: /staff/i }))
       await waitFor(() => screen.getByRole('option', { name: /all staff/i }))
       await user.click(screen.getByRole('option', { name: /all staff/i }))
-      expect(mockPush).toHaveBeenCalledWith(
+      expect(mockReplace).toHaveBeenLastCalledWith(
         expect.not.stringContaining('staffId'),
+        { scroll: false },
       )
     })
 
