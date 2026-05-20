@@ -1,13 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { format, parseISO, isValid, startOfWeek, endOfWeek, addDays } from 'date-fns'
 import { useServices, type Service } from '@/hooks/useServices'
 import { useBookings, type Booking } from '@/hooks/useBookings'
 import { useBookingsPrefetch } from '@/hooks/useBookingsPrefetch'
 import { useLocations, type Location } from '@/hooks/useLocations'
 import { useStaffList, type Staff } from '@/hooks/useStaff'
+import { useAuth } from '@/hooks/useAuth'
 import { CalendarToolbar } from '@/components/calendar/CalendarToolbar'
 import { WeekView } from '@/components/calendar/WeekView'
 import { DayView } from '@/components/calendar/DayView'
@@ -16,11 +18,18 @@ import { AppointmentDetailDialog } from '@/components/calendar/AppointmentDetail
 import { NewAppointmentPanel } from '@/components/calendar/NewAppointmentPanel'
 import { ErrorState } from '@/components/ui/ErrorState'
 
+export interface ServiceStaffEntry {
+  serviceId: string
+  locationId: string
+  staff: Staff[]
+}
+
 interface AppointmentsPageProps {
   initialBookings?: Booking[]
   initialServices?: Service[]
   initialStaff?: Staff[]
   initialLocations?: Location[]
+  initialServiceStaff?: ServiceStaffEntry[]
 }
 
 export function AppointmentsPage({
@@ -28,9 +37,22 @@ export function AppointmentsPage({
   initialServices,
   initialStaff,
   initialLocations,
+  initialServiceStaff,
 }: AppointmentsPageProps = {}) {
   const params = useSearchParams()
   const router = useRouter()
+  const { user } = useAuth()
+  const tenantId = user!.tenantId
+  const queryClient = useQueryClient()
+
+  // Seed React Query cache from SSR data — runs once synchronously before child components mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useMemo(() => {
+    if (!initialServiceStaff?.length) return
+    for (const entry of initialServiceStaff) {
+      queryClient.setQueryData(['service-staff', tenantId, entry.serviceId, entry.locationId], entry.staff)
+    }
+  }, []) // intentionally empty: seed once from SSR data
 
   const isMobile = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches
 

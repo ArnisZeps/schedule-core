@@ -103,7 +103,10 @@ export function useCreateStaff() {
         method: 'POST',
         body: JSON.stringify(data),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['staff', tenantId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['staff', tenantId] })
+      qc.invalidateQueries({ queryKey: ['service-staff', tenantId] })
+    },
   })
 }
 
@@ -130,6 +133,7 @@ export function useUpdateStaff() {
     onSuccess: (_, { staffId }) => {
       qc.invalidateQueries({ queryKey: ['staff', tenantId] })
       qc.invalidateQueries({ queryKey: ['staff', tenantId, staffId] })
+      qc.invalidateQueries({ queryKey: ['service-staff', tenantId] })
     },
   })
 }
@@ -156,6 +160,7 @@ export function useUpdateStaffServices() {
       }),
     onSuccess: (_, { staffId }) => {
       qc.invalidateQueries({ queryKey: ['staff-services', tenantId, staffId] })
+      qc.invalidateQueries({ queryKey: ['service-staff', tenantId] })
     },
   })
 }

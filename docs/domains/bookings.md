@@ -176,9 +176,19 @@ Union of slots across all active staff assigned to `serviceId` at `locationId`. 
 
 | Route | File |
 |-------|------|
-| `/appointments` | `apps/web/app/(dashboard)/appointments/page.tsx` — async Server Component; pre-fetches bookings, services, staff, and locations for the initial view |
+| `/appointments` | `apps/web/app/(dashboard)/appointments/page.tsx` — async Server Component; pre-fetches bookings, services, staff, locations, and service-staff mapping for the initial view |
 
-`appointments/page.tsx` reads `x-tenant-id` from headers injected by middleware. It always pre-fetches today's week (ignoring URL params — the Client Component handles its own nav state). It runs four parallel queries inside a single `withTenantContext` transaction and passes the results as `initialBookings`, `initialServices`, `initialStaff`, `initialLocations` to `AppointmentsPage`.
+`appointments/page.tsx` reads `x-tenant-id` from headers injected by middleware. It always pre-fetches today's week (ignoring URL params — the Client Component handles its own nav state). It runs five parallel queries inside a single `withTenantContext` transaction:
+
+1. Active services
+2. All locations
+3. Active staff
+4. Bookings for the current week
+5. `SELECT ss.service_id, s.* FROM staff_services ss JOIN staff s ON s.id = ss.staff_id WHERE s.is_active = true` — all active service-staff assignments, grouped by `(serviceId, locationId)` into `ServiceStaffEntry[]`
+
+Results are passed as `initialBookings`, `initialServices`, `initialStaff`, `initialLocations`, and `initialServiceStaff` to `AppointmentsPage`.
+
+`AppointmentsPage` seeds the React Query cache (`queryKey: ['service-staff', tenantId, serviceId, locationId]`) from `initialServiceStaff` on first render via `useMemo`. This ensures the `NewAppointmentPanel` staff dropdown is populated immediately when a service and location are selected, without a client-side round-trip.
 
 ### Hooks
 
