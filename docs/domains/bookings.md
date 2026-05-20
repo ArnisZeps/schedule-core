@@ -178,7 +178,7 @@ Union of slots across all active staff assigned to `serviceId` at `locationId`. 
 |-------|------|
 | `/appointments` | `apps/web/app/(dashboard)/appointments/page.tsx` — async Server Component; pre-fetches bookings, services, staff, and locations for the initial view |
 
-`appointments/page.tsx` reads `x-tenant-id` from headers injected by middleware and the `view`/`date` search params to compute the date range. It runs four parallel queries inside a single `withTenantContext` transaction and passes the results as `initialBookings`, `initialServices`, `initialStaff`, `initialLocations` to `AppointmentsPage`. The WeekView renders immediately on first load with no loading skeleton.
+`appointments/page.tsx` reads `x-tenant-id` from headers injected by middleware. It always pre-fetches today's week (ignoring URL params — the Client Component handles its own nav state). It runs four parallel queries inside a single `withTenantContext` transaction and passes the results as `initialBookings`, `initialServices`, `initialStaff`, `initialLocations` to `AppointmentsPage`.
 
 ### Hooks
 
@@ -223,8 +223,8 @@ All mutations call `queryClient.invalidateQueries({ queryKey: ['bookings'] })` o
 
 | File | Responsibility |
 |------|----------------|
-| `apps/web/src/page-components/appointments/AppointmentsPage.tsx` | Client Component. Accepts optional `initialBookings`, `initialServices`, `initialStaff`, `initialLocations` props (passed from Server Component page on first load). Reads URL search params; composes toolbar and active view; owns panel open state. |
-| `apps/web/src/components/calendar/CalendarToolbar.tsx` | Prev/next/today; week/day/list toggle; service filter; "New appointment" button |
+| `apps/web/src/page-components/appointments/AppointmentsPage.tsx` | Client Component. Owns `view`, `dateStr`, `serviceId`, `staffId` as `useState` (initialised from URL params on mount). Syncs URL via `router.replace` as a side effect. Passes nav callbacks to `CalendarToolbar`. Accepts optional `initialBookings`, `initialServices`, `initialStaff`, `initialLocations` props from the Server Component page. |
+| `apps/web/src/components/calendar/CalendarToolbar.tsx` | Pure controlled component. Prev/next/today; week/day/list toggle; service and staff filters; "New appointment" button. All state and nav callbacks passed as props — no internal routing. |
 | `apps/web/src/components/calendar/WeekView.tsx` | 7-column CSS Grid; renders TimeGutter + DayColumns |
 | `apps/web/src/components/calendar/DayView.tsx` | Single-column; renders TimeGutter + one DayColumn |
 | `apps/web/src/components/calendar/TimeGutter.tsx` | Left column: 24 hour labels at 64 px each |
@@ -237,7 +237,7 @@ All mutations call `queryClient.invalidateQueries({ queryKey: ['bookings'] })` o
 
 - Each hour row: 64 px. Block `top = (startMinutes / 60) × 64 px`, `height = (durationMinutes / 60) × 64 px`, `min-height: 24 px`.
 - Overlap layout: `computeColumnLayout(appointments)` — greedy column assignment, `left = (colIndex / colCount) × 100%`, `width = (1 / colCount × 100%) − 2 px`.
-- URL search params manage navigation state: `view` (`week` | `day` | `list`, default `week`), `date` (YYYY-MM-DD, default today), `serviceId` (UUID, optional).
+- Navigation state (`view`, `date`, `serviceId`, `staffId`) lives in `useState` in `AppointmentsPage` for synchronous React renders. The URL is kept in sync via `router.replace` as a side effect (for back button and direct links) but does not drive rendering.
 - Week view scrolls horizontally on narrow viewports (`min-w-[640px]`, outer `overflow-x: auto`).
 - Current-time indicator: `position: absolute; height: 2px; background: red-500` at `(hour × 60 + minutes) / 60 × 64 px`. Updated every minute via `setInterval`.
 

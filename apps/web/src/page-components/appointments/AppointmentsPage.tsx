@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { useSearchParams } from 'next/navigation'
-import { format, parseISO, startOfWeek, endOfWeek, addDays } from 'date-fns'
+import { useState, useEffect } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { format, parseISO, isValid, startOfWeek, endOfWeek, addDays } from 'date-fns'
 import { useServices, type Service } from '@/hooks/useServices'
 import { useBookings, type Booking } from '@/hooks/useBookings'
 import { useBookingsPrefetch } from '@/hooks/useBookingsPrefetch'
@@ -30,17 +30,51 @@ export function AppointmentsPage({
   initialLocations,
 }: AppointmentsPageProps = {}) {
   const params = useSearchParams()
-  const [isNavigating, startNavigation] = useTransition()
+  const router = useRouter()
+
+  const isMobile = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches
+
+  const [view, setView] = useState<'week' | 'day' | 'list'>(() =>
+    (params.get('view') as 'week' | 'day' | 'list') || (isMobile ? 'day' : 'week')
+  )
+  const [dateStr, setDateStr] = useState<string>(() => {
+    const d = params.get('date')
+    if (d) {
+      const parsed = parseISO(d)
+      if (isValid(parsed)) return d
+    }
+    return format(new Date(), 'yyyy-MM-dd')
+  })
+  const [serviceId, setServiceId] = useState<string | undefined>(() =>
+    params.get('serviceId') ?? undefined
+  )
+  const [staffId, setStaffId] = useState<string | undefined>(() =>
+    params.get('staffId') ?? undefined
+  )
+
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [panelOpen, setPanelOpen] = useState(false)
   const [prefillStart, setPrefillStart] = useState<Date | undefined>()
   const [prefillEnd, setPrefillEnd] = useState<Date | undefined>()
 
-  const isMobile = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches
-  const view = (params.get('view') || (isMobile ? 'day' : 'week')) as 'week' | 'day' | 'list'
-  const dateStr = params.get('date') || format(new Date(), 'yyyy-MM-dd')
-  const serviceId = params.get('serviceId') || undefined
-  const staffId = params.get('staffId') || undefined
+  useEffect(() => {
+    const next = new URLSearchParams()
+    if (view !== 'week') next.set('view', view)
+    if (dateStr !== format(new Date(), 'yyyy-MM-dd')) next.set('date', dateStr)
+    if (serviceId) next.set('serviceId', serviceId)
+    if (staffId) next.set('staffId', staffId)
+    const qs = next.toString()
+    router.replace(`/appointments${qs ? `?${qs}` : ''}`, { scroll: false })
+  }, [view, dateStr, serviceId, staffId, router])
+
+  function handleNavigate(direction: 'prev' | 'next' | 'today') {
+    if (direction === 'today') {
+      setDateStr(format(new Date(), 'yyyy-MM-dd'))
+      return
+    }
+    const days = view === 'day' ? 1 : 7
+    setDateStr(format(addDays(parseISO(dateStr), direction === 'next' ? days : -days), 'yyyy-MM-dd'))
+  }
 
   const { data: services = [] } = useServices(initialServices)
   const { data: locations = [] } = useLocations(true, initialLocations)
@@ -93,9 +127,15 @@ export function AppointmentsPage({
       <CalendarToolbar
         services={services}
         staffList={staffList}
+        view={view}
+        dateStr={dateStr}
+        serviceId={serviceId}
         selectedStaffId={staffId}
+        onNavigate={handleNavigate}
+        onViewChange={setView}
+        onServiceChange={setServiceId}
+        onStaffChange={setStaffId}
         onNewAppointment={handleNewAppointment}
-        startNavigation={startNavigation}
       />
 
       {view === 'list' ? (
@@ -138,7 +178,6 @@ export function AppointmentsPage({
           bookings={bookings}
           onBookingClick={setSelectedBooking}
           onTimeSelect={handleTimeSelect}
-          className={isNavigating ? 'opacity-50 pointer-events-none' : undefined}
         />
       ) : (
         <DayView
@@ -146,7 +185,6 @@ export function AppointmentsPage({
           bookings={bookings}
           onBookingClick={setSelectedBooking}
           onTimeSelect={handleTimeSelect}
-          className={isNavigating ? 'opacity-50 pointer-events-none' : undefined}
         />
       )}
 

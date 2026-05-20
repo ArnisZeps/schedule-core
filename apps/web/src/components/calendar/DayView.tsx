@@ -11,10 +11,9 @@ interface DayViewProps {
   bookings: Booking[]
   onBookingClick: (booking: Booking) => void
   onTimeSelect?: (startAt: Date, endAt: Date) => void
-  className?: string
 }
 
-export function DayView({ dateStr, bookings, onBookingClick, onTimeSelect, className }: DayViewProps) {
+export function DayView({ dateStr, bookings, onBookingClick, onTimeSelect }: DayViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const day = parseISO(dateStr)
 
@@ -28,7 +27,7 @@ export function DayView({ dateStr, bookings, onBookingClick, onTimeSelect, class
   const dayBookings = bookings.filter(b => b.startAt.slice(0, 10) === dateStr)
 
   return (
-    <div className={`flex-1 overflow-y-auto min-w-0 transition-opacity duration-150${className ? ` ${className}` : ''}`} ref={scrollRef}>
+    <div className="flex-1 overflow-y-auto min-w-0" ref={scrollRef}>
       {/* Sticky day header */}
       <div className="flex sticky top-0 bg-background z-10 border-b">
         <div className="w-16 flex-shrink-0" />
