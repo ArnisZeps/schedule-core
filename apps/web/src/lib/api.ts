@@ -17,7 +17,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ message: res.statusText }))
-    if (res.status === 401) {
+    if (res.status === 401 && window.location.pathname !== '/login') {
       window.location.replace('/login')
     }
     throw new ApiError(res.status, body.message ?? res.statusText)
