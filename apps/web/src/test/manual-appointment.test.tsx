@@ -238,7 +238,7 @@ describe('M6d — Staff selection', () => {
     renderAppointments('view=week&date=2026-05-04')
     const btn = await screen.findByTestId('new-appointment-btn')
     await userEvent.click(btn)
-    await waitFor(() => expect(screen.getByText(SERVICE_STAFF[0].name)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('option', { name: SERVICE_STAFF[0].name })).toBeInTheDocument())
   })
 
   it('shows no-staff note when service has no staff at location', async () => {

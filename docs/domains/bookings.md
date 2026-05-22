@@ -266,6 +266,8 @@ const [prefillStart, setPrefillStart] = useState<Date | undefined>()
 const [prefillEnd, setPrefillEnd] = useState<Date | undefined>()
 ```
 
+**Location data:** `NewAppointmentPanel` receives `locations: Location[]` as a prop from `AppointmentsPage`. It does not call `useLocations()` internally. `AppointmentsPage` already holds `locations` from its own `useLocations(true, initialLocations)` call (SSR-seeded); passing it down ensures the location picker is present on first render with no extra network request. The panel derives `activeLocations = locations.filter(l => l.isActive)` and shows the picker only when `activeLocations.length > 1`.
+
 **Service → Staff dependency:** after service and location are selected, `useServiceStaff(serviceId, locationId)` (from [staff.md](staff.md)) fetches eligible staff. Staff selection resets when service or location changes.
 
 ## Constraints
