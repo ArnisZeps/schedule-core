@@ -8,14 +8,15 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import type { Service } from '@/hooks/useServices'
+import type { Location } from '@/hooks/useLocations'
 import { useServiceSlots } from '@/hooks/useServiceSlots'
 import { useServiceStaff } from '@/hooks/useStaff'
 import { useCreateBooking } from '@/hooks/useCreateBooking'
-import { useLocations } from '@/hooks/useLocations'
 import { ApiError } from '@/lib/api'
 
 interface NewAppointmentPanelProps {
   services: Service[]
+  locations: Location[]
   prefillStart?: Date
   prefillEnd?: Date
   onClose: () => void
@@ -23,6 +24,7 @@ interface NewAppointmentPanelProps {
 
 export function NewAppointmentPanel({
   services,
+  locations,
   prefillStart,
   prefillEnd,
   onClose,
@@ -46,7 +48,6 @@ export function NewAppointmentPanel({
   const [error, setError] = useState('')
   const prevKeyRef = useRef({ serviceId: services[0]?.id ?? '', date: prefillStart ? format(prefillStart, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'), staffSelectValue: '' })
 
-  const { data: locations = [] } = useLocations()
   const activeLocations = locations.filter(l => l.isActive)
   const showLocationPicker = activeLocations.length > 1
 

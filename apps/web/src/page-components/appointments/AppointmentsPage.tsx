@@ -229,6 +229,7 @@ export function AppointmentsPage({
           />
           <NewAppointmentPanel
             services={services}
+            locations={locations}
             prefillStart={prefillStart}
             prefillEnd={prefillEnd}
             onClose={handleClosePanel}
