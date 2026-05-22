@@ -38,7 +38,6 @@ function renderLogin() {
 }
 
 describe('Login page', () => {
-
   it('happy path: valid credentials redirect to /services', async () => {
     const user = userEvent.setup()
     renderLogin()
@@ -52,22 +51,35 @@ describe('Login page', () => {
     })
   })
 
-  it('invalid credentials show inline error without page reload', async () => {
+  it('shows "Incorrect email or password." on 401 without page reload', async () => {
     const user = userEvent.setup()
-    server.use(
-      http.post('/api/auth/login', () =>
-        HttpResponse.json({ message: 'Invalid credentials' }, { status: 401 }),
-      ),
-    )
     renderLogin()
 
     await user.type(screen.getByLabelText(/email/i), 'wrong@test.com')
-    await user.type(screen.getByLabelText(/password/i), 'badpassword')
+    await user.type(screen.getByLabelText(/password/i), 'wrongpassword')
     await user.click(screen.getByRole('button', { name: /log in/i }))
 
     await waitFor(() => {
-      expect(screen.getByText(/invalid credentials/i)).toBeInTheDocument()
+      expect(screen.getByText('Incorrect email or password.')).toBeInTheDocument()
     })
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
+  })
+
+  it('shows "Login failed" on non-credential server error', async () => {
+    server.use(
+      http.post('/api/auth/login', () =>
+        HttpResponse.json({ error: 'server_error' }, { status: 500 }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderLogin()
+
+    await user.type(screen.getByLabelText(/email/i), 'owner@test.com')
+    await user.type(screen.getByLabelText(/password/i), 'password')
+    await user.click(screen.getByRole('button', { name: /log in/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText('Login failed')).toBeInTheDocument()
+    })
   })
 })

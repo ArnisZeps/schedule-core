@@ -230,7 +230,7 @@ export const handlers = [
     if (body.email === 'owner@test.com' && body.password === 'password') {
       return HttpResponse.json({ ok: true })
     }
-    return HttpResponse.json({ message: 'Invalid credentials' }, { status: 401 })
+    return HttpResponse.json({ error: 'invalid_credentials' }, { status: 401 })
   }),
 
   // Auth logout — clears sc_token cookie

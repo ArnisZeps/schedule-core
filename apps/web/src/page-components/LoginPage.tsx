@@ -42,7 +42,9 @@ export function LoginPage() {
       router.replace('/services')
     } catch (err) {
       form.setError('root', {
-        message: err instanceof ApiError ? err.message : 'Login failed',
+        message: err instanceof ApiError && err.status === 401
+          ? 'Incorrect email or password.'
+          : 'Login failed',
       })
     }
   }

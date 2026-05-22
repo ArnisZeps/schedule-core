@@ -136,7 +136,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T>
 |------|----------------|
 | `apps/web/src/components/UserProvider.tsx` | Client Component. Receives `user` prop from the dashboard Server Component layout. Provides `AuthContext`. `logout()` calls `POST /api/auth/logout` then redirects to `/login`. |
 | `apps/web/app/(dashboard)/layout.tsx` | Async Server Component. Reads `x-user-id`/`x-tenant-id` headers injected by middleware. Renders `<UserProvider>` and `<AppLayout>`. |
-| `apps/web/src/page-components/LoginPage.tsx` | Email + password form → `POST /api/auth/login` → cookie set server-side → redirect to `/services`. |
+| `apps/web/src/page-components/LoginPage.tsx` | Email + password form → `POST /api/auth/login` → cookie set server-side → redirect to `/services`. On 401, displays "Incorrect email or password." inline without page reload. Any other error shows "Login failed". |
 | `apps/web/src/page-components/RegisterPage.tsx` | Business name, slug, email, password form → `POST /api/auth/signup` → cookie set server-side → redirect to `/services`. |
 
 ## Constraints
