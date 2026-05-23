@@ -56,7 +56,7 @@ describe('Reschedule panel', () => {
     vi.setSystemTime(FIXED_NOW)
     localStorage.clear()
   })
-  afterEach(() => vi.useRealTimers())
+  afterEach(() => { vi.useRealTimers() })
 
   it('detail dialog has no datetime-local inputs', async () => {
     const user = userEvent.setup()
@@ -152,7 +152,7 @@ describe('Custom time section', () => {
     vi.setSystemTime(FIXED_NOW)
     localStorage.clear()
   })
-  afterEach(() => vi.useRealTimers())
+  afterEach(() => { vi.useRealTimers() })
 
   async function openNewPanel() {
     renderAppointments('view=week&date=2026-05-04')

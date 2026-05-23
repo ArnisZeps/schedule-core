@@ -56,7 +56,7 @@ export function useServiceStaff(serviceId: string | null, locationId: string | n
   })
 }
 
-export function useStaffList(includeInactive?: boolean, locationId?: string, initialData?: Staff[]) {
+export function useStaffList(includeInactive?: boolean, locationId?: string) {
   const { user } = useAuth()
   const tenantId = user!.tenantId
   return useQuery<Staff[]>({
@@ -68,7 +68,7 @@ export function useStaffList(includeInactive?: boolean, locationId?: string, ini
       const qs = params.toString() ? `?${params}` : ''
       return apiFetch(`/tenants/${tenantId}/staff${qs}`)
     },
-    ...(initialData ? { initialData, initialDataUpdatedAt: Date.now(), staleTime: 5 * 60 * 1000 } : {}),
+    staleTime: 5 * 60_000,
   })
 }
 

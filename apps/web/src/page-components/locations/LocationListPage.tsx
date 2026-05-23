@@ -4,7 +4,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { MapPin } from 'lucide-react'
-import { useLocations, type Location } from '@/hooks/useLocations'
+import { HydrationBoundary, type DehydratedState } from '@tanstack/react-query'
+import { useLocations } from '@/hooks/useLocations'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
@@ -22,12 +23,17 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { LoadingState } from '@/components/ui/LoadingState'
 import { EmptyState } from '@/components/ui/EmptyState'
 
-export function LocationListPage({ initialLocations }: { initialLocations?: Location[] } = {}) {
-  const [includeInactive, setIncludeInactive] = useState(false)
-  const { data: locations, isLoading } = useLocations(
-    includeInactive,
-    !includeInactive ? initialLocations : undefined,
+export function LocationListPage({ dehydratedState }: { dehydratedState?: DehydratedState } = {}) {
+  return (
+    <HydrationBoundary state={dehydratedState}>
+      <LocationListPageInner />
+    </HydrationBoundary>
   )
+}
+
+function LocationListPageInner() {
+  const [includeInactive, setIncludeInactive] = useState(false)
+  const { data: locations, isLoading } = useLocations(includeInactive)
   const router = useRouter()
 
   return (

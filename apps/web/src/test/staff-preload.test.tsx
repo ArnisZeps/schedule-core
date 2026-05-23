@@ -2,12 +2,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, dehydrate } from '@tanstack/react-query'
 import { UserProvider } from '@/components/UserProvider'
 import { http, HttpResponse } from 'msw'
 import { server } from './handlers'
 import { AppointmentsPage } from '@/page-components/appointments/AppointmentsPage'
-import type { ServiceStaffEntry } from '@/page-components/appointments/AppointmentsPage'
 import { TENANT_ID, SERVICES, SERVICE_STAFF, LOCATIONS } from './handlers'
 
 vi.mock('next/navigation', () => ({
@@ -29,20 +28,36 @@ beforeEach(() => {
   vi.mocked(useRouter).mockReturnValue({ push: vi.fn(), replace: vi.fn(), back: vi.fn() } as any)
 })
 
-function renderWithSSR(initialServiceStaff: ServiceStaffEntry[], search = 'view=week&date=2026-05-04') {
+interface ServiceStaffSeed {
+  serviceId: string
+  locationId: string
+  staff: typeof SERVICE_STAFF
+}
+
+function renderWithSSR(
+  serviceStaffSeeds: ServiceStaffSeed[],
+  search = 'view=week&from=2026-05-04&to=2026-05-11',
+) {
   vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams(search) as any)
+
+  const serverQc = new QueryClient()
+  for (const { serviceId, locationId, staff } of serviceStaffSeeds) {
+    serverQc.setQueryData(['service-staff', TENANT_ID, serviceId, locationId], staff)
+  }
+  const dehydratedState = dehydrate(serverQc)
+
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
       <UserProvider user={{ userId: 'user-1', tenantId: TENANT_ID }}>
-        <AppointmentsPage initialServiceStaff={initialServiceStaff} />
+        <AppointmentsPage dehydratedState={dehydratedState} />
       </UserProvider>
     </QueryClientProvider>,
   )
   return client
 }
 
-describe('staff-preload — cache seeding from initialServiceStaff', () => {
+describe('staff-preload — cache seeding from dehydratedState', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(FIXED_NOW)
@@ -71,7 +86,7 @@ describe('staff-preload — cache seeding from initialServiceStaff', () => {
     )
   })
 
-  it('empty initialServiceStaff does not crash; staff loads from network as normal', async () => {
+  it('empty seeds does not crash; staff loads from network as normal', async () => {
     renderWithSSR([])
 
     await userEvent.click(await screen.findByTestId('new-appointment-btn'))
@@ -86,8 +101,8 @@ describe('staff-preload — cache seeding from initialServiceStaff', () => {
       id: 'staff-loc3',
       tenantId: TENANT_ID,
       name: 'West Branch Staff',
-      email: null,
-      phone: null,
+      email: 'west@example.com',
+      phone: '+1 555 000 0002',
       isActive: true,
       locationId: 'loc-3',
       createdAt: '2026-05-01T00:00:00.000Z',
