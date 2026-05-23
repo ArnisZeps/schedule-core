@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { parseISO, addDays, startOfWeek, endOfWeek } from 'date-fns'
+import { parseISO, addDays } from 'date-fns'
 import { apiFetch } from '@/lib/api'
 import { useAuth } from './useAuth'
 
@@ -22,14 +22,8 @@ export function useBookingsPrefetch(params: {
     const periods =
       view === 'week'
         ? [
-            {
-              from: startOfWeek(addDays(d, -7), { weekStartsOn: 1 }).toISOString(),
-              to: addDays(endOfWeek(addDays(d, -7), { weekStartsOn: 1 }), 1).toISOString(),
-            },
-            {
-              from: startOfWeek(addDays(d, 7), { weekStartsOn: 1 }).toISOString(),
-              to: addDays(endOfWeek(addDays(d, 7), { weekStartsOn: 1 }), 1).toISOString(),
-            },
+            { from: addDays(d, -7).toISOString(), to: d.toISOString() },
+            { from: addDays(d, 7).toISOString(), to: addDays(d, 14).toISOString() },
           ]
         : [
             { from: addDays(d, -1).toISOString(), to: d.toISOString() },

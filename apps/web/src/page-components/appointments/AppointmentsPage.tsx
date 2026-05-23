@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
-import { format, parseISO, isValid, startOfWeek, endOfWeek, addDays } from 'date-fns'
+import { format, parseISO, isValid, startOfWeek, addDays } from 'date-fns'
 import { useServices, type Service } from '@/hooks/useServices'
 import { useBookings, type Booking } from '@/hooks/useBookings'
 import { useBookingsPrefetch } from '@/hooks/useBookingsPrefetch'
@@ -48,9 +48,25 @@ export function AppointmentsPage({
   // Seed React Query cache from SSR data — runs once synchronously before child components mount
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useMemo(() => {
-    if (!initialServiceStaff?.length) return
-    for (const entry of initialServiceStaff) {
-      queryClient.setQueryData(['service-staff', tenantId, entry.serviceId, entry.locationId], entry.staff)
+    if (initialServiceStaff?.length) {
+      for (const entry of initialServiceStaff) {
+        queryClient.setQueryData(['service-staff', tenantId, entry.serviceId, entry.locationId], entry.staff)
+      }
+    }
+    if (initialBookings?.length) {
+      // Mirror the dateStr/from/to initialisation logic so the key matches useBookings on first render
+      const initView = (params.get('view') as 'week' | 'day' | 'list') || 'week'
+      const f = params.get('from')
+      const seedDate = f && isValid(parseISO(f))
+        ? parseISO(f)
+        : startOfWeek(new Date(), { weekStartsOn: 1 })
+      const seedFrom = seedDate.toISOString()
+      const seedTo = addDays(seedDate, initView !== 'day' ? 7 : 1).toISOString()
+      const seedServiceId = params.get('serviceId') ?? undefined
+      queryClient.setQueryData(
+        ['bookings', tenantId, { from: seedFrom, to: seedTo, serviceId: seedServiceId }],
+        initialBookings,
+      )
     }
   }, []) // intentionally empty: seed once from SSR data
 
@@ -60,12 +76,16 @@ export function AppointmentsPage({
     (params.get('view') as 'week' | 'day' | 'list') || (isMobile ? 'day' : 'week')
   )
   const [dateStr, setDateStr] = useState<string>(() => {
-    const d = params.get('date')
-    if (d) {
-      const parsed = parseISO(d)
-      if (isValid(parsed)) return d
+    const initView = (params.get('view') as 'week' | 'day' | 'list') || (isMobile ? 'day' : 'week')
+    if (initView === 'day') {
+      const d = params.get('date')
+      if (d && isValid(parseISO(d))) return d
+      return format(new Date(), 'yyyy-MM-dd')
     }
-    return format(new Date(), 'yyyy-MM-dd')
+    // week or list: anchor to the week-start Monday from the from param
+    const f = params.get('from')
+    if (f && isValid(parseISO(f))) return f
+    return format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd')
   })
   const [serviceId, setServiceId] = useState<string | undefined>(() =>
     params.get('serviceId') ?? undefined
@@ -78,11 +98,20 @@ export function AppointmentsPage({
   const [panelOpen, setPanelOpen] = useState(false)
   const [prefillStart, setPrefillStart] = useState<Date | undefined>()
   const [prefillEnd, setPrefillEnd] = useState<Date | undefined>()
+  const [rescheduleBooking, setRescheduleBooking] = useState<Booking | undefined>()
 
   useEffect(() => {
     const next = new URLSearchParams()
     if (view !== 'week') next.set('view', view)
-    if (dateStr !== format(new Date(), 'yyyy-MM-dd')) next.set('date', dateStr)
+    if (view === 'week') {
+      const currentWeekFrom = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd')
+      if (dateStr !== currentWeekFrom) {
+        next.set('from', dateStr)
+        next.set('to', format(addDays(parseISO(dateStr), 6), 'yyyy-MM-dd'))
+      }
+    } else if (view === 'day') {
+      if (dateStr !== format(new Date(), 'yyyy-MM-dd')) next.set('date', dateStr)
+    }
     if (serviceId) next.set('serviceId', serviceId)
     if (staffId) next.set('staffId', staffId)
     const qs = next.toString()
@@ -91,11 +120,20 @@ export function AppointmentsPage({
 
   function handleNavigate(direction: 'prev' | 'next' | 'today') {
     if (direction === 'today') {
-      setDateStr(format(new Date(), 'yyyy-MM-dd'))
+      setDateStr(view === 'week'
+        ? format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd')
+        : format(new Date(), 'yyyy-MM-dd'))
       return
     }
     const days = view === 'day' ? 1 : 7
     setDateStr(format(addDays(parseISO(dateStr), direction === 'next' ? days : -days), 'yyyy-MM-dd'))
+  }
+
+  function handleViewChange(newView: 'week' | 'day' | 'list') {
+    if (newView === 'week' && view !== 'week') {
+      setDateStr(format(startOfWeek(parseISO(dateStr), { weekStartsOn: 1 }), 'yyyy-MM-dd'))
+    }
+    setView(newView)
   }
 
   const { data: services = [] } = useServices(initialServices)
@@ -103,21 +141,15 @@ export function AppointmentsPage({
   const { data: staffList = [] } = useStaffList(undefined, undefined, initialStaff)
 
   const date = parseISO(dateStr)
-  const from =
-    view === 'week'
-      ? startOfWeek(date, { weekStartsOn: 1 }).toISOString()
-      : date.toISOString()
-  const to =
-    view === 'week'
-      ? addDays(endOfWeek(date, { weekStartsOn: 1 }), 1).toISOString()
-      : addDays(date, 1).toISOString()
+  const from = date.toISOString()
+  const to = addDays(date, view === 'week' ? 7 : 1).toISOString()
 
   const {
     data: rawBookings = [],
     isLoading: bookingsLoading,
     isError: bookingsError,
     refetch,
-  } = useBookings({ from, to, serviceId, initialData: initialBookings })
+  } = useBookings({ from, to, serviceId })
 
   useBookingsPrefetch({ view, from, to, serviceId })
 
@@ -135,10 +167,17 @@ export function AppointmentsPage({
     setPanelOpen(true)
   }
 
+  function handleReschedule(booking: Booking) {
+    setSelectedBooking(null)
+    setRescheduleBooking(booking)
+    setPanelOpen(true)
+  }
+
   function handleClosePanel() {
     setPanelOpen(false)
     setPrefillStart(undefined)
     setPrefillEnd(undefined)
+    setRescheduleBooking(undefined)
   }
 
   return (
@@ -154,7 +193,7 @@ export function AppointmentsPage({
         serviceId={serviceId}
         selectedStaffId={staffId}
         onNavigate={handleNavigate}
-        onViewChange={setView}
+        onViewChange={handleViewChange}
         onServiceChange={setServiceId}
         onStaffChange={setStaffId}
         onNewAppointment={handleNewAppointment}
@@ -217,6 +256,7 @@ export function AppointmentsPage({
           locations={locations}
           open={true}
           onClose={() => setSelectedBooking(null)}
+          onReschedule={handleReschedule}
         />
       )}
 
@@ -233,6 +273,8 @@ export function AppointmentsPage({
             prefillStart={prefillStart}
             prefillEnd={prefillEnd}
             onClose={handleClosePanel}
+            mode={rescheduleBooking ? 'reschedule' : 'new'}
+            rescheduleBooking={rescheduleBooking}
           />
         </>
       )}

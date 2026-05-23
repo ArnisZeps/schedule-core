@@ -31,7 +31,7 @@ const TEST_USER = { userId: 'user-1', tenantId: 'tenant-1' }
 
 beforeEach(() => {
   vi.mocked(useRouter).mockReturnValue({ push: vi.fn(), replace: vi.fn(), back: vi.fn() } as any)
-  vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('view=week&date=2026-05-04') as any)
+  vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams('from=2026-05-04&to=2026-05-10') as any)
 
   // Hang all data-fetching APIs so synchronous assertions come only from initialData
   server.use(

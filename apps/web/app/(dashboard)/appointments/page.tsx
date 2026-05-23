@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { headers } from 'next/headers'
-import { startOfWeek, endOfWeek, addDays } from 'date-fns'
+import { parseISO, isValid, startOfWeek, endOfWeek, addDays } from 'date-fns'
 import { db } from '@/lib/server/db'
 import { withTenantContext } from '@/lib/server/withTenantContext'
 import { AppointmentsPage, type ServiceStaffEntry } from '@/page-components/appointments/AppointmentsPage'
@@ -28,13 +28,23 @@ function groupServiceStaffRows(rows: ServiceStaffRow[]): ServiceStaffEntry[] {
   return Array.from(map.values())
 }
 
-export default async function Page() {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string; date?: string; view?: string }>
+}) {
   const h = await headers()
   const tenantId = h.get('x-tenant-id')!
 
-  const today = new Date()
-  const from = startOfWeek(today, { weekStartsOn: 1 }).toISOString()
-  const to = addDays(endOfWeek(today, { weekStartsOn: 1 }), 1).toISOString()
+  const sp = await searchParams
+  const fromDate = sp.from && isValid(parseISO(sp.from))
+    ? parseISO(sp.from)
+    : startOfWeek(new Date(), { weekStartsOn: 1 })
+  const toDate = sp.to && isValid(parseISO(sp.to))
+    ? parseISO(sp.to)
+    : endOfWeek(new Date(), { weekStartsOn: 1 })
+  const from = fromDate.toISOString()
+  const to = addDays(toDate, 1).toISOString()
 
   const [services, locations, staffList, bookings, serviceStaffRows] = await withTenantContext(db, tenantId, async (client) => {
     const [svcRes, locRes, staffRes, bkRes, svcStaffRes] = await Promise.all([

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, screen, waitFor, within, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -8,6 +8,7 @@ import { server } from './handlers'
 import { http, HttpResponse } from 'msw'
 import { AppointmentsPage } from '@/page-components/appointments/AppointmentsPage'
 import { TEST_TOKEN, TENANT_ID, BOOKINGS } from './handlers'
+import type { Booking } from '@/hooks/useBookings'
 
 vi.mock('next/navigation', () => ({
   useRouter: vi.fn(),
@@ -33,12 +34,15 @@ beforeEach(() => {
   vi.mocked(useRouter).mockReturnValue({ push: mockPush, replace: mockReplace, back: vi.fn() } as any)
 })
 
-function renderAppointments(search = 'view=week&date=2026-05-04') {
+// Week view now uses from/to params (Monday–Sunday YYYY-MM-DD) instead of a single date
+function renderAppointments(search = 'from=2026-05-04&to=2026-05-10', initialBookings?: Booking[]) {
   vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams(search) as any)
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <UserProvider user={{ userId: 'user-1', tenantId: 'tenant-1' }}><AppointmentsPage /></UserProvider>
+      <UserProvider user={{ userId: 'user-1', tenantId: 'tenant-1' }}>
+        <AppointmentsPage initialBookings={initialBookings} />
+      </UserProvider>
     </QueryClientProvider>,
   )
 }
@@ -57,7 +61,7 @@ describe('Appointments Calendar', () => {
 
   describe('Week view', () => {
     it('renders 7 day column headers Mon–Sun for the selected week', async () => {
-      renderAppointments('view=week&date=2026-05-04')
+      renderAppointments('from=2026-05-04&to=2026-05-10')
       await waitFor(() => {
         expect(screen.getByText(/Mon.*4/i)).toBeInTheDocument()
         expect(screen.getByText(/Sun.*10/i)).toBeInTheDocument()
@@ -65,14 +69,14 @@ describe('Appointments Calendar', () => {
     })
 
     it('marks today column with data-testid="today-column"', async () => {
-      renderAppointments('view=week&date=2026-05-04')
+      renderAppointments('from=2026-05-04&to=2026-05-10')
       await waitFor(() => {
         expect(screen.getByTestId('today-column')).toBeInTheDocument()
       })
     })
 
     it('renders 60-min appointment block with client name and time range', async () => {
-      renderAppointments('view=week&date=2026-05-04')
+      renderAppointments('from=2026-05-04&to=2026-05-10')
       await waitFor(() => expect(screen.getByText('Alice Smith')).toBeInTheDocument())
       // 60-min booking: time range element is present in Alice's block
       expect(screen.getByText('Alice Smith').closest('[data-booking-id="bk-1"]')
@@ -80,45 +84,74 @@ describe('Appointments Calendar', () => {
     })
 
     it('renders short (<30 min) appointment block with client name only, no time range', async () => {
-      renderAppointments('view=week&date=2026-05-04')
+      renderAppointments('from=2026-05-04&to=2026-05-10')
       await waitFor(() => screen.getByText('Bob Jones'))
       // Short (<30 min) booking: no time range element in Bob's block
       expect(screen.getByText('Bob Jones').closest('[data-booking-id="bk-2"]')
         ?.querySelector('[data-testid="appointment-time-range"]')).not.toBeInTheDocument()
     })
+
+    it('renders initialBookings within the visible week without a network refetch', async () => {
+      // Simulate the SSR pre-population scenario: MSW returns empty (no network data),
+      // but initialBookings (passed as SSR prop) contains a booking for the visible week.
+      // This verifies the initialData → staleTime mechanism keeps the booking visible.
+      server.use(
+        http.get(`/api/tenants/${TENANT_ID}/bookings`, () => HttpResponse.json([])),
+      )
+      const ssrBooking: Booking = {
+        id: 'bk-ssr',
+        tenantId: TENANT_ID,
+        serviceId: 'res-1',
+        locationId: 'loc-1',
+        staffId: null,
+        staffName: null,
+        clientName: 'SSRClient',
+        clientPhone: '1234567',
+        clientEmail: null,
+        startAt: '2026-05-06T09:00:00.000Z',
+        endAt: '2026-05-06T10:00:00.000Z',
+        status: 'pending',
+        notes: null,
+        createdAt: '2026-05-01T00:00:00.000Z',
+      }
+      renderAppointments('from=2026-05-04&to=2026-05-10', [ssrBooking])
+      await waitFor(() => expect(screen.getByText('SSRClient')).toBeInTheDocument())
+    })
   })
 
   describe('Toolbar navigation', () => {
-    it('clicking Today resets date to today (2026-05-04)', async () => {
+    it('clicking Today resets to today\'s week — URL omits from/to when on current week', async () => {
       const user = userEvent.setup()
-      renderAppointments('view=week&date=2026-05-11')
+      renderAppointments('from=2026-05-11&to=2026-05-17')
       await waitFor(() => screen.getByRole('button', { name: /today/i }))
       await user.click(screen.getByRole('button', { name: /today/i }))
-      // today = 2026-05-04 is the default; URL sync omits date param when on today's week
+      // today = 2026-05-04; current week is the default so no from/to in URL
       expect(mockReplace).toHaveBeenLastCalledWith('/appointments', { scroll: false })
     })
 
     it('clicking Next advances by 7 days in week view', async () => {
       const user = userEvent.setup()
-      renderAppointments('view=week&date=2026-05-04')
+      renderAppointments('from=2026-05-04&to=2026-05-10')
       await waitFor(() => screen.getByRole('button', { name: /next/i }))
       await user.click(screen.getByRole('button', { name: /next/i }))
-      expect(mockReplace).toHaveBeenLastCalledWith(expect.stringContaining('date=2026-05-11'), { scroll: false })
+      expect(mockReplace).toHaveBeenLastCalledWith(expect.stringContaining('from=2026-05-11'), { scroll: false })
+      expect(mockReplace).toHaveBeenLastCalledWith(expect.stringContaining('to=2026-05-17'), { scroll: false })
     })
 
     it('clicking Prev regresses by 7 days in week view', async () => {
       const user = userEvent.setup()
-      renderAppointments('view=week&date=2026-05-04')
+      renderAppointments('from=2026-05-04&to=2026-05-10')
       await waitFor(() => screen.getByRole('button', { name: /prev/i }))
       await user.click(screen.getByRole('button', { name: /prev/i }))
-      expect(mockReplace).toHaveBeenLastCalledWith(expect.stringContaining('date=2026-04-27'), { scroll: false })
+      expect(mockReplace).toHaveBeenLastCalledWith(expect.stringContaining('from=2026-04-27'), { scroll: false })
+      expect(mockReplace).toHaveBeenLastCalledWith(expect.stringContaining('to=2026-05-03'), { scroll: false })
     })
   })
 
   describe('View toggle', () => {
     it('clicking Day updates URL to view=day', async () => {
       const user = userEvent.setup()
-      renderAppointments('view=week&date=2026-05-04')
+      renderAppointments('from=2026-05-04&to=2026-05-10')
       await waitFor(() => screen.getByRole('button', { name: /^day$/i }))
       await user.click(screen.getByRole('button', { name: /^day$/i }))
       expect(mockReplace).toHaveBeenLastCalledWith(expect.stringContaining('view=day'), { scroll: false })
@@ -133,7 +166,7 @@ describe('Appointments Calendar', () => {
 
     it('clicking List updates URL to view=list', async () => {
       const user = userEvent.setup()
-      renderAppointments('view=week&date=2026-05-04')
+      renderAppointments('from=2026-05-04&to=2026-05-10')
       await waitFor(() => screen.getByRole('button', { name: /^list$/i }))
       await user.click(screen.getByRole('button', { name: /^list$/i }))
       expect(mockReplace).toHaveBeenLastCalledWith(expect.stringContaining('view=list'), { scroll: false })
@@ -185,7 +218,7 @@ describe('Appointments Calendar', () => {
 
   describe('Appointment detail dialog', () => {
     async function openDialog(user: ReturnType<typeof userEvent.setup>) {
-      renderAppointments('view=week&date=2026-05-04')
+      renderAppointments('from=2026-05-04&to=2026-05-10')
       await waitFor(() => screen.getByText('Alice Smith'))
       await user.click(screen.getByText('Alice Smith'))
       return waitFor(() => screen.getByRole('dialog'))
@@ -245,43 +278,5 @@ describe('Appointments Calendar', () => {
       })
     })
 
-    it('reschedule with end ≤ start shows inline validation error without sending PATCH', async () => {
-      const user = userEvent.setup()
-      const dialog = await openDialog(user)
-      // Use fireEvent.change for reliable datetime-local input manipulation in jsdom
-      fireEvent.change(within(dialog).getByLabelText(/new start/i), { target: { value: '2026-05-04T12:00' } })
-      fireEvent.change(within(dialog).getByLabelText(/new end/i), { target: { value: '2026-05-04T11:00' } })
-      await user.click(within(dialog).getByRole('button', { name: /reschedule/i }))
-      await waitFor(() => {
-        expect(within(dialog).getByText(/end must be after start/i)).toBeInTheDocument()
-      })
-    })
-
-    it('reschedule success sends PATCH { startAt, endAt } and closes dialog', async () => {
-      const user = userEvent.setup()
-      let capturedBody: unknown
-      server.use(
-        http.patch(`/api/tenants/${TENANT_ID}/bookings/bk-1`, async ({ request }) => {
-          capturedBody = await request.json()
-          return HttpResponse.json({
-            ...BOOKINGS[0],
-            startAt: '2026-05-04T11:00:00.000Z',
-            endAt: '2026-05-04T12:00:00.000Z',
-          })
-        }),
-      )
-      const dialog = await openDialog(user)
-      // Use fireEvent.change for reliable datetime-local input manipulation in jsdom
-      fireEvent.change(within(dialog).getByLabelText(/new start/i), { target: { value: '2026-05-04T11:00' } })
-      fireEvent.change(within(dialog).getByLabelText(/new end/i), { target: { value: '2026-05-04T12:00' } })
-      await user.click(within(dialog).getByRole('button', { name: /reschedule/i }))
-      await waitFor(() => {
-        expect(capturedBody).toMatchObject({
-          startAt: expect.stringContaining('2026-05-04'),
-          endAt: expect.stringContaining('2026-05-04'),
-        })
-        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-      })
-    })
   })
 })

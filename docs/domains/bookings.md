@@ -96,13 +96,16 @@ All fields optional; at least one must be present.
   "status": "confirmed | cancelled",
   "startAt": "iso8601",
   "endAt": "iso8601",
-  "notes": "string"
+  "notes": "string",
+  "override": "boolean (optional, default false)"
 }
 ```
 
+When `override: true` and times are being updated: skips overlap check. Consistent with `POST` override semantics.
+
 **Response 200** — updated booking object.
 
-**Errors:** `403`, `404`, `409` overlap or `already_cancelled`, `422`
+**Errors:** `403`, `404`, `409` overlap (only when `override` false/absent) or `already_cancelled`, `422`
 
 ---
 
@@ -178,17 +181,19 @@ Union of slots across all active staff assigned to `serviceId` at `locationId`. 
 |-------|------|
 | `/appointments` | `apps/web/app/(dashboard)/appointments/page.tsx` — async Server Component; pre-fetches bookings, services, staff, locations, and service-staff mapping for the initial view |
 
-`appointments/page.tsx` reads `x-tenant-id` from headers injected by middleware. It always pre-fetches today's week (ignoring URL params — the Client Component handles its own nav state). It runs five parallel queries inside a single `withTenantContext` transaction:
+`appointments/page.tsx` reads `x-tenant-id` from headers and `from`/`to` from `searchParams`. It pre-fetches the week identified by those params (falls back to the current week when absent). It runs five parallel queries inside a single `withTenantContext` transaction:
 
 1. Active services
 2. All locations
 3. Active staff
-4. Bookings for the current week
+4. Bookings for the requested week (`start_at >= from AND start_at <= to`)
 5. `SELECT ss.service_id, s.* FROM staff_services ss JOIN staff s ON s.id = ss.staff_id WHERE s.is_active = true` — all active service-staff assignments, grouped by `(serviceId, locationId)` into `ServiceStaffEntry[]`
 
 Results are passed as `initialBookings`, `initialServices`, `initialStaff`, `initialLocations`, and `initialServiceStaff` to `AppointmentsPage`.
 
-`AppointmentsPage` seeds the React Query cache (`queryKey: ['service-staff', tenantId, serviceId, locationId]`) from `initialServiceStaff` on first render via `useMemo`. This ensures the `NewAppointmentPanel` staff dropdown is populated immediately when a service and location are selected, without a client-side round-trip.
+`AppointmentsPage` seeds the React Query cache in a single `useMemo` on first render (intentionally empty deps — runs once):
+- `['service-staff', tenantId, serviceId, locationId]` keys from `initialServiceStaff` — ensures the `NewAppointmentPanel` staff dropdown is populated immediately.
+- `['bookings', tenantId, { from, to, serviceId }]` from `initialBookings` — ensures the initial week renders without a loading skeleton. The key is computed the same way `useBookings` computes it, so they always match. `useBookings` itself has `staleTime: 30_000` which keeps this seeded data fresh for 30 seconds before a background refetch.
 
 ### Hooks
 
@@ -203,11 +208,11 @@ interface Booking {
   notes: string | null; createdAt: string
 }
 
-function useBookings(params: { from: string; to: string; serviceId?: string; initialData?: Booking[] }): UseQueryResult<Booking[]>
+function useBookings(params: { from: string; to: string; serviceId?: string }): UseQueryResult<Booking[]>
 function useBookingsPrefetch(params: { view: 'week' | 'day' | 'list'; from: string; to: string; serviceId?: string }): void
 function useUpcomingBookings(params: { serviceId?: string }): UseQueryResult<Booking[]>
 function useCancelBooking(): UseMutationResult<Booking, ApiError, string>
-function useRescheduleBooking(): UseMutationResult<Booking, ApiError, { id: string; startAt: string; endAt: string }>
+function useRescheduleBooking(): UseMutationResult<Booking, ApiError, { id: string; startAt: string; endAt: string; override?: boolean }>
 
 // apps/web/src/hooks/useCreateBooking.ts
 function useCreateBooking(): UseMutationResult<Booking, ApiError, CreateBookingInput>
@@ -241,13 +246,13 @@ All mutations call `queryClient.invalidateQueries({ queryKey: ['bookings'] })` o
 | `apps/web/src/components/calendar/DayColumn.tsx` | 1536 px tall relative container; appointment blocks with overlap layout; drag-selection gesture (15-min snap) that opens the manual entry panel |
 | `apps/web/src/components/calendar/AppointmentBlock.tsx` | Absolutely positioned block; coloured by status; click opens detail dialog |
 | `apps/web/src/components/calendar/ListView.tsx` | shadcn Table of upcoming bookings |
-| `apps/web/src/components/calendar/AppointmentDetailDialog.tsx` | Full booking details; cancel via AlertDialog; reschedule via datetime-local inputs |
+| `apps/web/src/components/calendar/AppointmentDetailDialog.tsx` | Full booking details; confirm/cancel via AlertDialog; "Reschedule appointment" button triggers `onReschedule(booking)` callback — opens `NewAppointmentPanel` in reschedule mode |
 
 ### Calendar layout
 
 - Each hour row: 64 px. Block `top = (startMinutes / 60) × 64 px`, `height = (durationMinutes / 60) × 64 px`, `min-height: 24 px`.
 - Overlap layout: `computeColumnLayout(appointments)` — greedy column assignment, `left = (colIndex / colCount) × 100%`, `width = (1 / colCount × 100%) − 2 px`.
-- Navigation state (`view`, `date`, `serviceId`, `staffId`) lives in `useState` in `AppointmentsPage` for synchronous React renders. The URL is kept in sync via `router.replace` as a side effect (for back button and direct links) but does not drive rendering.
+- Navigation state (`view`, `dateStr`, `serviceId`, `staffId`) lives in `useState` in `AppointmentsPage` for synchronous React renders. The URL is kept in sync via `router.replace` as a side effect (for back button and direct links) but does not drive rendering. Week view URL: `?from=YYYY-MM-DD&to=YYYY-MM-DD` (Monday–Sunday). Day view URL: `?date=YYYY-MM-DD`. Params are omitted when on the default (current week / today).
 - Week view scrolls horizontally on narrow viewports (`min-w-[640px]`, outer `overflow-x: auto`).
 - Current-time indicator: `position: absolute; height: 2px; background: red-500` at `(hour × 60 + minutes) / 60 × 64 px`. Updated every minute via `setInterval`.
 
@@ -255,7 +260,7 @@ All mutations call `queryClient.invalidateQueries({ queryKey: ['bookings'] })` o
 
 | File | Responsibility |
 |------|----------------|
-| `apps/web/src/components/calendar/NewAppointmentPanel.tsx` | 480 px slide-over: service chips, staff dropdown, location selector (hidden for single-location tenants), date + slot grid, override checkbox, conflict warning, notes, client fields, submit |
+| `apps/web/src/components/calendar/NewAppointmentPanel.tsx` | 480 px slide-over. Accepts `mode?: 'new' \| 'reschedule'` and `rescheduleBooking?: Booking`. In `'new'` mode: service chips, staff dropdown, location selector, date + slot grid, override checkbox, conflict warning, notes, client fields. In `'reschedule'` mode: client/service/location/staff fields pre-filled and locked; submits via `useRescheduleBooking`. Both modes: "Custom time" collapsible section (time input, computed end, sends `override: true`). |
 
 **Drag-to-open:** `mousedown` on `DayColumn` (not on an existing block) → `mousemove` ghost block → `mouseup` snap to 15-min grid → `onTimeSelect(startAt, endAt)` → `AppointmentsPage` opens panel with `prefillStart` / `prefillEnd`.
 
@@ -264,7 +269,10 @@ All mutations call `queryClient.invalidateQueries({ queryKey: ['bookings'] })` o
 const [panelOpen, setPanelOpen] = useState(false)
 const [prefillStart, setPrefillStart] = useState<Date | undefined>()
 const [prefillEnd, setPrefillEnd] = useState<Date | undefined>()
+const [rescheduleBooking, setRescheduleBooking] = useState<Booking | undefined>()
 ```
+
+When `rescheduleBooking` is set, the panel receives `mode='reschedule'` and `rescheduleBooking`. Clicking "Reschedule appointment" in `AppointmentDetailDialog` closes the dialog, sets `rescheduleBooking`, and opens the panel.
 
 **Location data:** `NewAppointmentPanel` receives `locations: Location[]` as a prop from `AppointmentsPage`. It does not call `useLocations()` internally. `AppointmentsPage` already holds `locations` from its own `useLocations(true, initialLocations)` call (SSR-seeded); passing it down ensures the location picker is present on first render with no extra network request. The panel derives `activeLocations = locations.filter(l => l.isActive)` and shows the picker only when `activeLocations.length > 1`.
 

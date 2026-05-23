@@ -19,16 +19,16 @@ export interface Booking {
   createdAt: string
 }
 
-export function useBookings(params: { from: string; to: string; serviceId?: string; initialData?: Booking[] }) {
+export function useBookings(params: { from: string; to: string; serviceId?: string }) {
   const { user } = useAuth()
   const tenantId = user!.tenantId
-  const { from, to, serviceId, initialData } = params
+  const { from, to, serviceId } = params
   const search = new URLSearchParams({ from, to })
   if (serviceId) search.set('serviceId', serviceId)
   return useQuery<Booking[]>({
     queryKey: ['bookings', tenantId, { from, to, serviceId }],
     queryFn: () => apiFetch(`/tenants/${tenantId}/bookings?${search}`),
-    ...(initialData ? { initialData, initialDataUpdatedAt: Date.now(), staleTime: 30_000 } : {}),
+    staleTime: 30_000,
   })
 }
 
@@ -77,11 +77,11 @@ export function useRescheduleBooking() {
   const { user } = useAuth()
   const qc = useQueryClient()
   const tenantId = user!.tenantId
-  return useMutation<Booking, ApiError, { id: string; startAt: string; endAt: string }>({
-    mutationFn: ({ id, startAt, endAt }) =>
+  return useMutation<Booking, ApiError, { id: string; startAt: string; endAt: string; override?: boolean }>({
+    mutationFn: ({ id, startAt, endAt, override }) =>
       apiFetch<Booking>(`/tenants/${tenantId}/bookings/${id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ startAt, endAt }),
+        body: JSON.stringify({ startAt, endAt, ...(override ? { override } : {}) }),
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['bookings'] }),
   })
