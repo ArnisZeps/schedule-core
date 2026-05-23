@@ -96,13 +96,16 @@ All fields optional; at least one must be present.
   "status": "confirmed | cancelled",
   "startAt": "iso8601",
   "endAt": "iso8601",
-  "notes": "string"
+  "notes": "string",
+  "override": "boolean (optional, default false)"
 }
 ```
 
+When `override: true` and times are being updated: skips overlap check. Consistent with `POST` override semantics.
+
 **Response 200** — updated booking object.
 
-**Errors:** `403`, `404`, `409` overlap or `already_cancelled`, `422`
+**Errors:** `403`, `404`, `409` overlap (only when `override` false/absent) or `already_cancelled`, `422`
 
 ---
 
@@ -214,7 +217,7 @@ function useBookings(params: { from: string; to: string; serviceId?: string }): 
 function useBookingsPrefetch(params: { view: 'week' | 'day' | 'list'; from: string; to: string; serviceId?: string }): void
 function useUpcomingBookings(params: { serviceId?: string }): UseQueryResult<Booking[]>
 function useCancelBooking(): UseMutationResult<Booking, ApiError, string>
-function useRescheduleBooking(): UseMutationResult<Booking, ApiError, { id: string; startAt: string; endAt: string }>
+function useRescheduleBooking(): UseMutationResult<Booking, ApiError, { id: string; startAt: string; endAt: string; override?: boolean }>
 
 // apps/web/src/hooks/useCreateBooking.ts
 function useCreateBooking(): UseMutationResult<Booking, ApiError, CreateBookingInput>
@@ -240,7 +243,7 @@ All mutations call `queryClient.invalidateQueries({ queryKey: ['bookings'] })` o
 
 | File | Responsibility |
 |------|----------------|
-| `apps/web/src/page-components/appointments/AppointmentsPage.tsx` | Client Component. Accepts `dehydratedState?: unknown`; wraps children in `HydrationBoundary`. Owns `view`, `dateStr`, `serviceId`, `staffId` as `useState` (initialised from URL params on mount). Week view reads/writes `?from=YYYY-MM-DD&to=YYYY-MM-DD`; day view uses `?view=day&date=YYYY-MM-DD`. Builds ISO keys as `dateStr + 'T00:00:00.000Z'`. Syncs URL via `router.replace` as a side effect. |
+| `apps/web/src/page-components/appointments/AppointmentsPage.tsx` | Client Component. Accepts `dehydratedState?: DehydratedState`; wraps children in `HydrationBoundary`. Owns `view`, `dateStr`, `serviceId`, `staffId` as `useState` (initialised from URL params on mount). Week view reads/writes `?from=YYYY-MM-DD&to=YYYY-MM-DD`; day view uses `?view=day&date=YYYY-MM-DD`. Builds ISO keys as `dateStr + 'T00:00:00.000Z'`. Syncs URL via `router.replace` as a side effect. |
 | `apps/web/src/components/calendar/CalendarToolbar.tsx` | Pure controlled component. Prev/next/today; week/day/list toggle; service and staff filters; "New appointment" button. All state and nav callbacks passed as props — no internal routing. |
 | `apps/web/src/components/calendar/WeekView.tsx` | 7-column CSS Grid; renders TimeGutter + DayColumns |
 | `apps/web/src/components/calendar/DayView.tsx` | Single-column; renders TimeGutter + one DayColumn |
@@ -248,7 +251,7 @@ All mutations call `queryClient.invalidateQueries({ queryKey: ['bookings'] })` o
 | `apps/web/src/components/calendar/DayColumn.tsx` | 1536 px tall relative container; appointment blocks with overlap layout; drag-selection gesture (15-min snap) that opens the manual entry panel |
 | `apps/web/src/components/calendar/AppointmentBlock.tsx` | Absolutely positioned block; coloured by status; click opens detail dialog |
 | `apps/web/src/components/calendar/ListView.tsx` | shadcn Table of upcoming bookings |
-| `apps/web/src/components/calendar/AppointmentDetailDialog.tsx` | Full booking details; cancel via AlertDialog; reschedule via datetime-local inputs |
+| `apps/web/src/components/calendar/AppointmentDetailDialog.tsx` | Full booking details; confirm/cancel via AlertDialog; "Reschedule appointment" button triggers `onReschedule(booking)` callback — opens `NewAppointmentPanel` in reschedule mode |
 
 ### Calendar layout
 
@@ -262,7 +265,7 @@ All mutations call `queryClient.invalidateQueries({ queryKey: ['bookings'] })` o
 
 | File | Responsibility |
 |------|----------------|
-| `apps/web/src/components/calendar/NewAppointmentPanel.tsx` | 480 px slide-over: service chips, staff dropdown, location selector (hidden for single-location tenants), date + slot grid, override checkbox, conflict warning, notes, client fields, submit |
+| `apps/web/src/components/calendar/NewAppointmentPanel.tsx` | 480 px slide-over. Accepts `mode?: 'new' \| 'reschedule'` and `rescheduleBooking?: Booking`. In `'new'` mode: service chips, staff dropdown, location selector, date + slot grid, override checkbox, conflict warning, notes, client fields. In `'reschedule'` mode: client/service/location/staff fields pre-filled and locked; submits via `useRescheduleBooking`. Both modes: "Custom time" collapsible section (time input, computed end, sends `override: true`). |
 
 **Drag-to-open:** `mousedown` on `DayColumn` (not on an existing block) → `mousemove` ghost block → `mouseup` snap to 15-min grid → `onTimeSelect(startAt, endAt)` → `AppointmentsPage` opens panel with `prefillStart` / `prefillEnd`.
 
@@ -271,7 +274,10 @@ All mutations call `queryClient.invalidateQueries({ queryKey: ['bookings'] })` o
 const [panelOpen, setPanelOpen] = useState(false)
 const [prefillStart, setPrefillStart] = useState<Date | undefined>()
 const [prefillEnd, setPrefillEnd] = useState<Date | undefined>()
+const [rescheduleBooking, setRescheduleBooking] = useState<Booking | undefined>()
 ```
+
+When `rescheduleBooking` is set, the panel receives `mode='reschedule'` and `rescheduleBooking`. Clicking "Reschedule appointment" in `AppointmentDetailDialog` closes the dialog, sets `rescheduleBooking`, and opens the panel.
 
 **Location data:** `NewAppointmentPanel` receives `locations: Location[]` as a prop from `AppointmentsPage`. It does not call `useLocations()` internally. `AppointmentsPage` calls `useLocations(true)` — the HydrationBoundary pre-populates the `['locations', tenantId, { includeInactive: true }]` key from SSR, so locations are present on first render with no network round-trip. The panel derives `activeLocations = locations.filter(l => l.isActive)` and shows the picker only when `activeLocations.length > 1`.
 

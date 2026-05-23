@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { render, screen, waitFor, within, fireEvent } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -287,45 +287,6 @@ describe('Appointments Calendar', () => {
       await waitFor(() => {
         expect(screen.getByRole('dialog')).toBeInTheDocument()
         expect(within(screen.getByRole('dialog')).getByText(/already cancelled/i)).toBeInTheDocument()
-      })
-    })
-
-    it('reschedule with end ≤ start shows inline validation error without sending PATCH', async () => {
-      const user = userEvent.setup()
-      const dialog = await openDialog(user)
-      // Use fireEvent.change for reliable datetime-local input manipulation in jsdom
-      fireEvent.change(within(dialog).getByLabelText(/new start/i), { target: { value: '2026-05-04T12:00' } })
-      fireEvent.change(within(dialog).getByLabelText(/new end/i), { target: { value: '2026-05-04T11:00' } })
-      await user.click(within(dialog).getByRole('button', { name: /reschedule/i }))
-      await waitFor(() => {
-        expect(within(dialog).getByText(/end must be after start/i)).toBeInTheDocument()
-      })
-    })
-
-    it('reschedule success sends PATCH { startAt, endAt } and closes dialog', async () => {
-      const user = userEvent.setup()
-      let capturedBody: unknown
-      server.use(
-        http.patch(`/api/tenants/${TENANT_ID}/bookings/bk-1`, async ({ request }) => {
-          capturedBody = await request.json()
-          return HttpResponse.json({
-            ...BOOKINGS[0],
-            startAt: '2026-05-04T11:00:00.000Z',
-            endAt: '2026-05-04T12:00:00.000Z',
-          })
-        }),
-      )
-      const dialog = await openDialog(user)
-      // Use fireEvent.change for reliable datetime-local input manipulation in jsdom
-      fireEvent.change(within(dialog).getByLabelText(/new start/i), { target: { value: '2026-05-04T11:00' } })
-      fireEvent.change(within(dialog).getByLabelText(/new end/i), { target: { value: '2026-05-04T12:00' } })
-      await user.click(within(dialog).getByRole('button', { name: /reschedule/i }))
-      await waitFor(() => {
-        expect(capturedBody).toMatchObject({
-          startAt: expect.stringContaining('2026-05-04'),
-          endAt: expect.stringContaining('2026-05-04'),
-        })
-        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
       })
     })
   })

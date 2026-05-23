@@ -19,10 +19,8 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
 import type { Booking } from '@/hooks/useBookings'
-import { useCancelBooking, useConfirmBooking, useRescheduleBooking } from '@/hooks/useBookings'
+import { useCancelBooking, useConfirmBooking } from '@/hooks/useBookings'
 import type { Service } from '@/hooks/useServices'
 import type { Location } from '@/hooks/useLocations'
 import { ApiError } from '@/lib/api'
@@ -39,17 +37,13 @@ const STATUS_LABEL: Record<Booking['status'], string> = {
   cancelled: 'Cancelled',
 }
 
-function toDatetimeLocal(isoStr: string): string {
-  const d = new Date(isoStr)
-  return format(d, "yyyy-MM-dd'T'HH:mm")
-}
-
 interface AppointmentDetailDialogProps {
   booking: Booking
   services: Service[]
   locations?: Location[]
   open: boolean
   onClose: () => void
+  onReschedule: (booking: Booking) => void
 }
 
 export function AppointmentDetailDialog({
@@ -58,16 +52,13 @@ export function AppointmentDetailDialog({
   locations,
   open,
   onClose,
+  onReschedule,
 }: AppointmentDetailDialogProps) {
   const [cancelAlertOpen, setCancelAlertOpen] = useState(false)
   const [cancelError, setCancelError] = useState('')
-  const [rescheduleError, setRescheduleError] = useState('')
-  const [newStart, setNewStart] = useState(toDatetimeLocal(booking.startAt))
-  const [newEnd, setNewEnd] = useState(toDatetimeLocal(booking.endAt))
 
   const cancelBooking = useCancelBooking()
   const confirmBooking = useConfirmBooking()
-  const rescheduleBooking = useRescheduleBooking()
 
   const service = services.find(s => s.id === booking.serviceId)
   const location = locations?.find(l => l.id === booking.locationId)
@@ -99,36 +90,6 @@ export function AppointmentDetailDialog({
         setCancelError(err instanceof ApiError ? err.message : 'Failed to cancel')
       },
     })
-  }
-
-  function handleReschedule() {
-    setRescheduleError('')
-    const startDate = new Date(newStart)
-    const endDate = new Date(newEnd)
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-      setRescheduleError('Please enter valid start and end times')
-      return
-    }
-    if (endDate <= startDate) {
-      setRescheduleError('End must be after start')
-      return
-    }
-    rescheduleBooking.mutate(
-      {
-        id: booking.id,
-        startAt: startDate.toISOString(),
-        endAt: endDate.toISOString(),
-      },
-      {
-        onSuccess: () => {
-          onClose()
-          toast.success('Appointment rescheduled')
-        },
-        onError: err => {
-          setRescheduleError(err instanceof ApiError ? err.message : 'Failed to reschedule')
-        },
-      },
-    )
   }
 
   return (
@@ -200,40 +161,17 @@ export function AppointmentDetailDialog({
             )}
           </div>
 
-          {/* Reschedule section */}
-          <div className="border-t pt-4 space-y-3">
-            <p className="text-sm font-medium">Reschedule</p>
-            <div className="grid gap-2">
-              <div className="space-y-1">
-                <Label htmlFor="new-start">New start</Label>
-                <Input
-                  id="new-start"
-                  type="datetime-local"
-                  value={newStart}
-                  onChange={e => setNewStart(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="new-end">New end</Label>
-                <Input
-                  id="new-end"
-                  type="datetime-local"
-                  value={newEnd}
-                  onChange={e => setNewEnd(e.target.value)}
-                />
-              </div>
+          {booking.status !== 'cancelled' && (
+            <div className="border-t pt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onReschedule(booking)}
+              >
+                Reschedule appointment
+              </Button>
             </div>
-            {rescheduleError && (
-              <p className="text-sm text-destructive">{rescheduleError}</p>
-            )}
-            <Button
-              size="sm"
-              onClick={handleReschedule}
-              disabled={rescheduleBooking.isPending}
-            >
-              Reschedule
-            </Button>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
 

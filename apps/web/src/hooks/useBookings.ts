@@ -77,11 +77,11 @@ export function useRescheduleBooking() {
   const { user } = useAuth()
   const qc = useQueryClient()
   const tenantId = user!.tenantId
-  return useMutation<Booking, ApiError, { id: string; startAt: string; endAt: string }>({
-    mutationFn: ({ id, startAt, endAt }) =>
+  return useMutation<Booking, ApiError, { id: string; startAt: string; endAt: string; override?: boolean }>({
+    mutationFn: ({ id, startAt, endAt, override }) =>
       apiFetch<Booking>(`/tenants/${tenantId}/bookings/${id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ startAt, endAt }),
+        body: JSON.stringify({ startAt, endAt, ...(override ? { override } : {}) }),
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['bookings'] }),
   })

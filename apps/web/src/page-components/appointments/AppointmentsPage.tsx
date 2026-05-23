@@ -84,6 +84,7 @@ function AppointmentsPageInner() {
   const [panelOpen, setPanelOpen] = useState(false)
   const [prefillStart, setPrefillStart] = useState<Date | undefined>()
   const [prefillEnd, setPrefillEnd] = useState<Date | undefined>()
+  const [rescheduleBooking, setRescheduleBooking] = useState<Booking | undefined>()
 
   useEffect(() => {
     const next = new URLSearchParams()
@@ -114,6 +115,13 @@ function AppointmentsPageInner() {
     }
     const step = view === 'day' ? 1 : 7
     setDateStr(utcAddDays(dateStr, direction === 'next' ? step : -step))
+  }
+
+  function handleViewChange(newView: 'week' | 'day' | 'list') {
+    if (newView === 'week' && view !== 'week') {
+      setDateStr(utcWeekMonday(dateStr))
+    }
+    setView(newView)
   }
 
   const { data: services = [] } = useServices()
@@ -147,10 +155,17 @@ function AppointmentsPageInner() {
     setPanelOpen(true)
   }
 
+  function handleReschedule(booking: Booking) {
+    setSelectedBooking(null)
+    setRescheduleBooking(booking)
+    setPanelOpen(true)
+  }
+
   function handleClosePanel() {
     setPanelOpen(false)
     setPrefillStart(undefined)
     setPrefillEnd(undefined)
+    setRescheduleBooking(undefined)
   }
 
   return (
@@ -166,7 +181,7 @@ function AppointmentsPageInner() {
         serviceId={serviceId}
         selectedStaffId={staffId}
         onNavigate={handleNavigate}
-        onViewChange={setView}
+        onViewChange={handleViewChange}
         onServiceChange={setServiceId}
         onStaffChange={setStaffId}
         onNewAppointment={handleNewAppointment}
@@ -229,6 +244,7 @@ function AppointmentsPageInner() {
           locations={locations}
           open={true}
           onClose={() => setSelectedBooking(null)}
+          onReschedule={handleReschedule}
         />
       )}
 
@@ -245,6 +261,8 @@ function AppointmentsPageInner() {
             prefillStart={prefillStart}
             prefillEnd={prefillEnd}
             onClose={handleClosePanel}
+            mode={rescheduleBooking ? 'reschedule' : 'new'}
+            rescheduleBooking={rescheduleBooking}
           />
         </>
       )}

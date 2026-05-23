@@ -44,6 +44,7 @@ const patchSchema = z
     startAt: z.string().regex(ISO8601).optional(),
     endAt: z.string().regex(ISO8601).optional(),
     notes: z.string().nullable().optional(),
+    override: z.boolean().optional(),
   })
   .refine(
     (d) =>
@@ -105,7 +106,7 @@ export async function PATCH(
 
     const serviceId = cur.service_id;
 
-    if (patch.startAt || patch.endAt) {
+    if ((patch.startAt || patch.endAt) && !patch.override) {
       if (await checkOverlap(client, serviceId, newStart, newEnd, bookingId)) {
         return 'overlap' as const;
       }
