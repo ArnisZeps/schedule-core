@@ -1,14 +1,13 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { useQueryClient } from '@tanstack/react-query'
-import { format, parseISO, isValid, startOfWeek, endOfWeek, addDays } from 'date-fns'
-import { useServices, type Service } from '@/hooks/useServices'
-import { useBookings, type Booking } from '@/hooks/useBookings'
+import { HydrationBoundary } from '@tanstack/react-query'
+import { useServices } from '@/hooks/useServices'
+import { useBookings } from '@/hooks/useBookings'
 import { useBookingsPrefetch } from '@/hooks/useBookingsPrefetch'
-import { useLocations, type Location } from '@/hooks/useLocations'
-import { useStaffList, type Staff } from '@/hooks/useStaff'
+import { useLocations } from '@/hooks/useLocations'
+import { useStaffList } from '@/hooks/useStaff'
 import { useAuth } from '@/hooks/useAuth'
 import { CalendarToolbar } from '@/components/calendar/CalendarToolbar'
 import { WeekView } from '@/components/calendar/WeekView'
@@ -17,42 +16,43 @@ import { ListView } from '@/components/calendar/ListView'
 import { AppointmentDetailDialog } from '@/components/calendar/AppointmentDetailDialog'
 import { NewAppointmentPanel } from '@/components/calendar/NewAppointmentPanel'
 import { ErrorState } from '@/components/ui/ErrorState'
+import type { Booking } from '@/hooks/useBookings'
 
-export interface ServiceStaffEntry {
-  serviceId: string
-  locationId: string
-  staff: Staff[]
+// UTC-based date helpers — timezone-safe, produce consistent keys on server and client
+
+function utcWeekMonday(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00.000Z')
+  const dow = d.getUTCDay()
+  const adj = dow === 0 ? -6 : 1 - dow
+  if (adj === 0) return dateStr
+  return new Date(d.getTime() + adj * 86400000).toISOString().slice(0, 10)
+}
+
+function utcAddDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr + 'T00:00:00.000Z')
+  return new Date(d.getTime() + days * 86400000).toISOString().slice(0, 10)
+}
+
+function utcTodayStr(): string {
+  return new Date().toISOString().slice(0, 10)
 }
 
 interface AppointmentsPageProps {
-  initialBookings?: Booking[]
-  initialServices?: Service[]
-  initialStaff?: Staff[]
-  initialLocations?: Location[]
-  initialServiceStaff?: ServiceStaffEntry[]
+  dehydratedState?: unknown
 }
 
-export function AppointmentsPage({
-  initialBookings,
-  initialServices,
-  initialStaff,
-  initialLocations,
-  initialServiceStaff,
-}: AppointmentsPageProps = {}) {
+export function AppointmentsPage({ dehydratedState }: AppointmentsPageProps = {}) {
+  return (
+    <HydrationBoundary state={dehydratedState}>
+      <AppointmentsPageInner />
+    </HydrationBoundary>
+  )
+}
+
+function AppointmentsPageInner() {
   const params = useSearchParams()
   const router = useRouter()
   const { user } = useAuth()
-  const tenantId = user!.tenantId
-  const queryClient = useQueryClient()
-
-  // Seed React Query cache from SSR data — runs once synchronously before child components mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useMemo(() => {
-    if (!initialServiceStaff?.length) return
-    for (const entry of initialServiceStaff) {
-      queryClient.setQueryData(['service-staff', tenantId, entry.serviceId, entry.locationId], entry.staff)
-    }
-  }, []) // intentionally empty: seed once from SSR data
 
   const isMobile = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches
 
@@ -60,13 +60,19 @@ export function AppointmentsPage({
     (params.get('view') as 'week' | 'day' | 'list') || (isMobile ? 'day' : 'week')
   )
   const [dateStr, setDateStr] = useState<string>(() => {
-    const d = params.get('date')
-    if (d) {
-      const parsed = parseISO(d)
-      if (isValid(parsed)) return d
+    const viewParam = params.get('view') as 'week' | 'day' | 'list' | null
+    if (viewParam === 'day') {
+      const d = params.get('date')
+      if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) return d
+      return utcTodayStr()
     }
-    return format(new Date(), 'yyyy-MM-dd')
+    // week view: read 'from' param (should already be a Monday)
+    const f = params.get('from')
+    if (f && /^\d{4}-\d{2}-\d{2}$/.test(f)) return f
+    // default: UTC Monday of current week
+    return utcWeekMonday(utcTodayStr())
   })
+
   const [serviceId, setServiceId] = useState<string | undefined>(() =>
     params.get('serviceId') ?? undefined
   )
@@ -82,7 +88,18 @@ export function AppointmentsPage({
   useEffect(() => {
     const next = new URLSearchParams()
     if (view !== 'week') next.set('view', view)
-    if (dateStr !== format(new Date(), 'yyyy-MM-dd')) next.set('date', dateStr)
+
+    const today = utcTodayStr()
+    if (view === 'week') {
+      const todayMonday = utcWeekMonday(today)
+      if (dateStr !== todayMonday) {
+        next.set('from', dateStr)
+        next.set('to', utcAddDays(dateStr, 7))
+      }
+    } else if (view === 'day') {
+      if (dateStr !== today) next.set('date', dateStr)
+    }
+
     if (serviceId) next.set('serviceId', serviceId)
     if (staffId) next.set('staffId', staffId)
     const qs = next.toString()
@@ -91,35 +108,30 @@ export function AppointmentsPage({
 
   function handleNavigate(direction: 'prev' | 'next' | 'today') {
     if (direction === 'today') {
-      setDateStr(format(new Date(), 'yyyy-MM-dd'))
+      const today = utcTodayStr()
+      setDateStr(view === 'week' ? utcWeekMonday(today) : today)
       return
     }
-    const days = view === 'day' ? 1 : 7
-    setDateStr(format(addDays(parseISO(dateStr), direction === 'next' ? days : -days), 'yyyy-MM-dd'))
+    const step = view === 'day' ? 1 : 7
+    setDateStr(utcAddDays(dateStr, direction === 'next' ? step : -step))
   }
 
-  const { data: services = [] } = useServices(initialServices)
-  const { data: locations = [] } = useLocations(true, initialLocations)
-  const { data: staffList = [] } = useStaffList(undefined, undefined, initialStaff)
+  const { data: services = [] } = useServices()
+  const { data: locations = [] } = useLocations(true)
+  const { data: staffList = [] } = useStaffList()
 
-  const date = parseISO(dateStr)
-  const from =
-    view === 'week'
-      ? startOfWeek(date, { weekStartsOn: 1 }).toISOString()
-      : date.toISOString()
-  const to =
-    view === 'week'
-      ? addDays(endOfWeek(date, { weekStartsOn: 1 }), 1).toISOString()
-      : addDays(date, 1).toISOString()
+  // ISO keys: UTC midnight, timezone-safe — matches server dehydration keys
+  const fromISO = dateStr + 'T00:00:00.000Z'
+  const toISO = (view === 'week' ? utcAddDays(dateStr, 7) : utcAddDays(dateStr, 1)) + 'T00:00:00.000Z'
 
   const {
     data: rawBookings = [],
     isLoading: bookingsLoading,
     isError: bookingsError,
     refetch,
-  } = useBookings({ from, to, serviceId, initialData: initialBookings })
+  } = useBookings({ from: fromISO, to: toISO, serviceId })
 
-  useBookingsPrefetch({ view, from, to, serviceId })
+  useBookingsPrefetch({ view, from: fromISO, to: toISO, serviceId })
 
   const bookings = staffId ? rawBookings.filter(b => b.staffId === staffId) : rawBookings
 
