@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { PackageOpen, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useServices, useDeleteService, type Service } from '@/hooks/useServices'
+import { HydrationBoundary } from '@tanstack/react-query'
+import { useServices, useDeleteService } from '@/hooks/useServices'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -37,8 +38,16 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { LoadingState } from '@/components/ui/LoadingState'
 import { EmptyState } from '@/components/ui/EmptyState'
 
-export function ServiceListPage({ initialServices }: { initialServices?: Service[] } = {}) {
-  const { data: services, isLoading } = useServices(initialServices)
+export function ServiceListPage({ dehydratedState }: { dehydratedState?: unknown } = {}) {
+  return (
+    <HydrationBoundary state={dehydratedState}>
+      <ServiceListPageInner />
+    </HydrationBoundary>
+  )
+}
+
+function ServiceListPageInner() {
+  const { data: services, isLoading } = useServices()
   const deleteMutation = useDeleteService()
   const router = useRouter()
   const [deleteId, setDeleteId] = useState<string | null>(null)

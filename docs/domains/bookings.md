@@ -178,17 +178,24 @@ Union of slots across all active staff assigned to `serviceId` at `locationId`. 
 |-------|------|
 | `/appointments` | `apps/web/app/(dashboard)/appointments/page.tsx` — async Server Component; pre-fetches bookings, services, staff, locations, and service-staff mapping for the initial view |
 
-`appointments/page.tsx` reads `x-tenant-id` from headers injected by middleware. It always pre-fetches today's week (ignoring URL params — the Client Component handles its own nav state). It runs five parallel queries inside a single `withTenantContext` transaction:
+`appointments/page.tsx` reads `x-tenant-id` from headers and `searchParams.from`/`to` (YYYY-MM-DD). When absent it defaults to the UTC Monday of the current week. It runs five parallel queries inside a single `withTenantContext` transaction:
 
 1. Active services
-2. All locations
+2. All locations (including inactive)
 3. Active staff
-4. Bookings for the current week
-5. `SELECT ss.service_id, s.* FROM staff_services ss JOIN staff s ON s.id = ss.staff_id WHERE s.is_active = true` — all active service-staff assignments, grouped by `(serviceId, locationId)` into `ServiceStaffEntry[]`
+4. Bookings for the requested week/day range
+5. `SELECT ss.service_id, s.* FROM staff_services ss JOIN staff s ON s.id = ss.staff_id WHERE s.is_active = true` — all active service-staff assignments
 
-Results are passed as `initialBookings`, `initialServices`, `initialStaff`, `initialLocations`, and `initialServiceStaff` to `AppointmentsPage`.
+Results are serialised into a React Query dehydrated state via `makeQueryClient()` + `setQueryData` + `dehydrate`, then passed as `dehydratedState` to `AppointmentsPage`. `HydrationBoundary` inside `AppointmentsPage` deserialises the state before children mount — no loading skeleton on first render.
 
-`AppointmentsPage` seeds the React Query cache (`queryKey: ['service-staff', tenantId, serviceId, locationId]`) from `initialServiceStaff` on first render via `useMemo`. This ensures the `NewAppointmentPanel` staff dropdown is populated immediately when a service and location are selected, without a client-side round-trip.
+React Query keys pre-populated on the server:
+- `['bookings', tenantId, { from: fromISO, to: toISO, serviceId: undefined }]`
+- `['services', tenantId]`
+- `['locations', tenantId, { includeInactive: true }]`
+- `['staff', tenantId, { includeInactive: false, locationId: undefined }]`
+- `['service-staff', tenantId, serviceId, locationId]` — one entry per `(serviceId, locationId)` pair
+
+ISO keys use UTC midnight: `dateStr + 'T00:00:00.000Z'`. This is timezone-safe — the same construction on server and client guarantees cache hits.
 
 ### Hooks
 
@@ -203,7 +210,7 @@ interface Booking {
   notes: string | null; createdAt: string
 }
 
-function useBookings(params: { from: string; to: string; serviceId?: string; initialData?: Booking[] }): UseQueryResult<Booking[]>
+function useBookings(params: { from: string; to: string; serviceId?: string }): UseQueryResult<Booking[]>
 function useBookingsPrefetch(params: { view: 'week' | 'day' | 'list'; from: string; to: string; serviceId?: string }): void
 function useUpcomingBookings(params: { serviceId?: string }): UseQueryResult<Booking[]>
 function useCancelBooking(): UseMutationResult<Booking, ApiError, string>
@@ -233,7 +240,7 @@ All mutations call `queryClient.invalidateQueries({ queryKey: ['bookings'] })` o
 
 | File | Responsibility |
 |------|----------------|
-| `apps/web/src/page-components/appointments/AppointmentsPage.tsx` | Client Component. Owns `view`, `dateStr`, `serviceId`, `staffId` as `useState` (initialised from URL params on mount). Syncs URL via `router.replace` as a side effect. Passes nav callbacks to `CalendarToolbar`. Accepts optional `initialBookings`, `initialServices`, `initialStaff`, `initialLocations` props from the Server Component page. |
+| `apps/web/src/page-components/appointments/AppointmentsPage.tsx` | Client Component. Accepts `dehydratedState?: unknown`; wraps children in `HydrationBoundary`. Owns `view`, `dateStr`, `serviceId`, `staffId` as `useState` (initialised from URL params on mount). Week view reads/writes `?from=YYYY-MM-DD&to=YYYY-MM-DD`; day view uses `?view=day&date=YYYY-MM-DD`. Builds ISO keys as `dateStr + 'T00:00:00.000Z'`. Syncs URL via `router.replace` as a side effect. |
 | `apps/web/src/components/calendar/CalendarToolbar.tsx` | Pure controlled component. Prev/next/today; week/day/list toggle; service and staff filters; "New appointment" button. All state and nav callbacks passed as props — no internal routing. |
 | `apps/web/src/components/calendar/WeekView.tsx` | 7-column CSS Grid; renders TimeGutter + DayColumns |
 | `apps/web/src/components/calendar/DayView.tsx` | Single-column; renders TimeGutter + one DayColumn |
@@ -247,7 +254,7 @@ All mutations call `queryClient.invalidateQueries({ queryKey: ['bookings'] })` o
 
 - Each hour row: 64 px. Block `top = (startMinutes / 60) × 64 px`, `height = (durationMinutes / 60) × 64 px`, `min-height: 24 px`.
 - Overlap layout: `computeColumnLayout(appointments)` — greedy column assignment, `left = (colIndex / colCount) × 100%`, `width = (1 / colCount × 100%) − 2 px`.
-- Navigation state (`view`, `date`, `serviceId`, `staffId`) lives in `useState` in `AppointmentsPage` for synchronous React renders. The URL is kept in sync via `router.replace` as a side effect (for back button and direct links) but does not drive rendering.
+- Navigation state (`view`, `dateStr`, `serviceId`, `staffId`) lives in `useState` in `AppointmentsPage` for synchronous React renders. The URL is kept in sync via `router.replace` as a side effect. Week view URL: `?from=YYYY-MM-DD&to=YYYY-MM-DD`; day view: `?view=day&date=YYYY-MM-DD`. URL does not drive rendering — it is only a permalink/back-button aid.
 - Week view scrolls horizontally on narrow viewports (`min-w-[640px]`, outer `overflow-x: auto`).
 - Current-time indicator: `position: absolute; height: 2px; background: red-500` at `(hour × 60 + minutes) / 60 × 64 px`. Updated every minute via `setInterval`.
 
@@ -266,7 +273,7 @@ const [prefillStart, setPrefillStart] = useState<Date | undefined>()
 const [prefillEnd, setPrefillEnd] = useState<Date | undefined>()
 ```
 
-**Location data:** `NewAppointmentPanel` receives `locations: Location[]` as a prop from `AppointmentsPage`. It does not call `useLocations()` internally. `AppointmentsPage` already holds `locations` from its own `useLocations(true, initialLocations)` call (SSR-seeded); passing it down ensures the location picker is present on first render with no extra network request. The panel derives `activeLocations = locations.filter(l => l.isActive)` and shows the picker only when `activeLocations.length > 1`.
+**Location data:** `NewAppointmentPanel` receives `locations: Location[]` as a prop from `AppointmentsPage`. It does not call `useLocations()` internally. `AppointmentsPage` calls `useLocations(true)` — the HydrationBoundary pre-populates the `['locations', tenantId, { includeInactive: true }]` key from SSR, so locations are present on first render with no network round-trip. The panel derives `activeLocations = locations.filter(l => l.isActive)` and shows the picker only when `activeLocations.length > 1`.
 
 **Service → Staff dependency:** after service and location are selected, `useServiceStaff(serviceId, locationId)` (from [staff.md](staff.md)) fetches eligible staff. Staff selection resets when service or location changes.
 

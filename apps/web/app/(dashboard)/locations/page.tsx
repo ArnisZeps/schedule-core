@@ -1,6 +1,8 @@
 import { headers } from 'next/headers'
+import { dehydrate } from '@tanstack/react-query'
 import { db } from '@/lib/server/db'
 import { withTenantContext } from '@/lib/server/withTenantContext'
+import { makeQueryClient } from '@/lib/server/queryClient'
 import { LocationListPage } from '@/page-components/locations/LocationListPage'
 
 type LocationRow = {
@@ -32,5 +34,8 @@ export default async function Page() {
     }))
   })
 
-  return <LocationListPage initialLocations={locations} />
+  const qc = makeQueryClient()
+  qc.setQueryData(['locations', tenantId, { includeInactive: false }], locations)
+
+  return <LocationListPage dehydratedState={dehydrate(qc)} />
 }
