@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { MapPin } from 'lucide-react'
-import { HydrationBoundary } from '@tanstack/react-query'
+import { HydrationBoundary, type DehydratedState } from '@tanstack/react-query'
 import { useLocations } from '@/hooks/useLocations'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -23,7 +23,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { LoadingState } from '@/components/ui/LoadingState'
 import { EmptyState } from '@/components/ui/EmptyState'
 
-export function LocationListPage({ dehydratedState }: { dehydratedState?: unknown } = {}) {
+export function LocationListPage({ dehydratedState }: { dehydratedState?: DehydratedState } = {}) {
   return (
     <HydrationBoundary state={dehydratedState}>
       <LocationListPageInner />

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { HydrationBoundary } from '@tanstack/react-query'
+import { HydrationBoundary, type DehydratedState } from '@tanstack/react-query'
 import { useServices } from '@/hooks/useServices'
 import { useBookings } from '@/hooks/useBookings'
 import { useBookingsPrefetch } from '@/hooks/useBookingsPrefetch'
@@ -38,7 +38,7 @@ function utcTodayStr(): string {
 }
 
 interface AppointmentsPageProps {
-  dehydratedState?: unknown
+  dehydratedState?: DehydratedState
 }
 
 export function AppointmentsPage({ dehydratedState }: AppointmentsPageProps = {}) {

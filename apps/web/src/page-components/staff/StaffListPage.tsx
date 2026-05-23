@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Users } from 'lucide-react'
-import { HydrationBoundary } from '@tanstack/react-query'
+import { HydrationBoundary, type DehydratedState } from '@tanstack/react-query'
 import { useStaffList } from '@/hooks/useStaff'
 import { useLocations } from '@/hooks/useLocations'
 import { Button } from '@/components/ui/button'
@@ -23,7 +23,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { LoadingState } from '@/components/ui/LoadingState'
 import { EmptyState } from '@/components/ui/EmptyState'
 
-export function StaffListPage({ dehydratedState }: { dehydratedState?: unknown } = {}) {
+export function StaffListPage({ dehydratedState }: { dehydratedState?: DehydratedState } = {}) {
   return (
     <HydrationBoundary state={dehydratedState}>
       <StaffListPageInner />

@@ -6,8 +6,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { QueryClient, QueryClientProvider, dehydrate } from '@tanstack/react-query'
-import { http, HttpResponse } from 'msw'
+import { QueryClient, QueryClientProvider, dehydrate, type DehydratedState } from '@tanstack/react-query'
+import { http } from 'msw'
 import { server } from './handlers'
 import { UserProvider } from '@/components/UserProvider'
 import { ServiceListPage } from '@/page-components/services/ServiceListPage'
@@ -36,14 +36,14 @@ beforeEach(() => {
 
   // Hang all data-fetching APIs so synchronous assertions come only from HydrationBoundary
   server.use(
-    http.get('/api/tenants/:tenantId/services', () => new HttpResponse(null, { status: 200, headers: { 'Content-Type': 'application/json' }, body: new ReadableStream() }) as never),
-    http.get('/api/tenants/:tenantId/locations', () => new HttpResponse(null, { status: 200, headers: { 'Content-Type': 'application/json' }, body: new ReadableStream() }) as never),
-    http.get('/api/tenants/:tenantId/staff', () => new HttpResponse(null, { status: 200, headers: { 'Content-Type': 'application/json' }, body: new ReadableStream() }) as never),
-    http.get('/api/tenants/:tenantId/bookings', () => new HttpResponse(null, { status: 200, headers: { 'Content-Type': 'application/json' }, body: new ReadableStream() }) as never),
+    http.get('/api/tenants/:tenantId/services', () => new Promise<never>(() => {})),
+    http.get('/api/tenants/:tenantId/locations', () => new Promise<never>(() => {})),
+    http.get('/api/tenants/:tenantId/staff', () => new Promise<never>(() => {})),
+    http.get('/api/tenants/:tenantId/bookings', () => new Promise<never>(() => {})),
   )
 })
 
-function makeDehydratedState(setup: (qc: QueryClient) => void): unknown {
+function makeDehydratedState(setup: (qc: QueryClient) => void): DehydratedState {
   const qc = new QueryClient()
   setup(qc)
   return dehydrate(qc)
