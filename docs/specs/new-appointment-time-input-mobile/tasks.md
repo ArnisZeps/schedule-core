@@ -17,5 +17,5 @@
 ## 2026-05-24 Date input Safari fix
 
 - [x] Make `NewAppointmentPanel` full-width on mobile: `w-96 border-l` → `w-full md:w-96 md:border-l` on the slide-over container
-- [x] Add `className="flex"` to the date `Input` in `NewAppointmentPanel` — overrides Safari iOS `display: inline-flex` (which ignores `width: 100%`) so the field respects the container width
+- [x] Wrap the date `Input` in `NewAppointmentPanel` with `<div className="overflow-hidden">` — clips Safari iOS's intrinsic minimum width on `input[type="date"]` which `w-full` alone cannot override
 - [x] Update `docs/domains/bookings.md` — note `className="flex"` on the date input and full-width mobile panel
