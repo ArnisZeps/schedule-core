@@ -385,13 +385,14 @@ export function NewAppointmentPanel({
         {/* Date row */}
         <div className="space-y-1">
           <Label htmlFor="appt-date">Date</Label>
-          <Input
-            id="appt-date"
-            type="date"
-            value={date}
-            onChange={e => setDate(e.target.value)}
-            className="flex"
-          />
+          <div className="overflow-hidden">
+            <Input
+              id="appt-date"
+              type="date"
+              value={date}
+              onChange={e => setDate(e.target.value)}
+            />
+          </div>
         </div>
 
         {/* Slot grid (hidden when custom time is active) */}
