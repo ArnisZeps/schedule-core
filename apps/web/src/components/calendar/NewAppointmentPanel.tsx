@@ -390,6 +390,7 @@ export function NewAppointmentPanel({
             type="date"
             value={date}
             onChange={e => setDate(e.target.value)}
+            className="flex"
           />
         </div>
 

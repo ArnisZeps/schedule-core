@@ -16,5 +16,6 @@
 
 ## 2026-05-24 Date input Safari fix
 
-- [x] Change date `Input` in `NewAppointmentPanel`: `type="date"` → `type="text"`, add `placeholder="YYYY-MM-DD"` (same Safari iOS overflow root cause as time input)
-- [x] Add RTL tests: date input is `type="text"`, date input has `placeholder="YYYY-MM-DD"`
+- [x] Make `NewAppointmentPanel` full-width on mobile: `w-96 border-l` → `w-full md:w-96 md:border-l` on the slide-over container
+- [x] Add `className="flex"` to the date `Input` in `NewAppointmentPanel` — overrides Safari iOS `display: inline-flex` (which ignores `width: 100%`) so the field respects the container width
+- [x] Update `docs/domains/bookings.md` — note `className="flex"` on the date input and full-width mobile panel
