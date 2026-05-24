@@ -255,6 +255,51 @@ describe('BookingCalendar', () => {
     const prevBtn = screen.getByRole('button', { name: 'Go to the Previous Month' })
     expect(prevBtn).toHaveAttribute('aria-disabled', 'true')
   })
+
+  it('does not render the real calendar when availableDates is null', () => {
+    render(
+      <BookingCalendar
+        availableDates={null}
+        selectedDate={null}
+        onSelect={vi.fn()}
+        month={mayMonth}
+        onMonthChange={vi.fn()}
+        minMonth={minMonth}
+        maxMonth={maxMonth}
+      />,
+    )
+    expect(screen.queryByRole('button', { name: 'Go to the Previous Month' })).not.toBeInTheDocument()
+  })
+
+  it('renders 42 skeleton day cells (6 rows × 7) when loading', () => {
+    render(
+      <BookingCalendar
+        availableDates={null}
+        selectedDate={null}
+        onSelect={vi.fn()}
+        month={mayMonth}
+        onMonthChange={vi.fn()}
+        minMonth={minMonth}
+        maxMonth={maxMonth}
+      />,
+    )
+    expect(screen.getAllByTestId('calendar-skeleton-cell')).toHaveLength(42)
+  })
+
+  it('does not show skeleton when availableDates is provided', () => {
+    render(
+      <BookingCalendar
+        availableDates={availableDates}
+        selectedDate={null}
+        onSelect={vi.fn()}
+        month={mayMonth}
+        onMonthChange={vi.fn()}
+        minMonth={minMonth}
+        maxMonth={maxMonth}
+      />,
+    )
+    expect(screen.queryByTestId('calendar-skeleton')).not.toBeInTheDocument()
+  })
 })
 
 // ── TimeSlotGrid ──────────────────────────────────────────────────────────────

@@ -194,7 +194,7 @@ When `bookingResult` is set, `<BookingConfirmation>` replaces all content.
 | `apps/web/src/page-components/booking/ServiceSection.tsx` | Card grid of all tenant services; skeleton loader when `isLoading` |
 | `apps/web/src/page-components/booking/StaffSection.tsx` | "Any available" card + staff member cards; skeleton loader when `isLoading && prerequisiteMet` |
 | `apps/web/src/page-components/booking/DateTimeSection.tsx` | Owns `month: Date` state (first of current month); calls `usePublicAvailableDates` with month boundaries; composes `BookingCalendar` and `TimeSlotGrid`; clears `selectedDate` on month change |
-| `apps/web/src/page-components/booking/BookingCalendar.tsx` | Thin wrapper around shadcn `Calendar` (react-day-picker). Receives `availableDates`, `selectedDate`, `month`, callbacks, `minMonth`, `maxMonth`; disables unavailable and past days; shows skeleton overlay while loading |
+| `apps/web/src/page-components/booking/BookingCalendar.tsx` | Thin wrapper around shadcn `Calendar` (react-day-picker). Receives `availableDates`, `selectedDate`, `month`, callbacks, `minMonth`, `maxMonth`; disables unavailable and past days. When `availableDates === null` renders a structural `CalendarSkeleton` in place of the real calendar (header row + weekday row + 6 × 7 `aspect-square` cells); when non-null renders the real calendar with no overlay. |
 | `apps/web/src/page-components/booking/TimeSlotGrid.tsx` | Slot buttons in 3–4 column grid; unavailable slots dimmed; skeleton loader; empty state |
 | `apps/web/src/page-components/booking/DetailsSection.tsx` | Name/phone/email form (RHF + zod); submit with loading state |
 | `apps/web/src/page-components/booking/BookingConfirmation.tsx` | Success screen with booking summary and "Book another" reset |
@@ -260,7 +260,7 @@ Slot times are displayed in the location's IANA timezone via `Intl.DateTimeForma
 ### BookingCalendar behaviour
 
 - `month: Date` state (first day of displayed month) lives in `DateTimeSection`; `BookingCalendar` is fully controlled via props.
-- `availableDates: Set<string> | null` — when `null` (query in-flight), all day buttons are disabled and a skeleton grid overlay is rendered on top of the calendar. When non-null, days in the set are enabled; all others are disabled (greyed out, not clickable).
+- `availableDates: Set<string> | null` — when `null` (query in-flight), a structural `CalendarSkeleton` is rendered in place of the real calendar (no overlay). When non-null, the real calendar renders: days in the set are enabled; all others are disabled (greyed out, not clickable).
 - Past dates (before today) are always disabled regardless of availability.
 - Month navigation: back arrow disabled when on `minMonth` (current month); forward arrow disabled at `maxMonth` (3 months from today).
 - On month change, `selectedDate` is cleared via `onDateSelect(null)` and a new `usePublicAvailableDates` fetch fires for the new month's window.
