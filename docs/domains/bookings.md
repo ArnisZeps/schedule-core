@@ -265,7 +265,7 @@ All mutations call `queryClient.invalidateQueries({ queryKey: ['bookings'] })` o
 
 | File | Responsibility |
 |------|----------------|
-| `apps/web/src/components/calendar/NewAppointmentPanel.tsx` | 480 px slide-over. Accepts `mode?: 'new' \| 'reschedule'` and `rescheduleBooking?: Booking`. In `'new'` mode: service chips, staff dropdown, location selector, date + slot grid, override checkbox, conflict warning, notes, client fields. In `'reschedule'` mode: client/service/location/staff fields pre-filled and locked; submits via `useRescheduleBooking`. Both modes: "Custom time" collapsible section (time input, computed end, sends `override: true`). |
+| `apps/web/src/components/calendar/NewAppointmentPanel.tsx` | 480 px slide-over. Accepts `mode?: 'new' \| 'reschedule'` and `rescheduleBooking?: Booking`. In `'new'` mode: service chips, staff dropdown, location selector, date + slot grid, override checkbox, conflict warning, notes, client fields. In `'reschedule'` mode: client/service/location/staff fields pre-filled and locked; submits via `useRescheduleBooking`. Both modes: "Custom time" collapsible section (`type="text"` input with `placeholder="HH:MM"`, computed end time, sends `override: true`). The input is `type="text"` (not `type="time"`) to avoid Safari iOS native picker overflow on narrow viewports. |
 
 **Drag-to-open:** `mousedown` on `DayColumn` (not on an existing block) → `mousemove` ghost block → `mouseup` snap to 15-min grid → `onTimeSelect(startAt, endAt)` → `AppointmentsPage` opens panel with `prefillStart` / `prefillEnd`.
 

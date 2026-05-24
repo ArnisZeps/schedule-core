@@ -180,6 +180,53 @@ describe('Custom time section', () => {
     expect(screen.getByTestId('custom-time-input')).toBeInTheDocument()
   })
 
+  it('custom time input is type text (not type time) to avoid Safari iOS overflow', async () => {
+    await openNewPanel()
+    await userEvent.click(screen.getByTestId('custom-time-toggle'))
+    expect(screen.getByTestId('custom-time-input')).toHaveAttribute('type', 'text')
+  })
+
+  it('custom time input has placeholder HH:MM', async () => {
+    await openNewPanel()
+    await userEvent.click(screen.getByTestId('custom-time-toggle'))
+    expect(screen.getByTestId('custom-time-input')).toHaveAttribute('placeholder', 'HH:MM')
+  })
+
+  it('strips non-digit characters from input', async () => {
+    await openNewPanel()
+    await userEvent.click(screen.getByTestId('custom-time-toggle'))
+    await userEvent.type(screen.getByTestId('custom-time-input'), '1a2b3c4')
+    expect((screen.getByTestId('custom-time-input') as HTMLInputElement).value).toBe('12:34')
+  })
+
+  it('auto-formats 4 digits to HH:MM', async () => {
+    await openNewPanel()
+    await userEvent.click(screen.getByTestId('custom-time-toggle'))
+    await userEvent.type(screen.getByTestId('custom-time-input'), '2250')
+    expect((screen.getByTestId('custom-time-input') as HTMLInputElement).value).toBe('22:50')
+  })
+
+  it('limits input to 4 digits', async () => {
+    await openNewPanel()
+    await userEvent.click(screen.getByTestId('custom-time-toggle'))
+    await userEvent.type(screen.getByTestId('custom-time-input'), '225059')
+    expect((screen.getByTestId('custom-time-input') as HTMLInputElement).value).toBe('22:50')
+  })
+
+  it('clears when entered hours exceed 23', async () => {
+    await openNewPanel()
+    await userEvent.click(screen.getByTestId('custom-time-toggle'))
+    await userEvent.type(screen.getByTestId('custom-time-input'), '4340')
+    expect((screen.getByTestId('custom-time-input') as HTMLInputElement).value).toBe('')
+  })
+
+  it('clears when entered minutes exceed 59', async () => {
+    await openNewPanel()
+    await userEvent.click(screen.getByTestId('custom-time-toggle'))
+    await userEvent.type(screen.getByTestId('custom-time-input'), '1260')
+    expect((screen.getByTestId('custom-time-input') as HTMLInputElement).value).toBe('')
+  })
+
   it('toggling custom time off restores the slot grid', async () => {
     await openNewPanel()
     await waitFor(() => expect(screen.getAllByTestId('slot-available').length).toBeGreaterThan(0))

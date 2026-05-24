@@ -119,6 +119,21 @@ export function NewAppointmentPanel({
     }
   }
 
+  function handleCustomTimeChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const digits = e.target.value.replace(/\D/g, '').slice(0, 4)
+    if (digits.length < 4) {
+      setCustomStartTime(digits.length <= 2 ? digits : digits.slice(0, 2) + ':' + digits.slice(2))
+      return
+    }
+    const h = parseInt(digits.slice(0, 2), 10)
+    const m = parseInt(digits.slice(2, 4), 10)
+    if (h > 23 || m > 59) {
+      setCustomStartTime('')
+      return
+    }
+    setCustomStartTime(digits.slice(0, 2) + ':' + digits.slice(2))
+  }
+
   const resolvedStaffId = staffSelectValue || null
   const resolvedLocationId = locationId || null
 
@@ -460,9 +475,10 @@ export function NewAppointmentPanel({
                 <Label htmlFor="custom-time">Start time</Label>
                 <Input
                   id="custom-time"
-                  type="time"
+                  type="text"
+                  placeholder="HH:MM"
                   value={customStartTime}
-                  onChange={e => setCustomStartTime(e.target.value)}
+                  onChange={handleCustomTimeChange}
                   data-testid="custom-time-input"
                 />
               </div>
