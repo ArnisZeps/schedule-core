@@ -61,6 +61,7 @@ describe('Manual appointment entry', () => {
     expect(screen.getByTestId('new-appointment-panel')).toBeInTheDocument()
   })
 
+
   it('panel closes when backdrop is clicked', async () => {
     renderAppointments('view=week&date=2026-05-04')
     const btn = await screen.findByTestId('new-appointment-btn')

@@ -265,7 +265,7 @@ export function NewAppointmentPanel({
 
   return (
     <div
-      className="absolute top-0 right-0 bottom-0 w-96 bg-background border-l shadow-lg flex flex-col z-30"
+      className="absolute top-0 right-0 bottom-0 w-full md:w-96 bg-background md:border-l shadow-lg flex flex-col z-30"
       data-testid="new-appointment-panel"
     >
       {/* Header */}
