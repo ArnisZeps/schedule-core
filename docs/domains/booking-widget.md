@@ -191,7 +191,7 @@ When `bookingResult` is set, `<BookingConfirmation>` replaces all content.
 | `apps/web/app/(public)/layout.tsx` | Minimal public layout — no auth, no dashboard chrome |
 | `apps/web/src/page-components/booking/BookingWidget.tsx` | Client Component; owns all booking state; accepts `initialServices` and `initialStaffByService` |
 | `apps/web/src/page-components/booking/LocationSection.tsx` | Card grid of active locations |
-| `apps/web/src/page-components/booking/ServiceSection.tsx` | Card grid of all tenant services; skeleton loader when `isLoading` |
+| `apps/web/src/page-components/booking/ServiceSection.tsx` | Card grid of all tenant services; skeleton loader when `isLoading`. Description renders with `whitespace-pre-line` so authored newlines are preserved. |
 | `apps/web/src/page-components/booking/StaffSection.tsx` | "Any available" card + staff member cards; skeleton loader when `isLoading && prerequisiteMet` |
 | `apps/web/src/page-components/booking/DateTimeSection.tsx` | Owns `month: Date` state (first of current month); calls `usePublicAvailableDates` with month boundaries; composes `BookingCalendar` and `TimeSlotGrid`; clears `selectedDate` on month change |
 | `apps/web/src/page-components/booking/BookingCalendar.tsx` | Thin wrapper around shadcn `Calendar` (react-day-picker). Receives `availableDates`, `selectedDate`, `month`, callbacks, `minMonth`, `maxMonth`; disables unavailable and past days. When `availableDates === null` renders a structural `CalendarSkeleton` in place of the real calendar (header row + weekday row + 6 × 7 `aspect-square` cells); when non-null renders the real calendar with no overlay. |

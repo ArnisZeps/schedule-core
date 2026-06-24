@@ -72,6 +72,22 @@ describe('ServiceSection', () => {
     const card = screen.getByText('Haircut').closest('[data-selected]')
     expect(card).toBeInTheDocument()
   })
+
+  it('preserves authored newlines in the service description', () => {
+    render(
+      <ServiceSection
+        services={[
+          { id: 'pub-svc-3', name: 'Spa Day', description: 'Line one\nLine two', durationMinutes: 90 },
+        ]}
+        isLoading={false}
+        selectedId={null}
+        onSelect={vi.fn()}
+      />,
+    )
+    const desc = screen.getByText(/Line one/)
+    expect(desc).toHaveClass('whitespace-pre-line')
+    expect(desc.textContent).toBe('Line one\nLine two')
+  })
 })
 
 // ── StaffSection ──────────────────────────────────────────────────────────────
