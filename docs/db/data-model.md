@@ -98,7 +98,7 @@ An appointment made by a client for a specific service at a specific location. D
 
 **Constraints:** `start_at < end_at`
 
-`ON DELETE RESTRICT` on tenant, service, location, and staff FKs — these records cannot be deleted while bookings exist (preserve booking history).
+`ON DELETE RESTRICT` on tenant, service, location, and staff FKs — these records cannot be deleted while bookings exist (preserve booking history). **Exception:** deliberate account deletion (`DELETE /api/tenants/:id`) explicitly purges the tenant's bookings inside the delete transaction before removing the tenant — see [ADR-013](../adr/013-account-deletion-purge.md). RESTRICT still protects all other delete paths.
 
 **Indexes:** `(tenant_id)`, `(service_id)`, `(location_id)`, `(staff_id)`, `(tenant_id, start_at, end_at)` — the composite index supports overlap queries during booking.
 
