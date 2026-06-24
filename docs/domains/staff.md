@@ -217,7 +217,7 @@ interface ScheduleOverride {
 | `apps/web/src/components/staff/ScheduleWindowPanel.tsx` | Slide-over: day picker, start/end time, create/update/delete |
 | `apps/web/src/components/staff/OverrideCalendar.tsx` | Week/day view calendar for overrides with toolbar; multi-day overrides render on every covered day |
 | `apps/web/src/components/staff/OverrideBlock.tsx` | Coloured block (green = available, red = not_available) |
-| `apps/web/src/components/staff/OverridePanel.tsx` | Slide-over: date range, type toggle, start/end time |
+| `apps/web/src/components/staff/OverridePanel.tsx` | Slide-over: date range, type toggle, start/end time. Native `type="date"` inputs rely on the global `appearance: none` base rule in `apps/web/app/globals.css` for correct iOS Safari sizing (see [bookings.md](bookings.md)) |
 | `apps/web/src/components/ui/TimeSelect.tsx` | 24-hour time picker (two `<select>` elements: hour 00–23, minute 00–55 in 5-min steps); emits HH:MM string; used in `ScheduleWindowPanel` and `OverridePanel` |
 
 ### Schedule drag protocol
