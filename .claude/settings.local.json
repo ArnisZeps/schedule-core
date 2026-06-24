@@ -43,7 +43,10 @@
       "Bash(Format-Table -AutoSize)",
       "Bash(npx vitest *)",
       "Bash(ls node_modules/jose)",
-      "Bash(ls node_modules/.pnpm/jose*/node_modules/jose)"
+      "Bash(ls node_modules/.pnpm/jose*/node_modules/jose)",
+      "WebSearch",
+      "WebFetch(domain:gist.github.com)",
+      "WebFetch(domain:gomakethings.com)"
     ]
   }
 }
