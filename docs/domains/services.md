@@ -117,7 +117,7 @@ interface Service {
 
 | File | Responsibility |
 |------|----------------|
-| `apps/web/src/page-components/ServiceListPage.tsx` | Table: name, description, duration, edit link, delete action |
+| `apps/web/src/page-components/services/ServiceListPage.tsx` | Table: name, description, actions menu (edit / delete). Description is truncated to a single line (`max-w-lg truncate`) with the full text in a native `title` tooltip, so long descriptions never push the actions column off-screen. Null description shows `—`. |
 | `apps/web/src/page-components/ServiceFormPage.tsx` | Create and edit in one component |
 
 ## Constraints

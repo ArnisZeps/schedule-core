@@ -98,7 +98,13 @@ function ServiceListPageInner() {
                 <TableRow key={s.id}>
                   <TableCell className="font-medium">{s.name}</TableCell>
                   <TableCell className="text-muted-foreground">
-                    {s.description ?? '—'}
+                    {s.description ? (
+                      <div className="max-w-lg truncate" title={s.description}>
+                        {s.description}
+                      </div>
+                    ) : (
+                      '—'
+                    )}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>

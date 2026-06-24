@@ -55,6 +55,25 @@ describe('Services', () => {
     })
   })
 
+  it('truncates a long description and exposes the full text via title', async () => {
+    const longDesc =
+      'A very long description that would otherwise stretch the table far beyond its width. '.repeat(4).trim()
+    server.use(
+      http.get(`/api/tenants/${TENANT_ID}/services`, () =>
+        HttpResponse.json([
+          { id: 'res-long', tenantId: TENANT_ID, name: 'Long Svc', description: longDesc, durationMinutes: 30 },
+        ]),
+      ),
+    )
+    renderPage(<ServiceListPage />)
+
+    await waitFor(() => screen.getByText('Long Svc'))
+
+    const desc = screen.getByText(longDesc)
+    expect(desc).toHaveClass('truncate')
+    expect(desc).toHaveAttribute('title', longDesc)
+  })
+
   it('shows empty state when no services exist', async () => {
     server.use(
       http.get(`/api/tenants/${TENANT_ID}/services`, () =>

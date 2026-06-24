@@ -43,7 +43,7 @@ export function ServiceSection({ services, isLoading, selectedId, onSelect }: Pr
             >
               <div className="font-medium">{svc.name}</div>
               {svc.description && (
-                <div className="mt-1 text-sm text-muted-foreground">{svc.description}</div>
+                <div className="mt-1 whitespace-pre-line text-sm text-muted-foreground">{svc.description}</div>
               )}
               <div className="mt-2 text-xs text-muted-foreground">{svc.durationMinutes} min</div>
             </button>
