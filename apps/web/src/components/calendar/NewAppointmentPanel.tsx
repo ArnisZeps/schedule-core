@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
+import { TimeSelect } from '@/components/ui/TimeSelect'
 import type { Service } from '@/hooks/useServices'
 import type { Location } from '@/hooks/useLocations'
 import type { Booking } from '@/hooks/useBookings'
@@ -109,29 +110,28 @@ export function NewAppointmentPanel({
     }
   }, [serviceId, date, staffSelectValue])
 
-  // Clear custom time input when toggling off
+  function snapToFiveMin(d: Date): string {
+    const h = String(d.getHours()).padStart(2, '0')
+    const m = String(Math.floor(d.getMinutes() / 5) * 5).padStart(2, '0')
+    return `${h}:${m}`
+  }
+
+  function seedCustomTime(): string {
+    if (isReschedule) return snapToFiveMin(new Date(rescheduleBooking!.startAt))
+    if (selectedSlot) return snapToFiveMin(new Date(selectedSlot.startAt))
+    if (prefillStart) return snapToFiveMin(prefillStart)
+    return '09:00'
+  }
+
+  // Seed a default time when toggling on, clear when toggling off
   function toggleCustomTime() {
     if (customTimeActive) {
       setCustomTimeActive(false)
       setCustomStartTime('')
     } else {
       setCustomTimeActive(true)
+      setCustomStartTime(seedCustomTime())
     }
-  }
-
-  function handleCustomTimeChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const digits = e.target.value.replace(/\D/g, '').slice(0, 4)
-    if (digits.length < 4) {
-      setCustomStartTime(digits.length <= 2 ? digits : digits.slice(0, 2) + ':' + digits.slice(2))
-      return
-    }
-    const h = parseInt(digits.slice(0, 2), 10)
-    const m = parseInt(digits.slice(2, 4), 10)
-    if (h > 23 || m > 59) {
-      setCustomStartTime('')
-      return
-    }
-    setCustomStartTime(digits.slice(0, 2) + ':' + digits.slice(2))
   }
 
   const resolvedStaffId = staffSelectValue || null
@@ -475,13 +475,10 @@ export function NewAppointmentPanel({
             <div className="space-y-2 rounded border border-border p-3">
               <div className="space-y-1">
                 <Label htmlFor="custom-time">Start time</Label>
-                <Input
+                <TimeSelect
                   id="custom-time"
-                  type="text"
-                  placeholder="HH:MM"
                   value={customStartTime}
-                  onChange={handleCustomTimeChange}
-                  data-testid="custom-time-input"
+                  onChange={setCustomStartTime}
                 />
               </div>
               {customEndTime && (

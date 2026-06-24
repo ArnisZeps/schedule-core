@@ -164,7 +164,7 @@ describe('Custom time section', () => {
   it('custom time section is collapsed by default showing toggle text', async () => {
     await openNewPanel()
     expect(screen.getByTestId('custom-time-toggle')).toBeInTheDocument()
-    expect(screen.queryByTestId('custom-time-input')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('time-hour-select')).not.toBeInTheDocument()
   })
 
   it('expanding custom time hides the slot grid', async () => {
@@ -174,57 +174,27 @@ describe('Custom time section', () => {
     expect(screen.queryByTestId('slot-grid')).not.toBeInTheDocument()
   })
 
-  it('expanding custom time shows time input', async () => {
+  it('expanding custom time shows hour and minute dropdowns instead of a free-text input', async () => {
     await openNewPanel()
     await userEvent.click(screen.getByTestId('custom-time-toggle'))
-    expect(screen.getByTestId('custom-time-input')).toBeInTheDocument()
+    expect(screen.getByTestId('time-hour-select')).toBeInTheDocument()
+    expect(screen.getByTestId('time-min-select')).toBeInTheDocument()
+    expect(screen.queryByTestId('custom-time-input')).not.toBeInTheDocument()
   })
 
-  it('custom time input is type text (not type time) to avoid Safari iOS overflow', async () => {
+  it('seeds the dropdowns with a fallback time when no slot or booking context exists', async () => {
     await openNewPanel()
     await userEvent.click(screen.getByTestId('custom-time-toggle'))
-    expect(screen.getByTestId('custom-time-input')).toHaveAttribute('type', 'text')
+    expect(screen.getByTestId('time-hour-select')).toHaveValue('09')
+    expect(screen.getByTestId('time-min-select')).toHaveValue('00')
   })
 
-  it('custom time input has placeholder HH:MM', async () => {
+  it('selecting hour and minute updates the computed "Ends at" line', async () => {
     await openNewPanel()
     await userEvent.click(screen.getByTestId('custom-time-toggle'))
-    expect(screen.getByTestId('custom-time-input')).toHaveAttribute('placeholder', 'HH:MM')
-  })
-
-  it('strips non-digit characters from input', async () => {
-    await openNewPanel()
-    await userEvent.click(screen.getByTestId('custom-time-toggle'))
-    await userEvent.type(screen.getByTestId('custom-time-input'), '1a2b3c4')
-    expect((screen.getByTestId('custom-time-input') as HTMLInputElement).value).toBe('12:34')
-  })
-
-  it('auto-formats 4 digits to HH:MM', async () => {
-    await openNewPanel()
-    await userEvent.click(screen.getByTestId('custom-time-toggle'))
-    await userEvent.type(screen.getByTestId('custom-time-input'), '2250')
-    expect((screen.getByTestId('custom-time-input') as HTMLInputElement).value).toBe('22:50')
-  })
-
-  it('limits input to 4 digits', async () => {
-    await openNewPanel()
-    await userEvent.click(screen.getByTestId('custom-time-toggle'))
-    await userEvent.type(screen.getByTestId('custom-time-input'), '225059')
-    expect((screen.getByTestId('custom-time-input') as HTMLInputElement).value).toBe('22:50')
-  })
-
-  it('clears when entered hours exceed 23', async () => {
-    await openNewPanel()
-    await userEvent.click(screen.getByTestId('custom-time-toggle'))
-    await userEvent.type(screen.getByTestId('custom-time-input'), '4340')
-    expect((screen.getByTestId('custom-time-input') as HTMLInputElement).value).toBe('')
-  })
-
-  it('clears when entered minutes exceed 59', async () => {
-    await openNewPanel()
-    await userEvent.click(screen.getByTestId('custom-time-toggle'))
-    await userEvent.type(screen.getByTestId('custom-time-input'), '1260')
-    expect((screen.getByTestId('custom-time-input') as HTMLInputElement).value).toBe('')
+    await userEvent.selectOptions(screen.getByTestId('time-hour-select'), '14')
+    await userEvent.selectOptions(screen.getByTestId('time-min-select'), '00')
+    expect(screen.getByTestId('custom-time-end')).toHaveTextContent('Ends at 15:00')
   })
 
   it('toggling custom time off restores the slot grid', async () => {
@@ -235,15 +205,7 @@ describe('Custom time section', () => {
     await waitFor(() => expect(screen.getByTestId('slot-grid')).toBeInTheDocument())
   })
 
-  it('submit button is disabled when custom time active but no time entered', async () => {
-    await openNewPanel()
-    await userEvent.type(screen.getByLabelText('Name'), 'Test Client')
-    await userEvent.type(screen.getByLabelText('Phone'), '+1 555 123 4567')
-    await userEvent.click(screen.getByTestId('custom-time-toggle'))
-    expect(screen.getByTestId('submit-booking')).toBeDisabled()
-  })
-
-  it('submitting with custom time sends override: true in POST body', async () => {
+  it('submitting with a dropdown-selected custom time sends override: true and the selected startAt', async () => {
     let capturedBody: Record<string, unknown> | null = null
     server.use(
       http.post(`${BASE}/tenants/${TENANT_ID}/bookings`, async ({ request }) => {
@@ -261,18 +223,25 @@ describe('Custom time section', () => {
     await userEvent.type(screen.getByLabelText('Name'), 'Test Client')
     await userEvent.type(screen.getByLabelText('Phone'), '+1 555 123 4567')
     await userEvent.click(screen.getByTestId('custom-time-toggle'))
-    await userEvent.type(screen.getByTestId('custom-time-input'), '14:00')
+    await userEvent.selectOptions(screen.getByTestId('time-hour-select'), '14')
+    await userEvent.selectOptions(screen.getByTestId('time-min-select'), '00')
     await userEvent.click(screen.getByTestId('submit-booking'))
     await waitFor(() => expect(capturedBody).not.toBeNull())
     expect(capturedBody!.override).toBe(true)
     expect(capturedBody!.startAt).toBeDefined()
   })
 
-  it('custom time section also appears in reschedule mode', async () => {
+  it('custom time section also appears in reschedule mode, seeded from the booking start time', async () => {
     const user = userEvent.setup()
     const dialog = await openDetailDialog(user, 'bk-1')
     await user.click(within(dialog).getByRole('button', { name: /reschedule appointment/i }))
     await waitFor(() => screen.getByTestId('new-appointment-panel'))
     expect(screen.getByTestId('custom-time-toggle')).toBeInTheDocument()
+    await user.click(screen.getByTestId('custom-time-toggle'))
+    const bookingStart = new Date(BOOKINGS[0].startAt)
+    const expectedHour = String(bookingStart.getHours()).padStart(2, '0')
+    const expectedMinute = String(Math.floor(bookingStart.getMinutes() / 5) * 5).padStart(2, '0')
+    expect(screen.getByTestId('time-hour-select')).toHaveValue(expectedHour)
+    expect(screen.getByTestId('time-min-select')).toHaveValue(expectedMinute)
   })
 })
