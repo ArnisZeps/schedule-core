@@ -127,4 +127,19 @@
   html {
     @apply font-sans;
     }
+  /* iOS Safari gives date/time inputs an intrinsic content width and ignores
+     flex/width shrinking until the native appearance is stripped. Removing
+     appearance collapses their height, so pin it back. */
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="time"] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-height: 2rem;
+    }
+  input[type="date"]::-webkit-date-and-time-value,
+  input[type="datetime-local"]::-webkit-date-and-time-value,
+  input[type="time"]::-webkit-date-and-time-value {
+    text-align: left;
+    }
 }
