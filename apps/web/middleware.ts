@@ -39,7 +39,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/(services|locations|staff|appointments)(.*)',
+    '/(services|locations|staff|appointments|settings)(.*)',
     '/',
     '/login',
     '/register',

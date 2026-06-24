@@ -238,6 +238,33 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
+  // Account email change
+  http.patch(`${BASE}/account/email`, async ({ request }) => {
+    const body = await request.json() as { email: string }
+    return HttpResponse.json({ email: body.email.toLowerCase() })
+  }),
+
+  // Account password change
+  http.patch(`${BASE}/account/password`, () => {
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  // Tenant update (business name / slug)
+  http.patch(`${BASE}/tenants/:tenantId`, async ({ params, request }) => {
+    const body = await request.json() as { name?: string; slug?: string }
+    return HttpResponse.json({
+      id: params.tenantId,
+      name: body.name ?? 'Test Biz',
+      slug: body.slug ?? 'test-biz',
+      createdAt: '2026-05-01T00:00:00.000Z',
+    })
+  }),
+
+  // Account deletion (delete tenant)
+  http.delete(`${BASE}/tenants/:tenantId`, () => {
+    return new HttpResponse(null, { status: 204 })
+  }),
+
   // Services list
   http.get(`${BASE}/tenants/:tenantId/services`, () => {
     return HttpResponse.json(SERVICES)

@@ -20,10 +20,11 @@ export function makeToken(tenantId: string, userId = 'user-test'): string {
 }
 
 export function makeRequest(url: string, token: string, init?: RequestInit): Request {
+  // Auth transport is the HttpOnly `sc_token` cookie (ADR-012), read by withAuth.
   return new Request(url, {
     ...init,
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Cookie': `sc_token=${token}`,
       'Content-Type': 'application/json',
       ...(init?.headers as Record<string, string> ?? {}),
     },
@@ -39,6 +40,19 @@ export async function insertTenant(client: any, slug: string, name = 'Test Biz')
   const { rows } = await client.query(
     "INSERT INTO tenants (name, slug) VALUES ($1, $2) ON CONFLICT (slug) DO UPDATE SET name = $1 RETURNING id",
     [name, slug],
+  )
+  return rows[0].id
+}
+
+export async function insertUser(
+  client: any,
+  tenantId: string,
+  email: string,
+  passwordHash: string,
+): Promise<string> {
+  const { rows } = await client.query(
+    'INSERT INTO users (tenant_id, email, password_hash) VALUES ($1, $2, $3) RETURNING id',
+    [tenantId, email.toLowerCase(), passwordHash],
   )
   return rows[0].id
 }
